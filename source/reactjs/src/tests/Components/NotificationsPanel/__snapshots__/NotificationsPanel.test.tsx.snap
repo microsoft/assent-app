@@ -1,0 +1,313 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`NotificationsPanel should NotificationsPanel renders correctly 1`] = `
+Object {
+  "asFragment": [Function],
+  "baseElement": <body
+    class="css-0"
+  >
+    <div>
+      <span
+        class="ms-layer"
+      />
+    </div>
+    <div
+      class="ms-Layer ms-Layer--fixed root-122"
+      data-portal-element="true"
+    >
+      <div
+        class="ms-Fabric ms-Layer-content content-124"
+      >
+        <div
+          aria-labelledby="Panel1-headerText"
+          aria-modal="true"
+          class=""
+          role="dialog"
+          style="outline: none;"
+        >
+          <div
+            aria-hidden="false"
+            class="ms-Panel is-open ms-Panel--custom root-109"
+            id="CoherPanel0"
+          >
+            <div
+              class="ms-Overlay overlay-126"
+            />
+            <div
+              class="ms-Panel-main main-111"
+            >
+              <div
+                aria-hidden="true"
+                data-is-visible="true"
+                style="pointer-events: none; position: fixed;"
+                tabindex="0"
+              />
+              <div
+                class="ms-Panel-commands commands-112"
+                data-is-visible="true"
+              >
+                <div
+                  class="ms-Panel-navigation navigation-113"
+                >
+                  <div
+                    class="backButtonContainer-102"
+                  />
+                </div>
+              </div>
+              <div
+                class="ms-Panel-contentInner contentInner-114"
+              >
+                <h1
+                  class="header-104"
+                  id="Panel1-headerText"
+                >
+                  Notifications
+                </h1>
+                <div
+                  class="ms-Panel-scrollableContent scrollableContent-117"
+                  data-is-scrollable="true"
+                >
+                  <div
+                    class="body-105"
+                  >
+                    <div
+                      class="ms-FocusZone css-127"
+                      data-focuszone-id="FocusZone2"
+                    >
+                      <span
+                        class="css-100"
+                      >
+                        2
+                         new alert(s)
+                      </span>
+                      <div
+                        class="css-84"
+                        data-is-scrollable="true"
+                      >
+                        <div
+                          class="ms-List"
+                          role="list"
+                        >
+                          <div
+                            class="ms-List-surface"
+                            role="presentation"
+                          >
+                            <div
+                              class="ms-List-page"
+                              role="presentation"
+                            >
+                              <div
+                                class="ms-List-cell"
+                                data-automationid="ListCell"
+                                data-list-index="0"
+                                role="listitem"
+                              >
+                                <div
+                                  class="itemCellBold-86"
+                                  data-is-focusable="true"
+                                >
+                                  <i
+                                    aria-hidden="true"
+                                    class="root-128"
+                                    data-icon-name="IncidentTriangle"
+                                  />
+                                  <div
+                                    class="itemContent-89"
+                                  >
+                                    <div
+                                      class="itemNameBold-91"
+                                    >
+                                      Testing Notification Two
+                                    </div>
+                                    <div
+                                      class="itemMessageBold-92"
+                                    >
+                                      <div>
+                                        This is test text
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <i
+                                    aria-hidden="true"
+                                    class="chevron-129"
+                                    data-icon-name="ChevronDown"
+                                  />
+                                </div>
+                              </div>
+                              <div
+                                class="ms-List-cell"
+                                data-automationid="ListCell"
+                                data-list-index="1"
+                                role="listitem"
+                              >
+                                <div
+                                  class="itemCellBold-86"
+                                  data-is-focusable="true"
+                                >
+                                  <i
+                                    aria-hidden="true"
+                                    class="root-130"
+                                    data-icon-name="InfoSolid"
+                                  />
+                                  <div
+                                    class="itemContent-89"
+                                  >
+                                    <div
+                                      class="itemNameBold-91"
+                                    >
+                                      Testing Notification Three
+                                    </div>
+                                    <div
+                                      class="itemMessageBold-92"
+                                    >
+                                      <div>
+                                        This is test text
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <i
+                                    aria-hidden="true"
+                                    class="chevron-129"
+                                    data-icon-name="ChevronDown"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      class="ms-FocusZone css-127"
+                      data-focuszone-id="FocusZone3"
+                    >
+                      <span
+                        class="css-100"
+                      >
+                        Older alert(s)
+                      </span>
+                      <div
+                        class="css-84"
+                        data-is-scrollable="true"
+                      >
+                        <div
+                          class="ms-List"
+                          role="list"
+                        >
+                          <div
+                            class="ms-List-surface"
+                            role="presentation"
+                          >
+                            <div
+                              class="ms-List-page"
+                              role="presentation"
+                            >
+                              <div
+                                class="ms-List-cell"
+                                data-automationid="ListCell"
+                                data-list-index="0"
+                                role="listitem"
+                              >
+                                <div
+                                  class="itemCell-87"
+                                  data-is-focusable="true"
+                                >
+                                  <i
+                                    aria-hidden="true"
+                                    class="root-131"
+                                    data-icon-name="ReportWarning"
+                                  />
+                                  <div
+                                    class="itemContent-89"
+                                  >
+                                    <div
+                                      class="itemName-90"
+                                    >
+                                      Testing Notification One
+                                    </div>
+                                  </div>
+                                  <i
+                                    aria-hidden="true"
+                                    class="chevron-129"
+                                    data-icon-name="ChevronRight"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                aria-hidden="true"
+                data-is-visible="true"
+                style="pointer-events: none; position: fixed;"
+                tabindex="0"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <span
+      class="ms-layer"
+    />
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;

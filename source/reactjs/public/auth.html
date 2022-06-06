@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Frame Redirect</title>
+        <script
+            type="text/javascript"
+            src="https://alcdn.msauth.net/lib/1.2.2/js/msal.js"
+            integrity="sha384-n2/wxR+doMGeL8Lmj4kdPRfZBUg2d/OAVqaKCoHPWOfOs1HUFU3laBvp3gv/HBOu"
+            crossorigin="anonymous"
+            ></script>
+            <script type="text/javascript">
+            if (typeof Msal === 'undefined')
+            document.write(
+            unescape(
+            "%3Cscript src='https://alcdn.msftauth.net/lib/1.2.2/js/msal.js' type='text/javascript' integrity='sha384-n2/wxR+doMGeL8Lmj4kdPRfZBUg2d/OAVqaKCoHPWOfOs1HUFU3laBvp3gv/HBOu' crossorigin='anonymous'%3E%3C/script%3E"
+            )
+            );
+        </script>
+    </head>
+    <body>
+        <script src="/bundles/auth.js"></script>
+    </body>
+</html>

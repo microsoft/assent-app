@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <RootNamespace>Microsoft.CFS.Approvals.Model</RootNamespace>
+    <AssemblyName>Microsoft.CFS.Approvals.Model</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Approvals.Contracts\Approvals.Contracts.csproj" />
+    <ProjectReference Include="..\..\Common\Approvals.Extensions\Approvals.Extensions.csproj" />
+  </ItemGroup>
+
+</Project>

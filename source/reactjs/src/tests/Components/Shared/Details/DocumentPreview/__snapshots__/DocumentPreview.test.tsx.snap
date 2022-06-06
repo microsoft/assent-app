@@ -1,0 +1,2414 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`DocumentPreview should render document view when document preview given 1`] = `
+Object {
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="ms-Stack css-40"
+      >
+        <div
+          class="ms-Stack css-41"
+        >
+          <div
+            class="ms-StackItem css-42"
+          >
+            <div
+              class="ms-Dropdown-container"
+            >
+              <label
+                class="ms-Label ms-Dropdown-label root-59"
+                id="Dropdown4-label"
+              >
+                Select file to preview
+              </label>
+              <div
+                aria-expanded="false"
+                aria-haspopup="listbox"
+                aria-labelledby="Dropdown4-label Dropdown4-option"
+                aria-required="false"
+                class="ms-Dropdown dropdown-43"
+                data-is-focusable="true"
+                id="Dropdown4"
+                role="listbox"
+                tabindex="0"
+              >
+                <span
+                  aria-atomic="true"
+                  aria-invalid="false"
+                  aria-live="polite"
+                  aria-setsize="1"
+                  class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                  id="Dropdown4-option"
+                  role="option"
+                />
+                <span
+                  class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+                >
+                  <i
+                    aria-hidden="true"
+                    class="ms-Dropdown-caretDown caretDown-60"
+                    data-icon-name="ChevronDown"
+                  />
+                </span>
+              </div>
+            </div>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          >
+            <button
+              aria-label="Download file"
+              class="ms-Button ms-Button--icon root-62"
+              data-is-focusable="true"
+              title="Download file"
+              type="button"
+            >
+              <span
+                class="ms-Button-flexContainer flexContainer-63"
+                data-automationid="splitbuttonprimary"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Icon root-37 ms-Button-icon icon-65"
+                  data-icon-name="Download"
+                  role="presentation"
+                />
+              </span>
+            </button>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          >
+            <button
+              aria-label="Rotate 90 degrees"
+              class="ms-Button ms-Button--icon root-62"
+              data-is-focusable="true"
+              title="Rotate 90 degrees"
+              type="button"
+            >
+              <span
+                class="ms-Button-flexContainer flexContainer-63"
+                data-automationid="splitbuttonprimary"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Icon root-37 ms-Button-icon icon-65"
+                  data-icon-name="Rotate"
+                  role="presentation"
+                />
+              </span>
+            </button>
+          </div>
+        </div>
+        <div
+          class="custom-scrollbar"
+          style="overflow: auto; height: 499.20000000000005px; max-width: NaNpx; margin: auto;"
+        >
+          <img
+            alt="Image preview"
+            src="data:image/jpg;base64,/,i,R,J"
+            style="display: block; transform-origin: top left;"
+          />
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="ms-Stack css-40"
+    >
+      <div
+        class="ms-Stack css-41"
+      >
+        <div
+          class="ms-StackItem css-42"
+        >
+          <div
+            class="ms-Dropdown-container"
+          >
+            <label
+              class="ms-Label ms-Dropdown-label root-59"
+              id="Dropdown4-label"
+            >
+              Select file to preview
+            </label>
+            <div
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-labelledby="Dropdown4-label Dropdown4-option"
+              aria-required="false"
+              class="ms-Dropdown dropdown-43"
+              data-is-focusable="true"
+              id="Dropdown4"
+              role="listbox"
+              tabindex="0"
+            >
+              <span
+                aria-atomic="true"
+                aria-invalid="false"
+                aria-live="polite"
+                aria-setsize="1"
+                class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                id="Dropdown4-option"
+                role="option"
+              />
+              <span
+                class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Dropdown-caretDown caretDown-60"
+                  data-icon-name="ChevronDown"
+                />
+              </span>
+            </div>
+          </div>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        >
+          <button
+            aria-label="Download file"
+            class="ms-Button ms-Button--icon root-62"
+            data-is-focusable="true"
+            title="Download file"
+            type="button"
+          >
+            <span
+              class="ms-Button-flexContainer flexContainer-63"
+              data-automationid="splitbuttonprimary"
+            >
+              <i
+                aria-hidden="true"
+                class="ms-Icon root-37 ms-Button-icon icon-65"
+                data-icon-name="Download"
+                role="presentation"
+              />
+            </span>
+          </button>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        >
+          <button
+            aria-label="Rotate 90 degrees"
+            class="ms-Button ms-Button--icon root-62"
+            data-is-focusable="true"
+            title="Rotate 90 degrees"
+            type="button"
+          >
+            <span
+              class="ms-Button-flexContainer flexContainer-63"
+              data-automationid="splitbuttonprimary"
+            >
+              <i
+                aria-hidden="true"
+                class="ms-Icon root-37 ms-Button-icon icon-65"
+                data-icon-name="Rotate"
+                role="presentation"
+              />
+            </span>
+          </button>
+        </div>
+      </div>
+      <div
+        class="custom-scrollbar"
+        style="overflow: auto; height: 499.20000000000005px; max-width: NaNpx; margin: auto;"
+      >
+        <img
+          alt="Image preview"
+          src="data:image/jpg;base64,/,i,R,J"
+          style="display: block; transform-origin: top left;"
+        />
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;
+
+exports[`DocumentPreview should render document view when documentPreview is J 1`] = `
+Object {
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="ms-Stack css-40"
+      >
+        <div
+          class="ms-Stack css-41"
+        >
+          <div
+            class="ms-StackItem css-42"
+          >
+            <div
+              class="ms-Dropdown-container"
+            >
+              <label
+                class="ms-Label ms-Dropdown-label root-59"
+                id="Dropdown36-label"
+              >
+                Select file to preview
+              </label>
+              <div
+                aria-expanded="false"
+                aria-haspopup="listbox"
+                aria-labelledby="Dropdown36-label Dropdown36-option"
+                aria-required="false"
+                class="ms-Dropdown dropdown-43"
+                data-is-focusable="true"
+                id="Dropdown36"
+                role="listbox"
+                tabindex="0"
+              >
+                <span
+                  aria-atomic="true"
+                  aria-invalid="false"
+                  aria-live="polite"
+                  aria-setsize="1"
+                  class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                  id="Dropdown36-option"
+                  role="option"
+                />
+                <span
+                  class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+                >
+                  <i
+                    aria-hidden="true"
+                    class="ms-Dropdown-caretDown caretDown-60"
+                    data-icon-name="ChevronDown"
+                  />
+                </span>
+              </div>
+            </div>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          >
+            <button
+              aria-label="Download file"
+              class="ms-Button ms-Button--icon root-62"
+              data-is-focusable="true"
+              title="Download file"
+              type="button"
+            >
+              <span
+                class="ms-Button-flexContainer flexContainer-63"
+                data-automationid="splitbuttonprimary"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Icon root-37 ms-Button-icon icon-65"
+                  data-icon-name="Download"
+                  role="presentation"
+                />
+              </span>
+            </button>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          />
+        </div>
+        <iframe
+          height="280"
+          name="PDF file preview"
+          src="data:application/pdf;base64,J"
+          title="PDF file preview"
+        />
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="ms-Stack css-40"
+    >
+      <div
+        class="ms-Stack css-41"
+      >
+        <div
+          class="ms-StackItem css-42"
+        >
+          <div
+            class="ms-Dropdown-container"
+          >
+            <label
+              class="ms-Label ms-Dropdown-label root-59"
+              id="Dropdown36-label"
+            >
+              Select file to preview
+            </label>
+            <div
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-labelledby="Dropdown36-label Dropdown36-option"
+              aria-required="false"
+              class="ms-Dropdown dropdown-43"
+              data-is-focusable="true"
+              id="Dropdown36"
+              role="listbox"
+              tabindex="0"
+            >
+              <span
+                aria-atomic="true"
+                aria-invalid="false"
+                aria-live="polite"
+                aria-setsize="1"
+                class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                id="Dropdown36-option"
+                role="option"
+              />
+              <span
+                class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Dropdown-caretDown caretDown-60"
+                  data-icon-name="ChevronDown"
+                />
+              </span>
+            </div>
+          </div>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        >
+          <button
+            aria-label="Download file"
+            class="ms-Button ms-Button--icon root-62"
+            data-is-focusable="true"
+            title="Download file"
+            type="button"
+          >
+            <span
+              class="ms-Button-flexContainer flexContainer-63"
+              data-automationid="splitbuttonprimary"
+            >
+              <i
+                aria-hidden="true"
+                class="ms-Icon root-37 ms-Button-icon icon-65"
+                data-icon-name="Download"
+                role="presentation"
+              />
+            </span>
+          </button>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        />
+      </div>
+      <iframe
+        height="280"
+        name="PDF file preview"
+        src="data:application/pdf;base64,J"
+        title="PDF file preview"
+      />
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;
+
+exports[`DocumentPreview should render document view when documentPreview is R 1`] = `
+Object {
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="ms-Stack css-40"
+      >
+        <div
+          class="ms-Stack css-41"
+        >
+          <div
+            class="ms-StackItem css-42"
+          >
+            <div
+              class="ms-Dropdown-container"
+            >
+              <label
+                class="ms-Label ms-Dropdown-label root-59"
+                id="Dropdown25-label"
+              >
+                Select file to preview
+              </label>
+              <div
+                aria-expanded="false"
+                aria-haspopup="listbox"
+                aria-labelledby="Dropdown25-label Dropdown25-option"
+                aria-required="false"
+                class="ms-Dropdown dropdown-43"
+                data-is-focusable="true"
+                id="Dropdown25"
+                role="listbox"
+                tabindex="0"
+              >
+                <span
+                  aria-atomic="true"
+                  aria-invalid="false"
+                  aria-live="polite"
+                  aria-setsize="1"
+                  class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                  id="Dropdown25-option"
+                  role="option"
+                />
+                <span
+                  class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+                >
+                  <i
+                    aria-hidden="true"
+                    class="ms-Dropdown-caretDown caretDown-60"
+                    data-icon-name="ChevronDown"
+                  />
+                </span>
+              </div>
+            </div>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          >
+            <button
+              aria-label="Download file"
+              class="ms-Button ms-Button--icon root-62"
+              data-is-focusable="true"
+              title="Download file"
+              type="button"
+            >
+              <span
+                class="ms-Button-flexContainer flexContainer-63"
+                data-automationid="splitbuttonprimary"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Icon root-37 ms-Button-icon icon-65"
+                  data-icon-name="Download"
+                  role="presentation"
+                />
+              </span>
+            </button>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          >
+            <button
+              aria-label="Rotate 90 degrees"
+              class="ms-Button ms-Button--icon root-62"
+              data-is-focusable="true"
+              title="Rotate 90 degrees"
+              type="button"
+            >
+              <span
+                class="ms-Button-flexContainer flexContainer-63"
+                data-automationid="splitbuttonprimary"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Icon root-37 ms-Button-icon icon-65"
+                  data-icon-name="Rotate"
+                  role="presentation"
+                />
+              </span>
+            </button>
+          </div>
+        </div>
+        <div
+          class="custom-scrollbar"
+          style="overflow: auto; height: 270px; max-width: 270px; margin: auto;"
+        >
+          <img
+            alt="Image preview rotated 270 degrees"
+            src="data:image/gif;base64,R"
+            style="display: block; transform-origin: top left; transform: rotate(270deg) translateX(-100%);"
+          />
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="ms-Stack css-40"
+    >
+      <div
+        class="ms-Stack css-41"
+      >
+        <div
+          class="ms-StackItem css-42"
+        >
+          <div
+            class="ms-Dropdown-container"
+          >
+            <label
+              class="ms-Label ms-Dropdown-label root-59"
+              id="Dropdown25-label"
+            >
+              Select file to preview
+            </label>
+            <div
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-labelledby="Dropdown25-label Dropdown25-option"
+              aria-required="false"
+              class="ms-Dropdown dropdown-43"
+              data-is-focusable="true"
+              id="Dropdown25"
+              role="listbox"
+              tabindex="0"
+            >
+              <span
+                aria-atomic="true"
+                aria-invalid="false"
+                aria-live="polite"
+                aria-setsize="1"
+                class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                id="Dropdown25-option"
+                role="option"
+              />
+              <span
+                class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Dropdown-caretDown caretDown-60"
+                  data-icon-name="ChevronDown"
+                />
+              </span>
+            </div>
+          </div>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        >
+          <button
+            aria-label="Download file"
+            class="ms-Button ms-Button--icon root-62"
+            data-is-focusable="true"
+            title="Download file"
+            type="button"
+          >
+            <span
+              class="ms-Button-flexContainer flexContainer-63"
+              data-automationid="splitbuttonprimary"
+            >
+              <i
+                aria-hidden="true"
+                class="ms-Icon root-37 ms-Button-icon icon-65"
+                data-icon-name="Download"
+                role="presentation"
+              />
+            </span>
+          </button>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        >
+          <button
+            aria-label="Rotate 90 degrees"
+            class="ms-Button ms-Button--icon root-62"
+            data-is-focusable="true"
+            title="Rotate 90 degrees"
+            type="button"
+          >
+            <span
+              class="ms-Button-flexContainer flexContainer-63"
+              data-automationid="splitbuttonprimary"
+            >
+              <i
+                aria-hidden="true"
+                class="ms-Icon root-37 ms-Button-icon icon-65"
+                data-icon-name="Rotate"
+                role="presentation"
+              />
+            </span>
+          </button>
+        </div>
+      </div>
+      <div
+        class="custom-scrollbar"
+        style="overflow: auto; height: 270px; max-width: 270px; margin: auto;"
+      >
+        <img
+          alt="Image preview rotated 270 degrees"
+          src="data:image/gif;base64,R"
+          style="display: block; transform-origin: top left; transform: rotate(270deg) translateX(-100%);"
+        />
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;
+
+exports[`DocumentPreview should render document view when documentPreview is V  1`] = `
+Object {
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="ms-Stack css-40"
+      >
+        <div
+          class="ms-Stack css-41"
+        >
+          <div
+            class="ms-StackItem css-42"
+          >
+            <div
+              class="ms-Dropdown-container"
+            >
+              <label
+                class="ms-Label ms-Dropdown-label root-59"
+                id="Dropdown32-label"
+              >
+                Select file to preview
+              </label>
+              <div
+                aria-expanded="false"
+                aria-haspopup="listbox"
+                aria-labelledby="Dropdown32-label Dropdown32-option"
+                aria-required="false"
+                class="ms-Dropdown dropdown-43"
+                data-is-focusable="true"
+                id="Dropdown32"
+                role="listbox"
+                tabindex="0"
+              >
+                <span
+                  aria-atomic="true"
+                  aria-invalid="false"
+                  aria-live="polite"
+                  aria-setsize="1"
+                  class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                  id="Dropdown32-option"
+                  role="option"
+                />
+                <span
+                  class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+                >
+                  <i
+                    aria-hidden="true"
+                    class="ms-Dropdown-caretDown caretDown-60"
+                    data-icon-name="ChevronDown"
+                  />
+                </span>
+              </div>
+            </div>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          >
+            <button
+              aria-label="Download file"
+              class="ms-Button ms-Button--icon root-62"
+              data-is-focusable="true"
+              title="Download file"
+              type="button"
+            >
+              <span
+                class="ms-Button-flexContainer flexContainer-63"
+                data-automationid="splitbuttonprimary"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Icon root-37 ms-Button-icon icon-65"
+                  data-icon-name="Download"
+                  role="presentation"
+                />
+              </span>
+            </button>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          />
+        </div>
+        <iframe
+          name="Text file preview"
+          src="data:text/plain;base64,V"
+          title="Text file preview"
+        />
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="ms-Stack css-40"
+    >
+      <div
+        class="ms-Stack css-41"
+      >
+        <div
+          class="ms-StackItem css-42"
+        >
+          <div
+            class="ms-Dropdown-container"
+          >
+            <label
+              class="ms-Label ms-Dropdown-label root-59"
+              id="Dropdown32-label"
+            >
+              Select file to preview
+            </label>
+            <div
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-labelledby="Dropdown32-label Dropdown32-option"
+              aria-required="false"
+              class="ms-Dropdown dropdown-43"
+              data-is-focusable="true"
+              id="Dropdown32"
+              role="listbox"
+              tabindex="0"
+            >
+              <span
+                aria-atomic="true"
+                aria-invalid="false"
+                aria-live="polite"
+                aria-setsize="1"
+                class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                id="Dropdown32-option"
+                role="option"
+              />
+              <span
+                class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Dropdown-caretDown caretDown-60"
+                  data-icon-name="ChevronDown"
+                />
+              </span>
+            </div>
+          </div>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        >
+          <button
+            aria-label="Download file"
+            class="ms-Button ms-Button--icon root-62"
+            data-is-focusable="true"
+            title="Download file"
+            type="button"
+          >
+            <span
+              class="ms-Button-flexContainer flexContainer-63"
+              data-automationid="splitbuttonprimary"
+            >
+              <i
+                aria-hidden="true"
+                class="ms-Icon root-37 ms-Button-icon icon-65"
+                data-icon-name="Download"
+                role="presentation"
+              />
+            </span>
+          </button>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        />
+      </div>
+      <iframe
+        name="Text file preview"
+        src="data:text/plain;base64,V"
+        title="Text file preview"
+      />
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;
+
+exports[`DocumentPreview should render document view when documentPreview is i  1`] = `
+Object {
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="ms-Stack css-40"
+      >
+        <div
+          class="ms-Stack css-41"
+        >
+          <div
+            class="ms-StackItem css-42"
+          >
+            <div
+              class="ms-Dropdown-container"
+            >
+              <label
+                class="ms-Label ms-Dropdown-label root-59"
+                id="Dropdown40-label"
+              >
+                Select file to preview
+              </label>
+              <div
+                aria-expanded="false"
+                aria-haspopup="listbox"
+                aria-labelledby="Dropdown40-label Dropdown40-option"
+                aria-required="false"
+                class="ms-Dropdown dropdown-43"
+                data-is-focusable="true"
+                id="Dropdown40"
+                role="listbox"
+                tabindex="0"
+              >
+                <span
+                  aria-atomic="true"
+                  aria-invalid="false"
+                  aria-live="polite"
+                  aria-setsize="1"
+                  class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                  id="Dropdown40-option"
+                  role="option"
+                />
+                <span
+                  class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+                >
+                  <i
+                    aria-hidden="true"
+                    class="ms-Dropdown-caretDown caretDown-60"
+                    data-icon-name="ChevronDown"
+                  />
+                </span>
+              </div>
+            </div>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          >
+            <button
+              aria-label="Download file"
+              class="ms-Button ms-Button--icon root-62"
+              data-is-focusable="true"
+              title="Download file"
+              type="button"
+            >
+              <span
+                class="ms-Button-flexContainer flexContainer-63"
+                data-automationid="splitbuttonprimary"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Icon root-37 ms-Button-icon icon-65"
+                  data-icon-name="Download"
+                  role="presentation"
+                />
+              </span>
+            </button>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          >
+            <button
+              aria-label="Rotate 90 degrees"
+              class="ms-Button ms-Button--icon root-62"
+              data-is-focusable="true"
+              title="Rotate 90 degrees"
+              type="button"
+            >
+              <span
+                class="ms-Button-flexContainer flexContainer-63"
+                data-automationid="splitbuttonprimary"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Icon root-37 ms-Button-icon icon-65"
+                  data-icon-name="Rotate"
+                  role="presentation"
+                />
+              </span>
+            </button>
+          </div>
+        </div>
+        <div
+          class="custom-scrollbar"
+          style="overflow: auto; height: 270px; max-width: 270px; margin: auto;"
+        >
+          <img
+            alt="Image preview rotated 270 degrees"
+            src="data:image/png;base64,i"
+            style="display: block; transform-origin: top left; transform: rotate(270deg) translateX(-100%);"
+          />
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="ms-Stack css-40"
+    >
+      <div
+        class="ms-Stack css-41"
+      >
+        <div
+          class="ms-StackItem css-42"
+        >
+          <div
+            class="ms-Dropdown-container"
+          >
+            <label
+              class="ms-Label ms-Dropdown-label root-59"
+              id="Dropdown40-label"
+            >
+              Select file to preview
+            </label>
+            <div
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-labelledby="Dropdown40-label Dropdown40-option"
+              aria-required="false"
+              class="ms-Dropdown dropdown-43"
+              data-is-focusable="true"
+              id="Dropdown40"
+              role="listbox"
+              tabindex="0"
+            >
+              <span
+                aria-atomic="true"
+                aria-invalid="false"
+                aria-live="polite"
+                aria-setsize="1"
+                class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                id="Dropdown40-option"
+                role="option"
+              />
+              <span
+                class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Dropdown-caretDown caretDown-60"
+                  data-icon-name="ChevronDown"
+                />
+              </span>
+            </div>
+          </div>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        >
+          <button
+            aria-label="Download file"
+            class="ms-Button ms-Button--icon root-62"
+            data-is-focusable="true"
+            title="Download file"
+            type="button"
+          >
+            <span
+              class="ms-Button-flexContainer flexContainer-63"
+              data-automationid="splitbuttonprimary"
+            >
+              <i
+                aria-hidden="true"
+                class="ms-Icon root-37 ms-Button-icon icon-65"
+                data-icon-name="Download"
+                role="presentation"
+              />
+            </span>
+          </button>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        >
+          <button
+            aria-label="Rotate 90 degrees"
+            class="ms-Button ms-Button--icon root-62"
+            data-is-focusable="true"
+            title="Rotate 90 degrees"
+            type="button"
+          >
+            <span
+              class="ms-Button-flexContainer flexContainer-63"
+              data-automationid="splitbuttonprimary"
+            >
+              <i
+                aria-hidden="true"
+                class="ms-Icon root-37 ms-Button-icon icon-65"
+                data-icon-name="Rotate"
+                role="presentation"
+              />
+            </span>
+          </button>
+        </div>
+      </div>
+      <div
+        class="custom-scrollbar"
+        style="overflow: auto; height: 270px; max-width: 270px; margin: auto;"
+      >
+        <img
+          alt="Image preview rotated 270 degrees"
+          src="data:image/png;base64,i"
+          style="display: block; transform-origin: top left; transform: rotate(270deg) translateX(-100%);"
+        />
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;
+
+exports[`DocumentPreview should render document view when properties are given 1`] = `
+Object {
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="ms-Stack css-40"
+      >
+        <div
+          class="ms-Stack css-41"
+        >
+          <div
+            class="ms-StackItem css-42"
+          >
+            <div
+              class="ms-Dropdown-container"
+            >
+              <label
+                class="ms-Label ms-Dropdown-label root-59"
+                id="Dropdown0-label"
+              >
+                Select file to preview
+              </label>
+              <div
+                aria-expanded="false"
+                aria-haspopup="listbox"
+                aria-labelledby="Dropdown0-label Dropdown0-option"
+                aria-required="false"
+                class="ms-Dropdown dropdown-43"
+                data-is-focusable="true"
+                id="Dropdown0"
+                role="listbox"
+                tabindex="0"
+              >
+                <span
+                  aria-atomic="true"
+                  aria-invalid="false"
+                  aria-live="polite"
+                  aria-setsize="1"
+                  class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                  id="Dropdown0-option"
+                  role="option"
+                />
+                <span
+                  class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+                >
+                  <i
+                    aria-hidden="true"
+                    class="ms-Dropdown-caretDown caretDown-60"
+                    data-icon-name="ChevronDown"
+                  />
+                </span>
+              </div>
+            </div>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          >
+            <button
+              aria-label="Download file"
+              class="ms-Button ms-Button--icon root-62"
+              data-is-focusable="true"
+              title="Download file"
+              type="button"
+            >
+              <span
+                class="ms-Button-flexContainer flexContainer-63"
+                data-automationid="splitbuttonprimary"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Icon root-37 ms-Button-icon icon-65"
+                  data-icon-name="Download"
+                  role="presentation"
+                />
+              </span>
+            </button>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          />
+        </div>
+        <div
+          style="padding: 5%;"
+        >
+          <div
+            style="height: 100%; width: 100%; display: flex; justify-content: center; align-items: center;"
+          >
+            <div
+              class="ms-Stack css-70"
+            >
+              <div
+                class="ms-StackItem css-71"
+              >
+                <div
+                  aria-label="Error result icon"
+                  class="sc-fubCfw kCLJWf"
+                  title="Error result icon"
+                />
+              </div>
+              <div
+                class="ms-StackItem css-42"
+              >
+                <p
+                  class="sc-pFZIQ heQLDe"
+                >
+                  This file type is not supported for preview, please download the file for viewing.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="ms-Stack css-40"
+    >
+      <div
+        class="ms-Stack css-41"
+      >
+        <div
+          class="ms-StackItem css-42"
+        >
+          <div
+            class="ms-Dropdown-container"
+          >
+            <label
+              class="ms-Label ms-Dropdown-label root-59"
+              id="Dropdown0-label"
+            >
+              Select file to preview
+            </label>
+            <div
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-labelledby="Dropdown0-label Dropdown0-option"
+              aria-required="false"
+              class="ms-Dropdown dropdown-43"
+              data-is-focusable="true"
+              id="Dropdown0"
+              role="listbox"
+              tabindex="0"
+            >
+              <span
+                aria-atomic="true"
+                aria-invalid="false"
+                aria-live="polite"
+                aria-setsize="1"
+                class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                id="Dropdown0-option"
+                role="option"
+              />
+              <span
+                class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Dropdown-caretDown caretDown-60"
+                  data-icon-name="ChevronDown"
+                />
+              </span>
+            </div>
+          </div>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        >
+          <button
+            aria-label="Download file"
+            class="ms-Button ms-Button--icon root-62"
+            data-is-focusable="true"
+            title="Download file"
+            type="button"
+          >
+            <span
+              class="ms-Button-flexContainer flexContainer-63"
+              data-automationid="splitbuttonprimary"
+            >
+              <i
+                aria-hidden="true"
+                class="ms-Icon root-37 ms-Button-icon icon-65"
+                data-icon-name="Download"
+                role="presentation"
+              />
+            </span>
+          </button>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        />
+      </div>
+      <div
+        style="padding: 5%;"
+      >
+        <div
+          style="height: 100%; width: 100%; display: flex; justify-content: center; align-items: center;"
+        >
+          <div
+            class="ms-Stack css-70"
+          >
+            <div
+              class="ms-StackItem css-71"
+            >
+              <div
+                aria-label="Error result icon"
+                class="sc-fubCfw kCLJWf"
+                title="Error result icon"
+              />
+            </div>
+            <div
+              class="ms-StackItem css-42"
+            >
+              <p
+                class="sc-pFZIQ heQLDe"
+              >
+                This file type is not supported for preview, please download the file for viewing.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;
+
+exports[`DocumentPreview should render document view when rotation is 180  1`] = `
+Object {
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="ms-Stack css-40"
+      >
+        <div
+          class="ms-Stack css-41"
+        >
+          <div
+            class="ms-StackItem css-42"
+          >
+            <div
+              class="ms-Dropdown-container"
+            >
+              <label
+                class="ms-Label ms-Dropdown-label root-59"
+                id="Dropdown47-label"
+              >
+                Select file to preview
+              </label>
+              <div
+                aria-expanded="false"
+                aria-haspopup="listbox"
+                aria-labelledby="Dropdown47-label Dropdown47-option"
+                aria-required="false"
+                class="ms-Dropdown dropdown-43"
+                data-is-focusable="true"
+                id="Dropdown47"
+                role="listbox"
+                tabindex="0"
+              >
+                <span
+                  aria-atomic="true"
+                  aria-invalid="false"
+                  aria-live="polite"
+                  aria-setsize="1"
+                  class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                  id="Dropdown47-option"
+                  role="option"
+                />
+                <span
+                  class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+                >
+                  <i
+                    aria-hidden="true"
+                    class="ms-Dropdown-caretDown caretDown-60"
+                    data-icon-name="ChevronDown"
+                  />
+                </span>
+              </div>
+            </div>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          >
+            <button
+              aria-label="Download file"
+              class="ms-Button ms-Button--icon root-62"
+              data-is-focusable="true"
+              title="Download file"
+              type="button"
+            >
+              <span
+                class="ms-Button-flexContainer flexContainer-63"
+                data-automationid="splitbuttonprimary"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Icon root-37 ms-Button-icon icon-65"
+                  data-icon-name="Download"
+                  role="presentation"
+                />
+              </span>
+            </button>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          >
+            <button
+              aria-label="Rotate 90 degrees"
+              class="ms-Button ms-Button--icon root-62"
+              data-is-focusable="true"
+              title="Rotate 90 degrees"
+              type="button"
+            >
+              <span
+                class="ms-Button-flexContainer flexContainer-63"
+                data-automationid="splitbuttonprimary"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Icon root-37 ms-Button-icon icon-65"
+                  data-icon-name="Rotate"
+                  role="presentation"
+                />
+              </span>
+            </button>
+          </div>
+        </div>
+        <div
+          class="custom-scrollbar"
+          style="overflow: auto; height: 180px; max-width: 180px; margin: auto;"
+        >
+          <img
+            alt="Image preview rotated 180 degrees"
+            src="data:image/png;base64,i"
+            style="display: block; transform-origin: top left; transform: rotate(180deg) translate(-100%, -100%);"
+          />
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="ms-Stack css-40"
+    >
+      <div
+        class="ms-Stack css-41"
+      >
+        <div
+          class="ms-StackItem css-42"
+        >
+          <div
+            class="ms-Dropdown-container"
+          >
+            <label
+              class="ms-Label ms-Dropdown-label root-59"
+              id="Dropdown47-label"
+            >
+              Select file to preview
+            </label>
+            <div
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-labelledby="Dropdown47-label Dropdown47-option"
+              aria-required="false"
+              class="ms-Dropdown dropdown-43"
+              data-is-focusable="true"
+              id="Dropdown47"
+              role="listbox"
+              tabindex="0"
+            >
+              <span
+                aria-atomic="true"
+                aria-invalid="false"
+                aria-live="polite"
+                aria-setsize="1"
+                class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                id="Dropdown47-option"
+                role="option"
+              />
+              <span
+                class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Dropdown-caretDown caretDown-60"
+                  data-icon-name="ChevronDown"
+                />
+              </span>
+            </div>
+          </div>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        >
+          <button
+            aria-label="Download file"
+            class="ms-Button ms-Button--icon root-62"
+            data-is-focusable="true"
+            title="Download file"
+            type="button"
+          >
+            <span
+              class="ms-Button-flexContainer flexContainer-63"
+              data-automationid="splitbuttonprimary"
+            >
+              <i
+                aria-hidden="true"
+                class="ms-Icon root-37 ms-Button-icon icon-65"
+                data-icon-name="Download"
+                role="presentation"
+              />
+            </span>
+          </button>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        >
+          <button
+            aria-label="Rotate 90 degrees"
+            class="ms-Button ms-Button--icon root-62"
+            data-is-focusable="true"
+            title="Rotate 90 degrees"
+            type="button"
+          >
+            <span
+              class="ms-Button-flexContainer flexContainer-63"
+              data-automationid="splitbuttonprimary"
+            >
+              <i
+                aria-hidden="true"
+                class="ms-Icon root-37 ms-Button-icon icon-65"
+                data-icon-name="Rotate"
+                role="presentation"
+              />
+            </span>
+          </button>
+        </div>
+      </div>
+      <div
+        class="custom-scrollbar"
+        style="overflow: auto; height: 180px; max-width: 180px; margin: auto;"
+      >
+        <img
+          alt="Image preview rotated 180 degrees"
+          src="data:image/png;base64,i"
+          style="display: block; transform-origin: top left; transform: rotate(180deg) translate(-100%, -100%);"
+        />
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;
+
+exports[`DocumentPreview should render document view when we set the rotation 1`] = `
+Object {
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="ms-Stack css-40"
+      >
+        <div
+          class="ms-Stack css-41"
+        >
+          <div
+            class="ms-StackItem css-42"
+          >
+            <div
+              class="ms-Dropdown-container"
+            >
+              <label
+                class="ms-Label ms-Dropdown-label root-59"
+                id="Dropdown18-label"
+              >
+                Select file to preview
+              </label>
+              <div
+                aria-expanded="false"
+                aria-haspopup="listbox"
+                aria-labelledby="Dropdown18-label Dropdown18-option"
+                aria-required="false"
+                class="ms-Dropdown dropdown-43"
+                data-is-focusable="true"
+                id="Dropdown18"
+                role="listbox"
+                tabindex="0"
+              >
+                <span
+                  aria-atomic="true"
+                  aria-invalid="false"
+                  aria-live="polite"
+                  aria-setsize="1"
+                  class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                  id="Dropdown18-option"
+                  role="option"
+                />
+                <span
+                  class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+                >
+                  <i
+                    aria-hidden="true"
+                    class="ms-Dropdown-caretDown caretDown-60"
+                    data-icon-name="ChevronDown"
+                  />
+                </span>
+              </div>
+            </div>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          >
+            <button
+              aria-label="Download file"
+              class="ms-Button ms-Button--icon root-62"
+              data-is-focusable="true"
+              title="Download file"
+              type="button"
+            >
+              <span
+                class="ms-Button-flexContainer flexContainer-63"
+                data-automationid="splitbuttonprimary"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Icon root-37 ms-Button-icon icon-65"
+                  data-icon-name="Download"
+                  role="presentation"
+                />
+              </span>
+            </button>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          >
+            <button
+              aria-label="Rotate 90 degrees"
+              class="ms-Button ms-Button--icon root-62"
+              data-is-focusable="true"
+              title="Rotate 90 degrees"
+              type="button"
+            >
+              <span
+                class="ms-Button-flexContainer flexContainer-63"
+                data-automationid="splitbuttonprimary"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Icon root-37 ms-Button-icon icon-65"
+                  data-icon-name="Rotate"
+                  role="presentation"
+                />
+              </span>
+            </button>
+          </div>
+        </div>
+        <div
+          class="custom-scrollbar"
+          style="overflow: auto; height: 270px; max-width: 270px; margin: auto;"
+        >
+          <img
+            alt="Image preview rotated 270 degrees"
+            src="data:image/jpg;base64,/,i,R,J"
+            style="display: block; transform-origin: top left; transform: rotate(270deg) translateX(-100%);"
+          />
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="ms-Stack css-40"
+    >
+      <div
+        class="ms-Stack css-41"
+      >
+        <div
+          class="ms-StackItem css-42"
+        >
+          <div
+            class="ms-Dropdown-container"
+          >
+            <label
+              class="ms-Label ms-Dropdown-label root-59"
+              id="Dropdown18-label"
+            >
+              Select file to preview
+            </label>
+            <div
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-labelledby="Dropdown18-label Dropdown18-option"
+              aria-required="false"
+              class="ms-Dropdown dropdown-43"
+              data-is-focusable="true"
+              id="Dropdown18"
+              role="listbox"
+              tabindex="0"
+            >
+              <span
+                aria-atomic="true"
+                aria-invalid="false"
+                aria-live="polite"
+                aria-setsize="1"
+                class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                id="Dropdown18-option"
+                role="option"
+              />
+              <span
+                class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Dropdown-caretDown caretDown-60"
+                  data-icon-name="ChevronDown"
+                />
+              </span>
+            </div>
+          </div>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        >
+          <button
+            aria-label="Download file"
+            class="ms-Button ms-Button--icon root-62"
+            data-is-focusable="true"
+            title="Download file"
+            type="button"
+          >
+            <span
+              class="ms-Button-flexContainer flexContainer-63"
+              data-automationid="splitbuttonprimary"
+            >
+              <i
+                aria-hidden="true"
+                class="ms-Icon root-37 ms-Button-icon icon-65"
+                data-icon-name="Download"
+                role="presentation"
+              />
+            </span>
+          </button>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        >
+          <button
+            aria-label="Rotate 90 degrees"
+            class="ms-Button ms-Button--icon root-62"
+            data-is-focusable="true"
+            title="Rotate 90 degrees"
+            type="button"
+          >
+            <span
+              class="ms-Button-flexContainer flexContainer-63"
+              data-automationid="splitbuttonprimary"
+            >
+              <i
+                aria-hidden="true"
+                class="ms-Icon root-37 ms-Button-icon icon-65"
+                data-icon-name="Rotate"
+                role="presentation"
+              />
+            </span>
+          </button>
+        </div>
+      </div>
+      <div
+        class="custom-scrollbar"
+        style="overflow: auto; height: 270px; max-width: 270px; margin: auto;"
+      >
+        <img
+          alt="Image preview rotated 270 degrees"
+          src="data:image/jpg;base64,/,i,R,J"
+          style="display: block; transform-origin: top left; transform: rotate(270deg) translateX(-100%);"
+        />
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;
+
+exports[`DocumentPreview should render document view with rotation as 90 1`] = `
+Object {
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="ms-Stack css-40"
+      >
+        <div
+          class="ms-Stack css-41"
+        >
+          <div
+            class="ms-StackItem css-42"
+          >
+            <div
+              class="ms-Dropdown-container"
+            >
+              <label
+                class="ms-Label ms-Dropdown-label root-59"
+                id="Dropdown11-label"
+              >
+                Select file to preview
+              </label>
+              <div
+                aria-expanded="false"
+                aria-haspopup="listbox"
+                aria-labelledby="Dropdown11-label Dropdown11-option"
+                aria-required="false"
+                class="ms-Dropdown dropdown-43"
+                data-is-focusable="true"
+                id="Dropdown11"
+                role="listbox"
+                tabindex="0"
+              >
+                <span
+                  aria-atomic="true"
+                  aria-invalid="false"
+                  aria-live="polite"
+                  aria-setsize="1"
+                  class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                  id="Dropdown11-option"
+                  role="option"
+                />
+                <span
+                  class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+                >
+                  <i
+                    aria-hidden="true"
+                    class="ms-Dropdown-caretDown caretDown-60"
+                    data-icon-name="ChevronDown"
+                  />
+                </span>
+              </div>
+            </div>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          >
+            <button
+              aria-label="Download file"
+              class="ms-Button ms-Button--icon root-62"
+              data-is-focusable="true"
+              title="Download file"
+              type="button"
+            >
+              <span
+                class="ms-Button-flexContainer flexContainer-63"
+                data-automationid="splitbuttonprimary"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Icon root-37 ms-Button-icon icon-65"
+                  data-icon-name="Download"
+                  role="presentation"
+                />
+              </span>
+            </button>
+          </div>
+          <div
+            class="ms-StackItem css-61"
+          >
+            <button
+              aria-label="Rotate 90 degrees"
+              class="ms-Button ms-Button--icon root-62"
+              data-is-focusable="true"
+              title="Rotate 90 degrees"
+              type="button"
+            >
+              <span
+                class="ms-Button-flexContainer flexContainer-63"
+                data-automationid="splitbuttonprimary"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Icon root-37 ms-Button-icon icon-65"
+                  data-icon-name="Rotate"
+                  role="presentation"
+                />
+              </span>
+            </button>
+          </div>
+        </div>
+        <div
+          class="custom-scrollbar"
+          style="overflow: auto; height: 499.20000000000005px; max-width: NaNpx; margin: auto;"
+        >
+          <img
+            alt="Image preview rotated 90 degrees"
+            src="data:image/jpg;base64,/,i,R,J"
+            style="display: block; transform-origin: top left; transform: rotate(90deg) translateY(-100%);"
+          />
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="ms-Stack css-40"
+    >
+      <div
+        class="ms-Stack css-41"
+      >
+        <div
+          class="ms-StackItem css-42"
+        >
+          <div
+            class="ms-Dropdown-container"
+          >
+            <label
+              class="ms-Label ms-Dropdown-label root-59"
+              id="Dropdown11-label"
+            >
+              Select file to preview
+            </label>
+            <div
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-labelledby="Dropdown11-label Dropdown11-option"
+              aria-required="false"
+              class="ms-Dropdown dropdown-43"
+              data-is-focusable="true"
+              id="Dropdown11"
+              role="listbox"
+              tabindex="0"
+            >
+              <span
+                aria-atomic="true"
+                aria-invalid="false"
+                aria-live="polite"
+                aria-setsize="1"
+                class="ms-Dropdown-title ms-Dropdown-titleIsPlaceHolder title-44"
+                id="Dropdown11-option"
+                role="option"
+              />
+              <span
+                class="ms-Dropdown-caretDownWrapper caretDownWrapper-45"
+              >
+                <i
+                  aria-hidden="true"
+                  class="ms-Dropdown-caretDown caretDown-60"
+                  data-icon-name="ChevronDown"
+                />
+              </span>
+            </div>
+          </div>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        >
+          <button
+            aria-label="Download file"
+            class="ms-Button ms-Button--icon root-62"
+            data-is-focusable="true"
+            title="Download file"
+            type="button"
+          >
+            <span
+              class="ms-Button-flexContainer flexContainer-63"
+              data-automationid="splitbuttonprimary"
+            >
+              <i
+                aria-hidden="true"
+                class="ms-Icon root-37 ms-Button-icon icon-65"
+                data-icon-name="Download"
+                role="presentation"
+              />
+            </span>
+          </button>
+        </div>
+        <div
+          class="ms-StackItem css-61"
+        >
+          <button
+            aria-label="Rotate 90 degrees"
+            class="ms-Button ms-Button--icon root-62"
+            data-is-focusable="true"
+            title="Rotate 90 degrees"
+            type="button"
+          >
+            <span
+              class="ms-Button-flexContainer flexContainer-63"
+              data-automationid="splitbuttonprimary"
+            >
+              <i
+                aria-hidden="true"
+                class="ms-Icon root-37 ms-Button-icon icon-65"
+                data-icon-name="Rotate"
+                role="presentation"
+              />
+            </span>
+          </button>
+        </div>
+      </div>
+      <div
+        class="custom-scrollbar"
+        style="overflow: auto; height: 499.20000000000005px; max-width: NaNpx; margin: auto;"
+      >
+        <img
+          alt="Image preview rotated 90 degrees"
+          src="data:image/jpg;base64,/,i,R,J"
+          style="display: block; transform-origin: top left; transform: rotate(90deg) translateY(-100%);"
+        />
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;

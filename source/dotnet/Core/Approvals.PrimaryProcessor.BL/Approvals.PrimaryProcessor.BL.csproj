@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <AssemblyName>Microsoft.CFS.Approvals.PrimaryProcessor.BL</AssemblyName>
+    <RootNamespace>Microsoft.CFS.Approvals.PrimaryProcessor.BL</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Common\Approvals.Data.Azure.Storage\Approvals.Data.Azure.Storage.csproj" />
+    <ProjectReference Include="..\..\Domain\Approvals.Domain.BL\Approvals.Domain.BL.csproj" />
+    <ProjectReference Include="..\Approvals.Common.BL\Approvals.Common.BL.csproj" />
+    <ProjectReference Include="..\..\Contract\Approvals.Contracts\Approvals.Contracts.csproj" />
+    <ProjectReference Include="..\..\Common\Approvals.LogManager\Approvals.LogManager.csproj" />
+    <ProjectReference Include="..\..\Common\Approvals.Utilities\Approvals.Utilities.csproj" />
+    <ProjectReference Include="..\Approvals.Core.BL\Approvals.Core.BL.csproj" />
+  </ItemGroup>
+
+</Project>

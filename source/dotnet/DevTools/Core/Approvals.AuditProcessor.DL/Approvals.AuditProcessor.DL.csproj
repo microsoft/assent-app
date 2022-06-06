@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <AssemblyName>Microsoft.CFS.Approvals.AuditProcessor.DL</AssemblyName>
+    <RootNamespace>Microsoft.CFS.Approvals.AuditProcessor.DL</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\Approvals.LogManager\Approvals.LogManager.csproj" />
+    <ProjectReference Include="..\..\..\Contract\Approvals.Contracts\Approvals.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Core\Approvals.Common.BL\Approvals.Common.BL.csproj" />
+  </ItemGroup>
+
+</Project>

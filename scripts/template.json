@@ -1,0 +1,1896 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "resourceEnvSuffix": {
+      "defaultValue": "dev",
+      "type": "String",
+      "metadata": {
+        "description": "Env specific suffix which will be added to each resource name"
+      }
+    },
+    "resourceEnvSuffixWithHyphen": {
+      "defaultValue": "[concat('-',parameters('resourceEnvSuffix'))]",
+      "type": "String",
+      "metadata": {
+        "description": "Env specific suffix which will be added to each resource name"
+      }
+    },
+    "resourceGroupName": {
+      "defaultValue": "[resourceGroup().name]",
+      "type": "String"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    },
+    "resourceLocationCode": {
+      "defaultValue": "[tolower(replace(replace(resourceGroup().location,')', ''),'(',''))]",
+      "type": "String",
+      "metadata": {
+        "description": "location/code to deploy the Azure Resources (e.g. Central US/centralus. Powershell Command: Get-AzureRmLocation |Format-Table)"
+      }
+    },
+    "resourceLocationCodeWithHyphen": {
+      "defaultValue": "[concat('-',parameters('resourceLocationCode'))]",
+      "type": "String",
+      "metadata": {
+        "description": "location/code to deploy the Azure Resources (e.g. Central US/centralus. Powershell Command: Get-AzureRmlocation |Format-Table)"
+      }
+    },
+    "resourceNamePrefix": {
+      "defaultValue": "approvals",
+      "type": "String",
+      "metadata": {
+        "description": "Prefix which will be added at the beginning of each resource name"
+      }
+    },
+    "subscriptionId": {
+      "defaultValue": "[subscription().subscriptionId]",
+      "type": "String"
+    },
+    "storageAccountName": {
+      "defaultValue": "[concat(parameters('resourceNamePrefix'), parameters('resourceEnvSuffix'))]",
+      "type": "String"
+    },
+    "activeDirectoryClientId": {
+      "defaultValue": "",
+      "type": "String"
+    },
+    "activeDirectoryClientSecret": {
+      "defaultValue": "",
+      "type": "secureString"
+    },
+    "activeDirectoryResource": {
+      "defaultValue": "",
+      "type": "String"
+    },
+    "activeDirectoryTenantId": {
+      "defaultValue": "",
+      "type": "String"
+    },
+    "appConfigurationName": {
+      "defaultValue": "[concat(parameters('resourceNamePrefix'), parameters('resourceEnvSuffix'))]",
+      "type": "String"
+    },
+    "keyVaultName": {
+      "defaultValue": "[concat(parameters('resourceNamePrefix'), parameters('resourceEnvSuffix'))]",
+      "type": "String"
+    },
+    "applicationInsightsName": {
+      "defaultValue": "[concat(parameters('resourceNamePrefix'), parameters('resourceEnvSuffix'))]",
+      "type": "String"
+    },
+    "serviceBusName": {
+      "defaultValue": "[concat(parameters('resourceNamePrefix'), parameters('resourceEnvSuffix'))]",
+      "type": "String"
+    },
+    "cosmosDBName": {
+      "defaultValue": "[concat(parameters('resourceNamePrefix'), parameters('resourceEnvSuffix'))]",
+      "type": "String"
+    },
+    "searchServicesName": {
+      "defaultValue": "[concat(parameters('resourceNamePrefix'), parameters('resourceEnvSuffix'))]",
+      "type": "String"
+    },
+    "trafficManagerMainWebsiteName": {
+      "defaultValue": "[concat(parameters('resourceNamePrefix'), parameters('resourceEnvSuffix'))]",
+      "type": "String"
+    },
+    "trafficManagerCoreServicesName": {
+      "defaultValue": "[concat(concat(parameters('resourceNamePrefix'), '-coreservices'), parameters('resourceEnvSuffixWithHyphen'))]",
+      "type": "String"
+    },
+    "trafficManagerPayloadServiceName": {
+      "defaultValue": "[concat(concat(parameters('resourceNamePrefix'), '-payloadservice'), parameters('resourceEnvSuffixWithHyphen'))]",
+      "type": "String"
+    },
+    "appServiceMainWebsiteName": {
+      "defaultValue": "[concat(concat('mainwebsite', parameters('resourceEnvSuffixWithHyphen')), parameters('resourceLocationCodeWithHyphen'))]",
+      "type": "String"
+    },
+    "appServiceCoreServicesName": {
+      "defaultValue": "[concat(concat('coreservices', parameters('resourceEnvSuffixWithHyphen')), parameters('resourceLocationCodeWithHyphen'))]",
+      "type": "String"
+    },
+    "appServicePayloadServiceName": {
+      "defaultValue": "[concat(concat('payloadservice', parameters('resourceEnvSuffixWithHyphen')), parameters('resourceLocationCodeWithHyphen'))]",
+      "type": "String"
+    },
+    "functionAppNotificationProcessorName": {
+      "defaultValue": "[concat(concat('notificationprocessor', parameters('resourceEnvSuffixWithHyphen')), parameters('resourceLocationCodeWithHyphen'))]",
+      "type": "String"
+    },
+    "functionAppWatchdogProcessorName": {
+      "defaultValue": "[concat(concat('watchdogprocessor', parameters('resourceEnvSuffixWithHyphen')), parameters('resourceLocationCodeWithHyphen'))]",
+      "type": "String"
+    },
+    "functionAppPrimaryProcessorName": {
+      "defaultValue": "[concat(concat('primaryprocessor', parameters('resourceEnvSuffixWithHyphen')), parameters('resourceLocationCodeWithHyphen'))]",
+      "type": "String"
+    },
+    "appServicePlan_payload_serviceName": {
+      "defaultValue": "[concat('approvalsplatform-primary-payloadservice-', parameters('resourceEnvSuffix'))]",
+      "type": "String"
+    },
+    "appServicePlan_webName": {
+      "defaultValue": "[concat('approvals-primary-', parameters('resourceEnvSuffix'))]",
+      "type": "String"
+    },
+    "appServicePlan_platform_primaryName": {
+      "defaultValue": "[concat('approvalsplatform-primary-', parameters('resourceEnvSuffix'))]",
+      "type": "String"
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "ApprovalsPlatformInfraResources",
+      "properties": {
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "resources": [
+            {
+              "type": "Microsoft.AppConfiguration/configurationStores",
+              "apiVersion": "2021-10-01-preview",
+              "name": "[parameters('appConfigurationName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "standard"
+              },
+              "properties": {
+                "encryption": {}
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2019-04-01",
+              "name": "[parameters('storageAccountName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard_RAGRS",
+                "tier": "Standard"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "networkAcls": {
+                  "bypass": "AzureServices",
+                  "virtualNetworkRules": [],
+                  "ipRules": [],
+                  "defaultAction": "Allow"
+                },
+                "supportsHttpsTrafficOnly": true,
+                "encryption": {
+                  "services": {
+                    "file": {
+                      "enabled": true
+                    },
+                    "blob": {
+                      "enabled": true
+                    }
+                  },
+                  "keySource": "Microsoft.Storage"
+                },
+                "accessTier": "Hot"
+              }
+            },
+            {
+              "type": "Microsoft.ServiceBus/namespaces",
+              "apiVersion": "2021-11-01",
+              "name": "[parameters('serviceBusName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Standard",
+                "tier": "Standard"
+              },
+              "properties": {
+                "disableLocalAuth": false,
+                "zoneRedundant": false
+              }
+            },
+            {
+              "type": "Microsoft.ServiceBus/namespaces/AuthorizationRules",
+              "apiVersion": "2021-06-01-preview",
+              "name": "[concat(parameters('serviceBusName'), '/RootManageSharedAccessKey')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.ServiceBus/namespaces', parameters('serviceBusName'))]"
+              ],
+              "properties": {
+                "rights": [
+                  "Listen",
+                  "Manage",
+                  "Send"
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.ServiceBus/namespaces/topics",
+              "apiVersion": "2021-11-01",
+              "name": "[concat(parameters('serviceBusName'), '/approvalsmaintopic')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.ServiceBus/namespaces', parameters('serviceBusName'))]"
+              ],
+              "properties": {
+                "maxMessageSizeInKilobytes": 256,
+                "defaultMessageTimeToLive": "PT8H",
+                "maxSizeInMegabytes": 5120,
+                "requiresDuplicateDetection": false,
+                "duplicateDetectionHistoryTimeWindow": "PT10M",
+                "enableBatchedOperations": true,
+                "status": "Active",
+                "supportOrdering": true,
+                "autoDeleteOnIdle": "P10675199DT2H48M5.4775807S",
+                "enablePartitioning": false,
+                "enableExpress": false
+              }
+            },
+            {
+              "type": "Microsoft.ServiceBus/namespaces/topics",
+              "apiVersion": "2021-11-01",
+              "name": "[concat(parameters('serviceBusName'), '/approvalsnotificationtopic')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.ServiceBus/namespaces', parameters('serviceBusName'))]"
+              ],
+              "properties": {
+                "maxMessageSizeInKilobytes": 256,
+                "defaultMessageTimeToLive": "P10675199DT2H48M5.4775807S",
+                "maxSizeInMegabytes": 1024,
+                "requiresDuplicateDetection": false,
+                "duplicateDetectionHistoryTimeWindow": "PT10M",
+                "enableBatchedOperations": true,
+                "status": "Active",
+                "supportOrdering": true,
+                "autoDeleteOnIdle": "P10675199DT2H48M5.4775807S",
+                "enablePartitioning": false,
+                "enableExpress": false
+              }
+            },
+            {
+              "type": "Microsoft.ServiceBus/namespaces/topics",
+              "apiVersion": "2021-11-01",
+              "name": "[concat(parameters('serviceBusName'), '/approvalsretrytopic')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.ServiceBus/namespaces', parameters('serviceBusName'))]"
+              ],
+              "properties": {
+                "maxMessageSizeInKilobytes": 256,
+                "defaultMessageTimeToLive": "PT8H",
+                "maxSizeInMegabytes": 5120,
+                "requiresDuplicateDetection": false,
+                "duplicateDetectionHistoryTimeWindow": "PT10M",
+                "enableBatchedOperations": true,
+                "status": "Active",
+                "supportOrdering": true,
+                "autoDeleteOnIdle": "P10675199DT2H48M5.4775807S",
+                "enablePartitioning": false,
+                "enableExpress": false
+              }
+            },
+            {
+              "type": "Microsoft.ServiceBus/namespaces/topics/subscriptions",
+              "apiVersion": "2021-11-01",
+              "name": "[concat(parameters('serviceBusName'), '/approvalsnotificationtopic/NotificationFrameworkGeneric')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.ServiceBus/namespaces/topics', parameters('serviceBusName'), 'approvalsnotificationtopic')]",
+                "[resourceId('Microsoft.ServiceBus/namespaces', parameters('serviceBusName'))]"
+              ],
+              "properties": {
+                "isClientAffine": false,
+                "lockDuration": "PT5M",
+                "requiresSession": false,
+                "defaultMessageTimeToLive": "P14D",
+                "deadLetteringOnMessageExpiration": false,
+                "deadLetteringOnFilterEvaluationExceptions": false,
+                "maxDeliveryCount": 1,
+                "status": "Active",
+                "enableBatchedOperations": true,
+                "autoDeleteOnIdle": "P10675198DT2H48M5.477S"
+              }
+            },
+            {
+              "type": "microsoft.insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[parameters('applicationInsightsName')]",
+              "location": "[parameters('location')]",
+              "kind": "Web",
+              "properties": {
+                "Application_Type": "Web",
+                "Flow_Type": "Redfield",
+                "Request_Source": "IbizaAIExtension"
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts",
+              "apiVersion": "2021-10-15",
+              "name": "[parameters('cosmosDBName')]",
+              "location": "[parameters('location')]",
+              "kind": "GlobalDocumentDB",
+              "identity": {
+                "type": "None"
+              },
+              "properties": {
+                "publicNetworkAccess": "Enabled",
+                "enableAutomaticFailover": true,
+                "enableMultipleWritelocations": false,
+                "isVirtualNetworkFilterEnabled": false,
+                "virtualNetworkRules": [],
+                "disableKeyBasedMetadataWriteAccess": false,
+                "enableFreeTier": false,
+                "enableAnalyticalStorage": false,
+                "analyticalStorageConfiguration": {},
+                "databaseAccountOfferType": "Standard",
+                "networkAclBypass": "None",
+                "disableLocalAuth": false,
+                "consistencyPolicy": {
+                  "defaultConsistencyLevel": "Session",
+                  "maxIntervalInSeconds": 5,
+                  "maxStalenessPrefix": 100
+                },
+                "locations": [
+                  {
+                    "locationName": "[parameters('location')]",
+                    "provisioningState": "Succeeded",
+                    "failoverPriority": 0,
+                    "isZoneRedundant": false
+                  },
+                  {
+                    "locationName": "Central India",
+                    "provisioningState": "Succeeded",
+                    "failoverPriority": 1,
+                    "isZoneRedundant": false
+                  }
+                ],
+                "cors": [],
+                "capabilities": [],
+                "ipRules": [],
+                "backupPolicy": {
+                  "type": "Periodic",
+                  "periodicModeProperties": {
+                    "backupIntervalInMinutes": 240,
+                    "backupRetentionIntervalInHours": 8,
+                    "backupStorageRedundancy": "Geo"
+                  }
+                },
+                "networkAclBypassResourceIds": []
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+              "apiVersion": "2021-10-15",
+              "name": "[concat(parameters('cosmosDBName'), '/auditagent')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDBName'))]"
+              ],
+              "properties": {
+                "resource": {
+                  "id": "auditagent"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+              "apiVersion": "2021-10-15",
+              "name": "[concat(parameters('cosmosDBName'), '/history')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDBName'))]"
+              ],
+              "properties": {
+                "resource": {
+                  "id": "history"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+              "apiVersion": "2021-10-15",
+              "name": "[concat(parameters('cosmosDBName'), '/telemetry')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDBName'))]"
+              ],
+              "properties": {
+                "resource": {
+                  "id": "telemetry"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions",
+              "apiVersion": "2021-10-15",
+              "name": "[concat(parameters('cosmosDBName'), '/00000000-0000-0000-0000-000000000001')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDBName'))]"
+              ],
+              "properties": {
+                "roleName": "Cosmos DB Built-in Data Reader",
+                "type": "BuiltInRole",
+                "assignableScopes": [
+                  "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDBName'))]"
+                ],
+                "permissions": [
+                  {
+                    "dataActions": [
+                      "Microsoft.DocumentDB/databaseAccounts/readMetadata",
+                      "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/executeQuery",
+                      "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/readChangeFeed",
+                      "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/read"
+                    ],
+                    "notDataActions": []
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions",
+              "apiVersion": "2021-10-15",
+              "name": "[concat(parameters('cosmosDBName'), '/00000000-0000-0000-0000-000000000002')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDBName'))]"
+              ],
+              "properties": {
+                "roleName": "Cosmos DB Built-in Data Contributor",
+                "type": "BuiltInRole",
+                "assignableScopes": [
+                  "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDBName'))]"
+                ],
+                "permissions": [
+                  {
+                    "dataActions": [
+                      "Microsoft.DocumentDB/databaseAccounts/readMetadata",
+                      "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/*",
+                      "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/*"
+                    ],
+                    "notDataActions": []
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2021-10-15",
+              "name": "[concat(parameters('cosmosDBName'), '/telemetry/actionauditlog')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosDBName'), 'telemetry')]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDBName'))]"
+              ],
+              "properties": {
+                "resource": {
+                  "id": "actionauditlog",
+                  "indexingPolicy": {
+                    "indexingMode": "consistent",
+                    "automatic": true,
+                    "includedPaths": [
+                      {
+                        "path": "/*",
+                        "indexes": [
+                          {
+                            "kind": "Range",
+                            "dataType": "Number",
+                            "precision": -1
+                          },
+                          {
+                            "kind": "Range",
+                            "dataType": "String",
+                            "precision": -1
+                          },
+                          {
+                            "kind": "Spatial",
+                            "dataType": "Point"
+                          }
+                        ]
+                      }
+                    ],
+                    "excludedPaths": [
+                      {
+                        "path": "/\"_etag\"/?"
+                      }
+                    ]
+                  },
+                  "partitionKey": {
+                    "paths": [
+                      "/Approver"
+                    ],
+                    "kind": "Hash"
+                  },
+                  "conflictResolutionPolicy": {
+                    "mode": "LastWriterWins",
+                    "conflictResolutionPath": "/_ts"
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2021-10-15",
+              "name": "[concat(parameters('cosmosDBName'), '/telemetry/actionauditloginfo')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosDBName'), 'telemetry')]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDBName'))]"
+              ],
+              "properties": {
+                "resource": {
+                  "id": "actionauditloginfo",
+                  "indexingPolicy": {
+                    "indexingMode": "consistent",
+                    "automatic": true,
+                    "includedPaths": [
+                      {
+                        "path": "/*",
+                        "indexes": [
+                          {
+                            "kind": "Range",
+                            "dataType": "Number",
+                            "precision": -1
+                          },
+                          {
+                            "kind": "Range",
+                            "dataType": "String",
+                            "precision": -1
+                          }
+                        ]
+                      }
+                    ],
+                    "excludedPaths": [
+                      {
+                        "path": "/\"_etag\"/?"
+                      }
+                    ]
+                  },
+                  "partitionKey": {
+                    "paths": [
+                      "/_partitionKey"
+                    ],
+                    "kind": "Hash",
+                    "version": 2
+                  },
+                  "conflictResolutionPolicy": {
+                    "mode": "LastWriterWins",
+                    "conflictResolutionPath": "/_ts"
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2021-10-15",
+              "name": "[concat(parameters('cosmosDBName'), '/auditagent/primary')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosDBName'), 'auditagent')]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDBName'))]"
+              ],
+              "properties": {
+                "resource": {
+                  "id": "primary",
+                  "indexingPolicy": {
+                    "indexingMode": "consistent",
+                    "automatic": true,
+                    "includedPaths": [
+                      {
+                        "path": "/*",
+                        "indexes": [
+                          {
+                            "kind": "Range",
+                            "dataType": "Number",
+                            "precision": -1
+                          },
+                          {
+                            "kind": "Range",
+                            "dataType": "String",
+                            "precision": -1
+                          },
+                          {
+                            "kind": "Spatial",
+                            "dataType": "Point"
+                          }
+                        ]
+                      }
+                    ],
+                    "excludedPaths": [
+                      {
+                        "path": "/\"_etag\"/?"
+                      }
+                    ]
+                  },
+                  "partitionKey": {
+                    "paths": [
+                      "/TenantId"
+                    ],
+                    "kind": "Hash"
+                  },
+                  "defaultTtl": 7776000,
+                  "conflictResolutionPolicy": {
+                    "mode": "LastWriterWins",
+                    "conflictResolutionPath": "/_ts"
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2021-10-15",
+              "name": "[concat(parameters('cosmosDBName'), '/history/transactionhistory')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosDBName'), 'history')]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDBName'))]"
+              ],
+              "properties": {
+                "resource": {
+                  "id": "transactionhistory",
+                  "indexingPolicy": {
+                    "indexingMode": "consistent",
+                    "automatic": true,
+                    "includedPaths": [
+                      {
+                        "path": "/*"
+                      }
+                    ],
+                    "excludedPaths": [
+                      {
+                        "path": "/\"_etag\"/?"
+                      }
+                    ]
+                  },
+                  "partitionKey": {
+                    "paths": [
+                      "/DocumentNumber"
+                    ],
+                    "kind": "Hash"
+                  },
+                  "conflictResolutionPolicy": {
+                    "mode": "LastWriterWins",
+                    "conflictResolutionPath": "/_ts"
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/throughputSettings",
+              "apiVersion": "2021-10-15",
+              "name": "[concat(parameters('cosmosDBName'), '/auditagent/primary/default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers', parameters('cosmosDBName'), 'auditagent', 'primary')]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosDBName'), 'auditagent')]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDBName'))]"
+              ],
+              "properties": {
+                "resource": {
+                  "throughput": 1400,
+                  "autoscaleSettings": {
+                    "maxThroughput": 6000
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/throughputSettings",
+              "apiVersion": "2021-10-15",
+              "name": "[concat(parameters('cosmosDBName'), '/history/transactionhistory/default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers', parameters('cosmosDBName'), 'history', 'transactionhistory')]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosDBName'), 'history')]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDBName'))]"
+              ],
+              "properties": {
+                "resource": {
+                  "throughput": 1600,
+                  "autoscaleSettings": {
+                    "maxThroughput": 16000
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/throughputSettings",
+              "apiVersion": "2021-10-15",
+              "name": "[concat(parameters('cosmosDBName'), '/telemetry/actionauditlog/default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers', parameters('cosmosDBName'), 'telemetry', 'actionauditlog')]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosDBName'), 'telemetry')]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDBName'))]"
+              ],
+              "properties": {
+                "resource": {
+                  "throughput": 400,
+                  "autoscaleSettings": {
+                    "maxThroughput": 4000
+                  }
+                }
+              }
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2021-11-01-preview",
+              "name": "[parameters('keyVaultName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "sku": {
+                  "family": "A",
+                  "name": "standard"
+                },
+                "tenantId": "[parameters('activeDirectoryTenantId')]",
+                "accessPolicies": [],
+                "enabledForDeployment": true,
+                "enabledForDiskEncryption": true,
+                "enabledForTemplateDeployment": true,
+                "enableSoftDelete": true,
+                "softDeleteRetentionInDays": 90,
+                "enableRbacAuthorization": false
+              }
+            },
+            {
+              "type": "Microsoft.Search/searchServices",
+              "apiVersion": "2021-04-01-preview",
+              "name": "[parameters('searchServicesName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "standard"
+              },
+              "properties": {
+                "replicaCount": 1,
+                "partitionCount": 2,
+                "hostingMode": "Default",
+                "publicNetworkAccess": "Enabled",
+                "networkRuleSet": {
+                  "ipRules": [],
+                  "bypass": "None"
+                },
+                "encryptionWithCmk": {
+                  "enforcement": "Unspecified"
+                },
+                "disableLocalAuth": false,
+                "authOptions": {
+                  "apiKeyOnly": {}
+                },
+                "disabledDataExfiltrationOptions": [],
+                "semanticSearch": "disabled"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "ApprovalsPlatformApplicationsResources",
+      "properties": {
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "resources": [
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2021-02-01",
+              "name": "[parameters('appServicePlan_webName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "S1",
+                "tier": "Standard",
+                "size": "S1",
+                "family": "S",
+                "capacity": 1
+              },
+              "kind": "app",
+              "properties": {
+                "perSiteScaling": false,
+                "targetWorkerCount": 0,
+                "targetWorkerSizeId": 0
+              }
+            },
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2021-02-01",
+              "name": "[parameters('appServicePlan_payload_serviceName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "S1",
+                "tier": "Standard",
+                "size": "S1",
+                "family": "S",
+                "capacity": 1
+              },
+              "kind": "app",
+              "properties": {
+                "perSiteScaling": false,
+                "targetWorkerCount": 0,
+                "targetWorkerSizeId": 0
+              }
+            },
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2021-02-01",
+              "name": "[parameters('appServicePlan_platform_primaryName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "S1",
+                "tier": "Standard",
+                "size": "S1",
+                "family": "S",
+                "capacity": 1
+              },
+              "kind": "app",
+              "properties": {
+                "perSiteScaling": false,
+                "targetWorkerCount": 0,
+                "targetWorkerSizeId": 0
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2021-02-01",
+              "name": "[parameters('appServiceMainWebsiteName')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlan_webName'))]"
+              ],
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "kind": "app",
+              "properties": {
+                "enabled": true,
+                "hostNameSslStates": [
+                  {
+                    "name": "[concat(parameters('appServiceMainWebsiteName'), '.azurewebsites.net')]",
+                    "sslState": "Disabled",
+                    "hostType": "Standard"
+                  },
+                  {
+                    "name": "[concat(parameters('appServiceMainWebsiteName'), '.scm.azurewebsites.net')]",
+                    "sslState": "Disabled",
+                    "hostType": "Repository"
+                  }
+                ],
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlan_webName'))]",
+                "reserved": false,
+                "scmSiteAlsoStopped": false,
+                "clientAffinityEnabled": true,
+                "clientCertEnabled": false,
+                "hostNamesDisabled": false,
+                "containerSize": 0,
+                "dailyMemoryTimeQuota": 0,
+                "httpsOnly": true
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('appServiceMainWebsiteName'), '/web')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('appServiceMainWebsiteName'))]"
+              ],
+              "properties": {
+                "numberOfWorkers": 1,
+                "defaultDocuments": [
+                  "Default.htm",
+                  "Default.html",
+                  "Default.asp",
+                  "index.htm",
+                  "index.html",
+                  "iisstart.htm",
+                  "default.aspx",
+                  "index.php",
+                  "hostingstart.html"
+                ],
+                "netFrameworkVersion": "v4.0",
+                "requestTracingEnabled": false,
+                "remoteDebuggingEnabled": false,
+                "httpLoggingEnabled": false,
+                "acrUseManagedIdentityCreds": false,
+                "logsDirectorySizeLimit": 35,
+                "detailedErrorLoggingEnabled": false,
+                "publishingUsername": "$approvalsmainwebsite",
+                "scmType": "None",
+                "use32BitWorkerProcess": false,
+                "webSocketsEnabled": false,
+                "alwaysOn": true,
+                "managedPipelineMode": "Integrated",
+                "virtualApplications": [
+                  {
+                    "virtualPath": "/",
+                    "physicalPath": "site\\wwwroot",
+                    "preloadEnabled": true
+                  }
+                ],
+                "loadBalancing": "LeastRequests",
+                "experiments": {
+                  "rampUpRules": []
+                },
+                "autoHealEnabled": false,
+                "vnetRouteAllEnabled": false,
+                "vnetPrivatePortsCount": 0,
+                "siteAuthEnabled": true,
+                "siteAuthSettings": {
+                  "enabled": true,
+                  "unauthenticatedClientAction": "RedirectToLoginPage",
+                  "tokenStoreEnabled": null,
+                  "allowedExternalRedirectUrls": null,
+                  "defaultProvider": null,
+                  "clientId": "[parameters('activeDirectoryClientId')]",
+                  "clientSecret": "[parameters('activeDirectoryClientSecret')]",
+                  "clientSecretCertificateThumbprint": null,
+                  "issuer": "[concat('https://sts.windows.net/', parameters('activeDirectoryTenantId'),'/')]",
+                  "allowedAudiences": "[parameters('activeDirectoryResource')]",
+                  "additionalLoginParams": null,
+                  "isAadAutoProvisioned": false,
+                  "googleClientId": null,
+                  "googleClientSecret": null,
+                  "googleOAuthScopes": null,
+                  "facebookAppId": null,
+                  "facebookAppSecret": null,
+                  "facebookOAuthScopes": null,
+                  "twitterConsumerKey": null,
+                  "twitterConsumerSecret": null,
+                  "microsoftAccountClientId": null,
+                  "microsoftAccountClientSecret": null,
+                  "microsoftAccountOAuthScopes": null
+                },
+                "localMySqlEnabled": false,
+                "ipSecurityRestrictions": [
+                  {
+                    "ipAddress": "Any",
+                    "action": "Allow",
+                    "priority": 1,
+                    "name": "Allow all",
+                    "description": "Allow all access"
+                  }
+                ],
+                "scmIpSecurityRestrictions": [
+                  {
+                    "ipAddress": "Any",
+                    "action": "Allow",
+                    "priority": 1,
+                    "name": "Allow all",
+                    "description": "Allow all access"
+                  }
+                ],
+                "scmIpSecurityRestrictionsUseMain": false,
+                "http20Enabled": false,
+                "minTlsVersion": "1.2",
+                "scmMinTlsVersion": "1.0",
+                "ftpsState": "FtpsOnly",
+                "preWarmedInstanceCount": 0,
+                "functionAppScaleLimit": 0,
+                "functionsRuntimeScaleMonitoringEnabled": false,
+                "minimumElasticInstanceCount": 0,
+                "azureStorageAccounts": {}
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/hostNameBindings",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('appServiceMainWebsiteName'), '/', parameters('appServiceMainWebsiteName'), '.azurewebsites.net')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('appServiceMainWebsiteName'))]"
+              ],
+              "properties": {
+                "siteName": "[parameters('appServiceMainWebsiteName')]",
+                "hostNameType": "Verified"
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2021-02-01",
+              "name": "[parameters('appServiceCoreServicesName')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlan_webName'))]"
+              ],
+              "kind": "api",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "enabled": true,
+                "hostNameSslStates": [
+                  {
+                    "name": "[concat(parameters('appServiceCoreServicesName'), '.azurewebsites.net')]",
+                    "sslState": "Disabled",
+                    "hostType": "Standard"
+                  },
+                  {
+                    "name": "[concat(parameters('appServiceCoreServicesName'), '.scm.azurewebsites.net')]",
+                    "sslState": "Disabled",
+                    "hostType": "Repository"
+                  }
+                ],
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlan_webName'))]",
+                "reserved": false,
+                "scmSiteAlsoStopped": false,
+                "clientAffinityEnabled": true,
+                "clientCertEnabled": false,
+                "hostNamesDisabled": false,
+                "containerSize": 0,
+                "dailyMemoryTimeQuota": 0,
+                "httpsOnly": true
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('appServiceCoreServicesName'), '/web')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('appServiceCoreServicesName'))]"
+              ],
+              "properties": {
+                "numberOfWorkers": 1,
+                "defaultDocuments": [
+                  "Default.htm",
+                  "Default.html",
+                  "Default.asp",
+                  "index.htm",
+                  "index.html",
+                  "iisstart.htm",
+                  "default.aspx",
+                  "index.php",
+                  "hostingstart.html"
+                ],
+                "netFrameworkVersion": "v4.0",
+                "requestTracingEnabled": false,
+                "remoteDebuggingEnabled": false,
+                "httpLoggingEnabled": false,
+                "acrUseManagedIdentityCreds": false,
+                "logsDirectorySizeLimit": 35,
+                "detailedErrorLoggingEnabled": false,
+                "publishingUsername": "$approvalscoreservices",
+                "scmType": "None",
+                "use32BitWorkerProcess": false,
+                "webSocketsEnabled": false,
+                "alwaysOn": true,
+                "managedPipelineMode": "Integrated",
+                "virtualApplications": [
+                  {
+                    "virtualPath": "/",
+                    "physicalPath": "site\\wwwroot",
+                    "preloadEnabled": true
+                  }
+                ],
+                "loadBalancing": "LeastRequests",
+                "experiments": {
+                  "rampUpRules": []
+                },
+                "autoHealEnabled": false,
+                "vnetRouteAllEnabled": false,
+                "vnetPrivatePortsCount": 0,
+                "siteAuthEnabled": true,
+                "siteAuthSettings": {
+                  "enabled": true,
+                  "unauthenticatedClientAction": "RedirectToLoginPage",
+                  "tokenStoreEnabled": null,
+                  "allowedExternalRedirectUrls": null,
+                  "defaultProvider": null,
+                  "clientId": "[parameters('activeDirectoryClientId')]",
+                  "clientSecret": "[parameters('activeDirectoryClientSecret')]",
+                  "clientSecretCertificateThumbprint": null,
+                  "issuer": "[concat('https://sts.windows.net/', parameters('activeDirectoryTenantId'),'/')]",
+                  "allowedAudiences": "[parameters('activeDirectoryResource')]",
+                  "additionalLoginParams": null,
+                  "isAadAutoProvisioned": false,
+                  "googleClientId": null,
+                  "googleClientSecret": null,
+                  "googleOAuthScopes": null,
+                  "facebookAppId": null,
+                  "facebookAppSecret": null,
+                  "facebookOAuthScopes": null,
+                  "twitterConsumerKey": null,
+                  "twitterConsumerSecret": null,
+                  "microsoftAccountClientId": null,
+                  "microsoftAccountClientSecret": null,
+                  "microsoftAccountOAuthScopes": null
+                },
+                "localMySqlEnabled": false,
+                "ipSecurityRestrictions": [
+                  {
+                    "ipAddress": "Any",
+                    "action": "Allow",
+                    "priority": 1,
+                    "name": "Allow all",
+                    "description": "Allow all access"
+                  }
+                ],
+                "scmIpSecurityRestrictions": [
+                  {
+                    "ipAddress": "Any",
+                    "action": "Allow",
+                    "priority": 1,
+                    "name": "Allow all",
+                    "description": "Allow all access"
+                  }
+                ],
+                "scmIpSecurityRestrictionsUseMain": false,
+                "http20Enabled": false,
+                "minTlsVersion": "1.2",
+                "scmMinTlsVersion": "1.0",
+                "ftpsState": "FtpsOnly",
+                "preWarmedInstanceCount": 0,
+                "functionAppScaleLimit": 0,
+                "functionsRuntimeScaleMonitoringEnabled": false,
+                "minimumElasticInstanceCount": 0,
+                "azureStorageAccounts": {}
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('appServiceCoreServicesName'), '/appsettings')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/Sites', parameters('appServiceCoreServicesName'))]"
+              ],
+              "properties": {
+                "AppConfigurationLabel": "",
+                "AppConfigurationPrefix": "",
+                "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+                "AzureAppConfiguration": "[concat('@Microsoft.KeyVault(SecretUri=https://',parameters('keyVaultName'), '.vault.azure.net/secrets/AzureAppConfigurationConnectionString)')]",
+                "ComponentName": "ApprovalsCoreServicesAPI",
+                "ValidAppIds": "",
+                "ValidAudienceUrl": "",
+                "WEBSITE_LOAD_CERTIFICATES": "*"
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/hostNameBindings",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('appServiceCoreServicesName'), '/', parameters('appServiceCoreServicesName'), '.azurewebsites.net')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('appServiceCoreServicesName'))]"
+              ],
+              "properties": {
+                "siteName": "[parameters('appServiceCoreServicesName')]",
+                "hostNameType": "Verified"
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2021-02-01",
+              "name": "[parameters('appServicePayloadServiceName')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlan_payload_serviceName'))]"
+              ],
+              "kind": "api",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "enabled": true,
+                "hostNameSslStates": [
+                  {
+                    "name": "[concat(parameters('appServicePayloadServiceName'), '.azurewebsites.net')]",
+                    "sslState": "Disabled",
+                    "hostType": "Standard"
+                  },
+                  {
+                    "name": "[concat(parameters('appServicePayloadServiceName'), '.scm.azurewebsites.net')]",
+                    "sslState": "Disabled",
+                    "hostType": "Repository"
+                  }
+                ],
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlan_payload_serviceName'))]",
+                "reserved": false,
+                "scmSiteAlsoStopped": false,
+                "clientAffinityEnabled": true,
+                "clientCertEnabled": false,
+                "hostNamesDisabled": false,
+                "containerSize": 0,
+                "dailyMemoryTimeQuota": 0,
+                "httpsOnly": true
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('appServicePayloadServiceName'), '/web')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('appServicePayloadServiceName'))]"
+              ],
+              "properties": {
+                "numberOfWorkers": 1,
+                "defaultDocuments": [
+                  "Default.htm",
+                  "Default.html",
+                  "Default.asp",
+                  "index.htm",
+                  "index.html",
+                  "iisstart.htm",
+                  "default.aspx",
+                  "index.php",
+                  "hostingstart.html"
+                ],
+                "netFrameworkVersion": "v4.0",
+                "requestTracingEnabled": false,
+                "remoteDebuggingEnabled": false,
+                "httpLoggingEnabled": false,
+                "acrUseManagedIdentityCreds": false,
+                "logsDirectorySizeLimit": 35,
+                "detailedErrorLoggingEnabled": false,
+                "publishingUsername": "$approvalspayloadservices",
+                "scmType": "None",
+                "use32BitWorkerProcess": false,
+                "webSocketsEnabled": false,
+                "alwaysOn": true,
+                "managedPipelineMode": "Integrated",
+                "virtualApplications": [
+                  {
+                    "virtualPath": "/",
+                    "physicalPath": "site\\wwwroot",
+                    "preloadEnabled": true
+                  }
+                ],
+                "loadBalancing": "LeastRequests",
+                "experiments": {
+                  "rampUpRules": []
+                },
+                "autoHealEnabled": false,
+                "vnetRouteAllEnabled": false,
+                "vnetPrivatePortsCount": 0,
+                "siteAuthEnabled": true,
+                "siteAuthSettings": {
+                  "enabled": true,
+                  "unauthenticatedClientAction": "RedirectToLoginPage",
+                  "tokenStoreEnabled": null,
+                  "allowedExternalRedirectUrls": null,
+                  "defaultProvider": null,
+                  "clientId": "[parameters('activeDirectoryClientId')]",
+                  "clientSecret": "[parameters('activeDirectoryClientSecret')]",
+                  "clientSecretCertificateThumbprint": null,
+                  "issuer": "[concat('https://sts.windows.net/', parameters('activeDirectoryTenantId'),'/')]",
+                  "allowedAudiences": "[parameters('activeDirectoryResource')]",
+                  "additionalLoginParams": null,
+                  "isAadAutoProvisioned": false,
+                  "googleClientId": null,
+                  "googleClientSecret": null,
+                  "googleOAuthScopes": null,
+                  "facebookAppId": null,
+                  "facebookAppSecret": null,
+                  "facebookOAuthScopes": null,
+                  "twitterConsumerKey": null,
+                  "twitterConsumerSecret": null,
+                  "microsoftAccountClientId": null,
+                  "microsoftAccountClientSecret": null,
+                  "microsoftAccountOAuthScopes": null
+                },
+                "localMySqlEnabled": false,
+                "ipSecurityRestrictions": [
+                  {
+                    "ipAddress": "Any",
+                    "action": "Allow",
+                    "priority": 1,
+                    "name": "Allow all",
+                    "description": "Allow all access"
+                  }
+                ],
+                "scmIpSecurityRestrictions": [
+                  {
+                    "ipAddress": "Any",
+                    "action": "Allow",
+                    "priority": 1,
+                    "name": "Allow all",
+                    "description": "Allow all access"
+                  }
+                ],
+                "scmIpSecurityRestrictionsUseMain": false,
+                "http20Enabled": false,
+                "minTlsVersion": "1.2",
+                "scmMinTlsVersion": "1.0",
+                "ftpsState": "FtpsOnly",
+                "preWarmedInstanceCount": 0,
+                "functionAppScaleLimit": 0,
+                "functionsRuntimeScaleMonitoringEnabled": false,
+                "minimumElasticInstanceCount": 0,
+                "azureStorageAccounts": {}
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('appServicePayloadServiceName'), '/appsettings')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/Sites', parameters('appServicePayloadServiceName'))]"
+              ],
+              "properties": {
+                "AppConfigurationLabel": "",
+                "AppConfigurationPrefix": "",
+                "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+                "AzureAppConfiguration": "[concat('@Microsoft.KeyVault(SecretUri=https://',parameters('keyVaultName'), '.vault.azure.net/secrets/AzureAppConfigurationConnectionString)')]",
+                "ComponentName": "ApprovalsPayloadServiceAPI",
+                "ValidAppIds": "",
+                "ValidAudienceUrl": "",
+                "WEBSITE_LOAD_CERTIFICATES": "*"
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/hostNameBindings",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('appServicePayloadServiceName'), '/', parameters('appServicePayloadServiceName'), '.azurewebsites.net')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('appServicePayloadServiceName'))]"
+              ],
+              "properties": {
+                "siteName": "[parameters('appServicePayloadServiceName')]",
+                "hostNameType": "Verified"
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2021-02-01",
+              "name": "[parameters('functionAppNotificationProcessorName')]",
+              "location": "[parameters('location')]",
+              "kind": "functionapp",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlan_platform_primaryName'))]"
+              ],
+              "properties": {
+                "clientAffinityEnabled": false,
+                "clientCertEnabled": false,
+                "containerSize": 1536,
+                "dailyMemoryTimeQuota": 0,
+                "enabled": true,
+                "hostNamesDisabled": false,
+                "hostNameSslStates": [
+                  {
+                    "name": "[concat(parameters('functionAppNotificationProcessorName'), '.azurewebsites.net')]",
+                    "sslState": "Disabled",
+                    "hostType": "Standard"
+                  },
+                  {
+                    "hostType": "Repository",
+                    "name": "[concat(parameters('functionAppNotificationProcessorName'), '.scm.azurewebsites.net')]",
+                    "sslState": "Disabled"
+                  }
+                ],
+                "httpsOnly": true,
+                "reserved": false,
+                "scmSiteAlsoStopped": false,
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlan_platform_primaryName'))]"
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('functionAppNotificationProcessorName'), '/web')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppNotificationProcessorName'))]"
+              ],
+              "properties": {
+                "numberOfWorkers": 1,
+                "defaultDocuments": [
+                  "Default.htm",
+                  "Default.html",
+                  "Default.asp",
+                  "index.htm",
+                  "index.html",
+                  "iisstart.htm",
+                  "default.aspx",
+                  "index.php"
+                ],
+                "netFrameworkVersion": "v4.0",
+                "phpVersion": "5.6",
+                "requestTracingEnabled": false,
+                "remoteDebuggingEnabled": false,
+                "httpLoggingEnabled": false,
+                "acrUseManagedIdentityCreds": false,
+                "logsDirectorySizeLimit": 35,
+                "detailedErrorLoggingEnabled": false,
+                "publishingUsername": "$ApprovalsNotificationProcessor",
+                "scmType": "VSTSRM",
+                "use32BitWorkerProcess": true,
+                "webSocketsEnabled": false,
+                "alwaysOn": true,
+                "managedPipelineMode": "Integrated",
+                "virtualApplications": [
+                  {
+                    "virtualPath": "/",
+                    "physicalPath": "site\\wwwroot",
+                    "preloadEnabled": false
+                  }
+                ],
+                "loadBalancing": "LeastRequests",
+                "autoHealEnabled": false,
+                "vnetRouteAllEnabled": false,
+                "vnetPrivatePortsCount": 0,
+                "cors": {
+                  "allowedOrigins": [
+                    "https://functions.azure.com",
+                    "https://functions-staging.azure.com",
+                    "https://functions-next.azure.com"
+                  ],
+                  "supportCredentials": false
+                },
+                "localMySqlEnabled": false,
+                "managedServiceIdentityId": 4222,
+                "http20Enabled": false,
+                "minTlsVersion": "1.2",
+                "ftpsState": "FtpsOnly",
+                "preWarmedInstanceCount": 0,
+                "functionAppScaleLimit": 0,
+                "functionsRuntimeScaleMonitoringEnabled": false,
+                "minimumElasticInstanceCount": 0,
+                "azureStorageAccounts": {}
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('functionAppNotificationProcessorName'), '/appsettings')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/Sites', parameters('functionAppNotificationProcessorName'))]"
+              ],
+              "properties": {
+                "AppConfigurationLabel": "",
+                "AppConfigurationPrefix": "",
+                "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+                "AzureAppConfiguration": "[concat('@Microsoft.KeyVault(SecretUri=https://',parameters('keyVaultName'), '.vault.azure.net/secrets/AzureAppConfigurationConnectionString)')]",
+                "AzureWebJobsDashboard": "[concat('@Microsoft.KeyVault(SecretUri=https://',parameters('keyVaultName'), '.vault.azure.net/secrets/StorageConnectionString)')]",
+                "AzureWebJobsStorage": "[concat('@Microsoft.KeyVault(SecretUri=https://',parameters('keyVaultName'), '.vault.azure.net/secrets/StorageConnectionString)')]",
+                "ComponentName": "ApprovalsNotificationProcessor",
+                "FUNCTIONS_EXTENSION_VERSION": "~3",
+                "WEBSITE_LOAD_CERTIFICATES": "*"
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/hostNameBindings",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('functionAppNotificationProcessorName'), '/', parameters('functionAppNotificationProcessorName'), '.azurewebsites.net')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppNotificationProcessorName'))]"
+              ],
+              "properties": {
+                "siteName": "[parameters('functionAppNotificationProcessorName')]",
+                "hostNameType": "Verified"
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2021-02-01",
+              "name": "[parameters('functionAppWatchdogProcessorName')]",
+              "location": "[parameters('location')]",
+              "kind": "functionapp",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlan_platform_primaryName'))]"
+              ],
+              "properties": {
+                "enabled": true,
+                "hostNameSslStates": [
+                  {
+                    "name": "[concat(parameters('functionAppWatchdogProcessorName'), '.azurewebsites.net')]",
+                    "sslState": "Disabled",
+                    "hostType": "Standard"
+                  },
+                  {
+                    "name": "[concat(parameters('functionAppWatchdogProcessorName'), '.scm.azurewebsites.net')]",
+                    "sslState": "Disabled",
+                    "hostType": "Repository"
+                  }
+                ],
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlan_platform_primaryName'))]",
+                "reserved": false,
+                "scmSiteAlsoStopped": false,
+                "clientAffinityEnabled": false,
+                "clientCertEnabled": false,
+                "hostNamesDisabled": false,
+                "containerSize": 1536,
+                "dailyMemoryTimeQuota": 0,
+                "httpsOnly": true
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('functionAppWatchdogProcessorName'), '/web')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppWatchdogProcessorName'))]"
+              ],
+              "properties": {
+                "numberOfWorkers": 1,
+                "defaultDocuments": [
+                  "Default.htm",
+                  "Default.html",
+                  "Default.asp",
+                  "index.htm",
+                  "index.html",
+                  "iisstart.htm",
+                  "default.aspx",
+                  "index.php"
+                ],
+                "netFrameworkVersion": "v4.0",
+                "phpVersion": "5.6",
+                "requestTracingEnabled": false,
+                "remoteDebuggingEnabled": false,
+                "httpLoggingEnabled": false,
+                "acrUseManagedIdentityCreds": false,
+                "logsDirectorySizeLimit": 35,
+                "detailedErrorLoggingEnabled": false,
+                "publishingUsername": "$ApprovalsWatchdogProcessor",
+                "scmType": "VSTSRM",
+                "use32BitWorkerProcess": true,
+                "webSocketsEnabled": false,
+                "alwaysOn": true,
+                "managedPipelineMode": "Integrated",
+                "virtualApplications": [
+                  {
+                    "virtualPath": "/",
+                    "physicalPath": "site\\wwwroot",
+                    "preloadEnabled": false
+                  }
+                ],
+                "loadBalancing": "LeastRequests",
+                "autoHealEnabled": false,
+                "vnetRouteAllEnabled": false,
+                "vnetPrivatePortsCount": 0,
+                "cors": {
+                  "allowedOrigins": [
+                    "https://functions.azure.com",
+                    "https://functions-staging.azure.com",
+                    "https://functions-next.azure.com"
+                  ],
+                  "supportCredentials": false
+                },
+                "localMySqlEnabled": false,
+                "managedServiceIdentityId": 4222,
+                "http20Enabled": false,
+                "minTlsVersion": "1.2",
+                "ftpsState": "FtpsOnly",
+                "preWarmedInstanceCount": 0,
+                "functionAppScaleLimit": 0,
+                "functionsRuntimeScaleMonitoringEnabled": false,
+                "minimumElasticInstanceCount": 0,
+                "azureStorageAccounts": {}
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('functionAppWatchdogProcessorName'), '/appsettings')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/Sites', parameters('functionAppWatchdogProcessorName'))]"
+              ],
+              "properties": {
+                "AppConfigurationLabel": "",
+                "AppConfigurationPrefix": "",
+                "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+                "AzureAppConfiguration": "[concat('@Microsoft.KeyVault(SecretUri=https://',parameters('keyVaultName'), '.vault.azure.net/secrets/AzureAppConfigurationConnectionString)')]",
+                "AzureWebJobsDashboard": "[concat('@Microsoft.KeyVault(SecretUri=https://',parameters('keyVaultName'), '.vault.azure.net/secrets/StorageConnectionString)')]",
+                "AzureWebJobsStorage": "[concat('@Microsoft.KeyVault(SecretUri=https://',parameters('keyVaultName'), '.vault.azure.net/secrets/StorageConnectionString)')]",
+                "ComponentName": "ApprovalsWatchdogProcessor",
+                "FUNCTIONS_EXTENSION_VERSION": "~3",
+                "Schedule": "0 0 */2 * * *",
+                "TenantId": "",
+                "WEBSITE_LOAD_CERTIFICATES": "*"
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/hostNameBindings",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('functionAppWatchdogProcessorName'), '/', parameters('functionAppWatchdogProcessorName'), '.azurewebsites.net')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppWatchdogProcessorName'))]"
+              ],
+              "properties": {
+                "siteName": "[parameters('functionAppWatchdogProcessorName')]",
+                "hostNameType": "Verified"
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2021-02-01",
+              "name": "[parameters('functionAppPrimaryProcessorName')]",
+              "location": "[parameters('location')]",
+              "kind": "functionapp",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlan_platform_primaryName'))]"
+              ],
+              "properties": {
+                "enabled": true,
+                "hostNameSslStates": [
+                  {
+                    "name": "[concat(parameters('functionAppPrimaryProcessorName'), '.azurewebsites.net')]",
+                    "sslState": "Disabled",
+                    "hostType": "Standard"
+                  },
+                  {
+                    "name": "[concat(parameters('functionAppPrimaryProcessorName'), '.scm.azurewebsites.net')]",
+                    "sslState": "Disabled",
+                    "hostType": "Repository"
+                  }
+                ],
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlan_platform_primaryName'))]",
+                "reserved": false,
+                "scmSiteAlsoStopped": false,
+                "clientAffinityEnabled": false,
+                "clientCertEnabled": false,
+                "hostNamesDisabled": false,
+                "containerSize": 1536,
+                "dailyMemoryTimeQuota": 0,
+                "httpsOnly": true
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('functionAppPrimaryProcessorName'), '/web')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppPrimaryProcessorName'))]"
+              ],
+              "properties": {
+                "numberOfWorkers": 1,
+                "defaultDocuments": [
+                  "Default.htm",
+                  "Default.html",
+                  "Default.asp",
+                  "index.htm",
+                  "index.html",
+                  "iisstart.htm",
+                  "default.aspx",
+                  "index.php"
+                ],
+                "netFrameworkVersion": "v4.0",
+                "phpVersion": "5.6",
+                "requestTracingEnabled": false,
+                "remoteDebuggingEnabled": false,
+                "httpLoggingEnabled": false,
+                "acrUseManagedIdentityCreds": false,
+                "logsDirectorySizeLimit": 35,
+                "detailedErrorLoggingEnabled": false,
+                "publishingUsername": "$ApprovalsPrimaryProcessor",
+                "scmType": "VSTSRM",
+                "use32BitWorkerProcess": true,
+                "webSocketsEnabled": false,
+                "alwaysOn": true,
+                "managedPipelineMode": "Integrated",
+                "virtualApplications": [
+                  {
+                    "virtualPath": "/",
+                    "physicalPath": "site\\wwwroot",
+                    "preloadEnabled": false
+                  }
+                ],
+                "loadBalancing": "LeastRequests",
+                "autoHealEnabled": false,
+                "vnetRouteAllEnabled": false,
+                "vnetPrivatePortsCount": 0,
+                "cors": {
+                  "allowedOrigins": [
+                    "https://functions.azure.com",
+                    "https://functions-staging.azure.com",
+                    "https://functions-next.azure.com"
+                  ],
+                  "supportCredentials": false
+                },
+                "localMySqlEnabled": false,
+                "managedServiceIdentityId": 4222,
+                "http20Enabled": false,
+                "minTlsVersion": "1.2",
+                "ftpsState": "FtpsOnly",
+                "preWarmedInstanceCount": 0,
+                "functionAppScaleLimit": 0,
+                "functionsRuntimeScaleMonitoringEnabled": false,
+                "minimumElasticInstanceCount": 0,
+                "azureStorageAccounts": {}
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/config",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('functionAppPrimaryProcessorName'), '/appsettings')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/Sites', parameters('functionAppPrimaryProcessorName'))]"
+              ],
+              "properties": {
+                "AppConfigurationLabel": "",
+                "AppConfigurationPrefix": "",
+                "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+                "AzureAppConfiguration": "[concat('@Microsoft.KeyVault(SecretUri=https://',parameters('keyVaultName'), '.vault.azure.net/secrets/AzureAppConfigurationConnectionString)')]",
+                "AzureWebJobsDashboard": "[concat('@Microsoft.KeyVault(SecretUri=https://',parameters('keyVaultName'), '.vault.azure.net/secrets/StorageConnectionString)')]",
+                "AzureWebJobsStorage": "[concat('@Microsoft.KeyVault(SecretUri=https://',parameters('keyVaultName'), '.vault.azure.net/secrets/StorageConnectionString)')]",
+                "ComponentName": "ApprovalsPrimaryProcessor",
+                "FUNCTIONS_EXTENSION_VERSION": "~3",
+                "WEBSITE_LOAD_CERTIFICATES": "*",
+                "TenantId": ""
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites/hostNameBindings",
+              "apiVersion": "2021-02-01",
+              "name": "[concat(parameters('functionAppPrimaryProcessorName'), '/', parameters('functionAppPrimaryProcessorName'), '.azurewebsites.net')]",
+              "location": "[parameters('location')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppPrimaryProcessorName'))]"
+              ],
+              "properties": {
+                "siteName": "[parameters('functionAppPrimaryProcessorName')]",
+                "hostNameType": "Verified"
+              }
+            },
+            {
+              "type": "Microsoft.Network/trafficManagerProfiles",
+              "apiVersion": "2018-04-01",
+              "name": "[parameters('trafficManagerMainWebsiteName')]",
+              "location": "global",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('appServiceMainWebsiteName'))]"
+              ],
+              "properties": {
+                "profileStatus": "Enabled",
+                "trafficRoutingMethod": "Performance",
+                "dnsConfig": {
+                  "relativeName": "[parameters('trafficManagerMainWebsiteName')]",
+                  "ttl": 60
+                },
+                "monitorConfig": {
+                  "profileMonitorStatus": "Online",
+                  "protocol": "HTTPS",
+                  "port": 443,
+                  "path": "/",
+                  "intervalInSeconds": 30,
+                  "toleratedNumberOfFailures": 3,
+                  "timeoutInSeconds": 10,
+                  "customHeaders": [],
+                  "expectedStatusCodeRanges": []
+                },
+                "endpoints": [
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/trafficManagerProfiles', parameters('trafficManagerMainWebsiteName')), '/azureEndpoints/ModernWebsite')]",
+                    "name": "ModernWebsite",
+                    "type": "Microsoft.Network/trafficManagerProfiles/azureEndpoints",
+                    "properties": {
+                      "endpointStatus": "Enabled",
+                      "endpointMonitorStatus": "Online",
+                      "targetResourceId": "[resourceId('Microsoft.Web/sites', parameters('appServiceMainWebsiteName'))]",
+                      "target": "[concat(parameters('trafficManagerMainWebsiteName'), '.azurewebsites.net')]",
+                      "weight": 1,
+                      "priority": 1,
+                      "endpointlocation": "[parameters('location')]"
+                    }
+                  }
+                ],
+                "trafficViewEnrollmentStatus": "Disabled"
+              }
+            },
+            {
+              "type": "Microsoft.Network/trafficManagerProfiles",
+              "apiVersion": "2018-04-01",
+              "name": "[parameters('trafficManagerCoreServicesName')]",
+              "location": "global",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('appServiceCoreServicesName'))]"
+              ],
+              "properties": {
+                "profileStatus": "Enabled",
+                "trafficRoutingMethod": "Performance",
+                "dnsConfig": {
+                  "relativeName": "[parameters('trafficManagerCoreServicesName')]",
+                  "ttl": 60
+                },
+                "monitorConfig": {
+                  "profileMonitorStatus": "Online",
+                  "protocol": "HTTPS",
+                  "port": 443,
+                  "path": "/",
+                  "intervalInSeconds": 30,
+                  "toleratedNumberOfFailures": 3,
+                  "timeoutInSeconds": 10,
+                  "customHeaders": [],
+                  "expectedStatusCodeRanges": []
+                },
+                "endpoints": [
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/trafficManagerProfiles', parameters('trafficManagerCoreServicesName')), '/azureEndpoints/CoreServicesAPI')]",
+                    "name": "CoreServicesAPI",
+                    "type": "Microsoft.Network/trafficManagerProfiles/azureEndpoints",
+                    "properties": {
+                      "endpointStatus": "Enabled",
+                      "endpointMonitorStatus": "Online",
+                      "targetResourceId": "[resourceId('Microsoft.Web/sites', parameters('appServiceCoreServicesName'))]",
+                      "target": "[concat(parameters('trafficManagerCoreServicesName'), '.azurewebsites.net')]",
+                      "weight": 1,
+                      "priority": 1,
+                      "endpointlocation": "[parameters('location')]"
+                    }
+                  }
+                ],
+                "trafficViewEnrollmentStatus": "Disabled"
+              }
+            },
+            {
+              "type": "Microsoft.Network/trafficManagerProfiles",
+              "apiVersion": "2018-04-01",
+              "name": "[parameters('trafficManagerPayloadServiceName')]",
+              "location": "global",
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('appServicePayloadServiceName'))]"
+              ],
+              "properties": {
+                "profileStatus": "Enabled",
+                "trafficRoutingMethod": "Performance",
+                "dnsConfig": {
+                  "relativeName": "[parameters('trafficManagerPayloadServiceName')]",
+                  "ttl": 60
+                },
+                "monitorConfig": {
+                  "profileMonitorStatus": "Online",
+                  "protocol": "HTTPS",
+                  "port": 443,
+                  "path": "/",
+                  "intervalInSeconds": 30,
+                  "toleratedNumberOfFailures": 3,
+                  "timeoutInSeconds": 10,
+                  "customHeaders": [],
+                  "expectedStatusCodeRanges": []
+                },
+                "endpoints": [
+                  {
+                    "id": "[concat(resourceId('Microsoft.Network/trafficManagerProfiles', parameters('trafficManagerPayloadServiceName')), '/azureEndpoints/PayloadServicesAPI')]",
+                    "name": "PayloadServicesAPI",
+                    "type": "Microsoft.Network/trafficManagerProfiles/azureEndpoints",
+                    "properties": {
+                      "endpointStatus": "Enabled",
+                      "endpointMonitorStatus": "Online",
+                      "targetResourceId": "[resourceId('Microsoft.Web/sites', parameters('appServicePayloadServiceName'))]",
+                      "target": "[concat(parameters('trafficManagerPayloadServiceName'), '.azurewebsites.net')]",
+                      "weight": 1,
+                      "priority": 1,
+                      "endpointlocation": "[parameters('location')]"
+                    }
+                  }
+                ],
+                "trafficViewEnrollmentStatus": "Disabled"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

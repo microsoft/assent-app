@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <AssemblyName>Microsoft.CFS.Approvals.SupportServices.Helper</AssemblyName>
+    <RootNamespace>Microsoft.CFS.Approvals.SupportServices.Helper</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.9.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.2.5" />
+    <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
+    <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.5" />
+    <PackageReference Include="Microsoft.IdentityModel.Clients.ActiveDirectory" Version="5.2.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Contract\Approvals.Contracts\Approvals.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Core\Approvals.Common.BL\Approvals.Common.BL.csproj" />
+    <ProjectReference Include="..\..\Contract\Approvals.DevTools.Model\Approvals.DevTools.Model.csproj" />
+  </ItemGroup>
+
+</Project>

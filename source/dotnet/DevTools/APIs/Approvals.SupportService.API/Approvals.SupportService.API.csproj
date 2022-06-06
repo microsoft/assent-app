@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <AssemblyName>Microsoft.CFS.Approvals.SupportService.API</AssemblyName>
+    <RootNamespace>Microsoft.CFS.Approvals.SupportService.API</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="3.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="3.1.10" />
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="3.1.23" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Core\Approvals.Common.BL\Approvals.Common.BL.csproj" />
+    <ProjectReference Include="..\..\Contract\Approvals.DevTools.Model\Approvals.DevTools.Model.csproj" />
+    <ProjectReference Include="..\..\Core\Approvals.SupportServices.Helper\Approvals.SupportServices.Helper.csproj" />
+  </ItemGroup>
+
+
+</Project>

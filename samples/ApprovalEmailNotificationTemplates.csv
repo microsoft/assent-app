@@ -1,0 +1,845 @@
+PartitionKey,RowKey,Timestamp,TemplateContent,TemplateContent@type
+4002,PendingApprovalWithAction|None,2022-03-16T07:54:01.967189Z,"<!DOCTYPE html PUBLIC ""-//W3C//DTD XHTML 1.0 Transitional//EN"" ""http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"">
+<html xmlns=""http://www.w3.org/1999/xhtml"" xmlns:mso=""urn:schemas-microsoft-com:office:office"" xmlns:msdt=""uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"">
+    <head>
+        <meta http-equiv=""Content-Type"" content=""text/html; charset=us-ascii"" />
+        <script type=""application/adaptivecard+json"">
+            #AdaptiveJSON#
+        </script>
+        <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" />
+        <title>Request# (#ApprovalIdentifier.DisplayDocumentNumber#) for #UnitValue# #UnitOfMeasure# : Pending Approval</title>
+        <style type=""text/css"">
+            body,
+            td,
+            th {
+                font-family: ""Segoe UI"";
+                font-size: 14px;
+                color: #000;
+            }
+
+            body {
+                background-color: #fff;
+            }
+
+            a {
+                color: #2873c9;
+                border: ""0"";
+            }
+
+            a:link {
+                text-decoration: none;
+            }
+
+            a:visited {
+                text-decoration: none;
+                color: #2873c9;
+            }
+
+            a:hover {
+                text-decoration: underline;
+                color: #2873c9;
+            }
+
+            a:active {
+                text-decoration: none;
+                color: #2873c9;
+            }
+
+            h1 {
+                font-size: 22px;
+                font-weight: 400;
+                color: #000;
+                line-height: normal;
+                text-decoration: blink;
+            }
+
+            h2 {
+                font-size: 18px;
+                color: #000;
+                font-weight: normal;
+                border: ""0"";
+            }
+
+            h3 {
+                font-size: 14px;
+                color: #000;
+                font-weight: normal;
+            }
+
+            .body18 {
+                font-size: 18px;
+            }
+
+            .symbol {
+                font-family: ""Segoe UI Symbol"";
+                color: #2873c9;
+            }
+
+            .comment {
+                background-color: #ffaa00;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Action is required only from people in the ""To"" list of this email.</h2>
+        <p>
+            <font size=""4"">
+                <a title=""Click here to view in Approvals"" href=""#MSApprovalsDetailPage#"">View this request on the Approvals website</a>
+            </font>
+            <br />
+            <br />
+        </p>
+        <div>
+            <h1>
+                Request# #ApprovalIdentifier.DisplayDocumentNumber# for #UnitValue# #UnitOfMeasure# is pending for approval from
+                <strong>#Approver.Name#</strong>
+            </h1>
+            <font size=""4"">Go to <a title=""Click here to view in Approvals"" href=""#MSApprovalsDetailPage#"">Approvals website</a> to take action</font>
+        </div>
+        <p>#UserMessageForComplianceAndAction#</p>
+        <table id=""footer"" style=""width: 100%;"">
+            <tbody>
+                <tr>
+                    <td style=""background-color: #2873c9;"">
+                        <p style=""color: white; font-weight: bold; font-size: 16px; float: left; margin: 8px;"">Approvals</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </body>
+</html>
+<html xmlns=""http://www.w3.org/1999/xhtml"" xmlns:mso=""urn:schemas-microsoft-com:office:office"" xmlns:msdt=""uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"">
+<head>
+    <meta http-equiv=""Content-Type"" content=""text/html; charset=us-ascii"" />
+    <script type=""application/adaptivecard+json"">
+        #AdaptiveJSON#
+    </script>
+    <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" />
+    <title>(#ApprovalIdentifier.DisplayDocumentNumber#) Expense Report for #UnitValue# #UnitOfMeasure# : Pending Approval</title>
+    <style type=""text/css"">
+        body, td, th {
+            font-family: ""Segoe UI"";
+            font-size: 14px;
+            color: #000;
+        }
+
+        body {
+            background-color: #FFF;
+        }
+
+        a {
+            color: #2873C9;
+            border: ""0"";
+        }
+
+            a:link {
+                text-decoration: none;
+            }
+
+            a:visited {
+                text-decoration: none;
+                color: #2873C9;
+            }
+
+            a:hover {
+                text-decoration: underline;
+                color: #2873C9;
+            }
+
+            a:active {
+                text-decoration: none;
+                color: #2873C9;
+            }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 400;
+            color: #000;
+            line-height: normal;
+            text-decoration: blink;
+        }
+
+        h2 {
+            font-size: 18px;
+            color: #000;
+            font-weight: normal;
+            border: ""0"";
+        }
+
+        h3 {
+            font-size: 14px;
+            color: #000;
+            font-weight: normal;
+        }
+
+        .body18 {
+            font-size: 18px;
+        }
+
+        .symbol {
+            font-family: ""Segoe UI Symbol"";
+            color: #2873C9;
+        }
+
+        .comment {
+            background-color: #FFAA00;
+        }
+    </style>
+</head>
+<body>
+    <h2>Action is required only from people in the ""To"" list of this email.</h2>
+    <p>
+        <font size=""4"">
+            <a title=""Click here to view in MSApprovals"" href=""#MSApprovalsDetailPage#"">View this request on the MSApprovals website</a>
+        </font><br /><br />
+    </p>
+    <div>
+        <h1>
+            Expense report #ApprovalIdentifier.DisplayDocumentNumber# for #UnitValue# #UnitOfMeasure# is pending for approval from
+            <strong>#Approver.Name#</strong>
+        </h1>
+        <font size=""4"">Go to <a title=""Click here to view in MSApprovals"" href=""#MSApprovalsDetailPage#"">MSApprovals website</a> to take action</font>
+    </div>
+    <p> #UserMessageForComplianceAndAction# </p>
+    <table id=""footer"" style=""width: 100%"">
+        <tbody>
+            <tr>
+                <td style=""background-color: #2873C9;"">
+                    <p style=""color: white;font-weight: bold;font-size: 16px;float: left;margin: 8px;"">MSApprovals</p>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>",String
+4002,PendingApproval|None,2022-03-16T07:54:03.8278531Z,"<!DOCTYPE html PUBLIC ""-//W3C//DTD XHTML 1.0 Transitional//EN"" ""http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"">
+<html xmlns=""http://www.w3.org/1999/xhtml"" xmlns:mso=""urn:schemas-microsoft-com:office:office"" xmlns:msdt=""uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"">
+    <head>
+        <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" />
+        <title>Request# (#ApprovalIdentifier.DisplayDocumentNumber#) for #UnitValue# #UnitOfMeasure# : Pending Approval</title>
+        <style type=""text/css"">
+            body,
+            td,
+            th {
+                font-family: ""Segoe UI"";
+                font-size: 14px;
+                color: #000;
+            }
+
+            body {
+                background-color: #fff;
+            }
+
+            a {
+                color: #2873c9;
+                border: ""0"";
+            }
+
+            a:link {
+                text-decoration: none;
+            }
+
+            a:visited {
+                text-decoration: none;
+                color: #2873c9;
+            }
+
+            a:hover {
+                text-decoration: underline;
+                color: #2873c9;
+            }
+
+            a:active {
+                text-decoration: none;
+                color: #2873c9;
+            }
+
+            h1 {
+                font-size: 22px;
+                font-weight: 400;
+                color: #000;
+                line-height: normal;
+                text-decoration: blink;
+            }
+
+            h2 {
+                font-size: 18px;
+                color: #000;
+                font-weight: normal;
+                border: ""0"";
+            }
+
+            h3 {
+                font-size: 14px;
+                color: #000;
+                font-weight: normal;
+            }
+
+            .body18 {
+                font-size: 18px;
+            }
+
+            .symbol {
+                font-family: ""Segoe UI Symbol"";
+                color: #2873c9;
+            }
+
+            .comment {
+                background-color: #ffaa00;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Action is required only from people in the ""To"" list of this email.</h2>
+        <p>
+            <font size=""4"">
+                <a title=""Click here to view in Approvals"" href=""#MSApprovalsDetailPage#"">View this request on the Approvals website</a>
+            </font>
+            <br />
+            <br />
+        </p>
+        <div>
+            <h1>
+                Request# #ApprovalIdentifier.DisplayDocumentNumber# for #UnitValue# #UnitOfMeasure# is pending for approval from
+                <strong>#Approver.Name#</strong>
+            </h1>
+            <font size=""4"">Go to <a title=""Click here to view in Approvals"" href=""#MSApprovalsDetailPage#"">Approvals website</a> to take action</font>
+        </div>
+        <p>#UserMessageForComplianceAndAction#</p>
+        <table id=""footer"" style=""width: 100%;"">
+            <tbody>
+                <tr>
+                    <td style=""background-color: #2873c9;"">
+                        <p style=""color: white; font-weight: bold; font-size: 16px; float: left; margin: 8px;"">Approvals</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </body>
+</html>
+<html xmlns=""http://www.w3.org/1999/xhtml"" xmlns:mso=""urn:schemas-microsoft-com:office:office"" xmlns:msdt=""uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"">
+<head>
+    <meta http-equiv=""Content-Type"" content=""text/html; charset=us-ascii"" />
+    <script type=""application/adaptivecard+json"">
+        #AdaptiveJSON#
+    </script>
+    <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" />
+    <title>(#ApprovalIdentifier.DisplayDocumentNumber#) Expense Report for #UnitValue# #UnitOfMeasure# : Pending Approval</title>
+    <style type=""text/css"">
+        body, td, th {
+            font-family: ""Segoe UI"";
+            font-size: 14px;
+            color: #000;
+        }
+
+        body {
+            background-color: #FFF;
+        }
+
+        a {
+            color: #2873C9;
+            border: ""0"";
+        }
+
+            a:link {
+                text-decoration: none;
+            }
+
+            a:visited {
+                text-decoration: none;
+                color: #2873C9;
+            }
+
+            a:hover {
+                text-decoration: underline;
+                color: #2873C9;
+            }
+
+            a:active {
+                text-decoration: none;
+                color: #2873C9;
+            }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 400;
+            color: #000;
+            line-height: normal;
+            text-decoration: blink;
+        }
+
+        h2 {
+            font-size: 18px;
+            color: #000;
+            font-weight: normal;
+            border: ""0"";
+        }
+
+        h3 {
+            font-size: 14px;
+            color: #000;
+            font-weight: normal;
+        }
+
+        .body18 {
+            font-size: 18px;
+        }
+
+        .symbol {
+            font-family: ""Segoe UI Symbol"";
+            color: #2873C9;
+        }
+
+        .comment {
+            background-color: #FFAA00;
+        }
+    </style>
+</head>
+<body>
+    <h2>Action is required only from people in the ""To"" list of this email.</h2>
+    <p>
+        <font size=""4"">
+            <a title=""Click here to view in MSApprovals"" href=""#MSApprovalsDetailPage#"">View this request on the MSApprovals website</a>
+        </font><br /><br />
+    </p>
+    <div>
+        <h1>
+            Expense report #ApprovalIdentifier.DisplayDocumentNumber# for #UnitValue# #UnitOfMeasure# is pending for approval from
+            <strong>#Approver.Name#</strong>
+        </h1>
+        <font size=""4"">Go to <a title=""Click here to view in MSApprovals"" href=""#MSApprovalsDetailPage#"">MSApprovals website</a> to take action</font>
+    </div>
+    <p> #UserMessageForComplianceAndAction# </p>
+    <table id=""footer"" style=""width: 100%"">
+        <tbody>
+            <tr>
+                <td style=""background-color: #2873C9;"">
+                    <p style=""color: white;font-weight: bold;font-size: 16px;float: left;margin: 8px;"">MSApprovals</p>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>",String
+4002,DemoTenantWithAction|Reminder,2022-03-16T07:53:59.1195573Z,"<!DOCTYPE html PUBLIC ""-//W3C//DTD XHTML 1.0 Transitional//EN"" ""http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"">
+<html xmlns=""http://www.w3.org/1999/xhtml"" xmlns:mso=""urn:schemas-microsoft-com:office:office"" xmlns:msdt=""uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"">
+    <head>
+        <meta http-equiv=""Content-Type"" content=""text/html; charset=us-ascii"" />
+        <script type=""application/adaptivecard+json"">
+            #AdaptiveJSON#
+        </script>
+        <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" />
+        <title>Reminder: Request# (#ApprovalIdentifier.DisplayDocumentNumber#) for #UnitValue# #UnitOfMeasure# : Pending Approval</title>
+        <style type=""text/css"">
+            body,
+            td,
+            th {
+                font-family: ""Segoe UI"";
+                font-size: 14px;
+                color: #000;
+            }
+
+            body {
+                background-color: #fff;
+            }
+
+            a {
+                color: #2873c9;
+                border: ""0"";
+            }
+
+            a:link {
+                text-decoration: none;
+            }
+
+            a:visited {
+                text-decoration: none;
+                color: #2873c9;
+            }
+
+            a:hover {
+                text-decoration: underline;
+                color: #2873c9;
+            }
+
+            a:active {
+                text-decoration: none;
+                color: #2873c9;
+            }
+
+            h1 {
+                font-size: 22px;
+                font-weight: 400;
+                color: #000;
+                line-height: normal;
+                text-decoration: blink;
+            }
+
+            h2 {
+                font-size: 18px;
+                color: #000;
+                font-weight: normal;
+                border: ""0"";
+            }
+
+            h3 {
+                font-size: 14px;
+                color: #000;
+                font-weight: normal;
+            }
+
+            .body18 {
+                font-size: 18px;
+            }
+
+            .symbol {
+                font-family: ""Segoe UI Symbol"";
+                color: #2873c9;
+            }
+
+            .comment {
+                background-color: #ffaa00;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Action is required only from people in the ""To"" list of this email.</h2>
+        <p>
+            <font size=""4"">
+                <a title=""Click here to view in Approvals"" href=""#MSApprovalsDetailPage#"">View this request on the Approvals website</a>
+            </font>
+            <br />
+            <br />
+        </p>
+        <div>
+            <h1>
+                Request# #ApprovalIdentifier.DisplayDocumentNumber# for #UnitValue# #UnitOfMeasure# is pending for approval from
+                <strong>#Approver.Name#</strong>
+            </h1>
+            <font size=""4"">Go to <a title=""Click here to view in Approvals"" href=""#MSApprovalsDetailPage#"">Approvals website</a> to take action</font>
+        </div>
+        <p>#UserMessageForComplianceAndAction#</p>
+        <table id=""footer"" style=""width: 100%;"">
+            <tbody>
+                <tr>
+                    <td style=""background-color: #2873c9;"">
+                        <p style=""color: white; font-weight: bold; font-size: 16px; float: left; margin: 8px;"">Approvals</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </body>
+</html>
+<html xmlns=""http://www.w3.org/1999/xhtml"" xmlns:mso=""urn:schemas-microsoft-com:office:office"" xmlns:msdt=""uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"">
+<head>
+    <meta http-equiv=""Content-Type"" content=""text/html; charset=us-ascii"" />
+    <script type=""application/adaptivecard+json"">
+        #AdaptiveJSON#
+    </script>
+    <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" />
+    <title>(#ApprovalIdentifier.DisplayDocumentNumber#) Expense Report for #UnitValue# #UnitOfMeasure# : Pending Approval</title>
+    <style type=""text/css"">
+        body, td, th {
+            font-family: ""Segoe UI"";
+            font-size: 14px;
+            color: #000;
+        }
+
+        body {
+            background-color: #FFF;
+        }
+
+        a {
+            color: #2873C9;
+            border: ""0"";
+        }
+
+            a:link {
+                text-decoration: none;
+            }
+
+            a:visited {
+                text-decoration: none;
+                color: #2873C9;
+            }
+
+            a:hover {
+                text-decoration: underline;
+                color: #2873C9;
+            }
+
+            a:active {
+                text-decoration: none;
+                color: #2873C9;
+            }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 400;
+            color: #000;
+            line-height: normal;
+            text-decoration: blink;
+        }
+
+        h2 {
+            font-size: 18px;
+            color: #000;
+            font-weight: normal;
+            border: ""0"";
+        }
+
+        h3 {
+            font-size: 14px;
+            color: #000;
+            font-weight: normal;
+        }
+
+        .body18 {
+            font-size: 18px;
+        }
+
+        .symbol {
+            font-family: ""Segoe UI Symbol"";
+            color: #2873C9;
+        }
+
+        .comment {
+            background-color: #FFAA00;
+        }
+    </style>
+</head>
+<body>
+    <h2>Action is required only from people in the ""To"" list of this email.</h2>
+    <p>
+        <font size=""4"">
+            <a title=""Click here to view in MSApprovals"" href=""#MSApprovalsDetailPage#"">View this request on the MSApprovals website</a>
+        </font><br /><br />
+    </p>
+    <div>
+        <h1>
+            Expense report #ApprovalIdentifier.DisplayDocumentNumber# for #UnitValue# #UnitOfMeasure# is pending for approval from
+            <strong>#Approver.Name#</strong>
+        </h1>
+        <font size=""4"">Go to <a title=""Click here to view in MSApprovals"" href=""#MSApprovalsDetailPage#"">MSApprovals website</a> to take action</font>
+    </div>
+    <p> #UserMessageForComplianceAndAction# </p>
+    <table id=""footer"" style=""width: 100%"">
+        <tbody>
+            <tr>
+                <td style=""background-color: #2873C9;"">
+                    <p style=""color: white;font-weight: bold;font-size: 16px;float: left;margin: 8px;"">MSApprovals</p>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>",String
+4002,DemoTenant|Reminder,2022-03-16T07:54:00.9961806Z,"<!DOCTYPE html PUBLIC ""-//W3C//DTD XHTML 1.0 Transitional//EN"" ""http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"">
+<html xmlns=""http://www.w3.org/1999/xhtml"" xmlns:mso=""urn:schemas-microsoft-com:office:office"" xmlns:msdt=""uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"">
+    <head>
+        <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" />
+        <title>Reminder: Request# (#ApprovalIdentifier.DisplayDocumentNumber#) for #UnitValue# #UnitOfMeasure# : Pending Approval</title>
+        <style type=""text/css"">
+            body,
+            td,
+            th {
+                font-family: ""Segoe UI"";
+                font-size: 14px;
+                color: #000;
+            }
+
+            body {
+                background-color: #fff;
+            }
+
+            a {
+                color: #2873c9;
+                border: ""0"";
+            }
+
+            a:link {
+                text-decoration: none;
+            }
+
+            a:visited {
+                text-decoration: none;
+                color: #2873c9;
+            }
+
+            a:hover {
+                text-decoration: underline;
+                color: #2873c9;
+            }
+
+            a:active {
+                text-decoration: none;
+                color: #2873c9;
+            }
+
+            h1 {
+                font-size: 22px;
+                font-weight: 400;
+                color: #000;
+                line-height: normal;
+                text-decoration: blink;
+            }
+
+            h2 {
+                font-size: 18px;
+                color: #000;
+                font-weight: normal;
+                border: ""0"";
+            }
+
+            h3 {
+                font-size: 14px;
+                color: #000;
+                font-weight: normal;
+            }
+
+            .body18 {
+                font-size: 18px;
+            }
+
+            .symbol {
+                font-family: ""Segoe UI Symbol"";
+                color: #2873c9;
+            }
+
+            .comment {
+                background-color: #ffaa00;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Action is required only from people in the ""To"" list of this email.</h2>
+        <p>
+            <font size=""4"">
+                <a title=""Click here to view in Approvals"" href=""#MSApprovalsDetailPage#"">View this request on the Approvals website</a>
+            </font>
+            <br />
+            <br />
+        </p>
+        <div>
+            <h1>
+                Request# #ApprovalIdentifier.DisplayDocumentNumber# for #UnitValue# #UnitOfMeasure# is pending for approval from
+                <strong>#Approver.Name#</strong>
+            </h1>
+            <font size=""4"">Go to <a title=""Click here to view in Approvals"" href=""#MSApprovalsDetailPage#"">Approvals website</a> to take action</font>
+        </div>
+        <p>#UserMessageForComplianceAndAction#</p>
+        <table id=""footer"" style=""width: 100%;"">
+            <tbody>
+                <tr>
+                    <td style=""background-color: #2873c9;"">
+                        <p style=""color: white; font-weight: bold; font-size: 16px; float: left; margin: 8px;"">Approvals</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </body>
+</html>
+<html xmlns=""http://www.w3.org/1999/xhtml"" xmlns:mso=""urn:schemas-microsoft-com:office:office"" xmlns:msdt=""uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"">
+<head>
+    <meta http-equiv=""Content-Type"" content=""text/html; charset=us-ascii"" />
+    <script type=""application/adaptivecard+json"">
+        #AdaptiveJSON#
+    </script>
+    <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"" />
+    <title>(#ApprovalIdentifier.DisplayDocumentNumber#) Expense Report for #UnitValue# #UnitOfMeasure# : Pending Approval</title>
+    <style type=""text/css"">
+        body, td, th {
+            font-family: ""Segoe UI"";
+            font-size: 14px;
+            color: #000;
+        }
+
+        body {
+            background-color: #FFF;
+        }
+
+        a {
+            color: #2873C9;
+            border: ""0"";
+        }
+
+            a:link {
+                text-decoration: none;
+            }
+
+            a:visited {
+                text-decoration: none;
+                color: #2873C9;
+            }
+
+            a:hover {
+                text-decoration: underline;
+                color: #2873C9;
+            }
+
+            a:active {
+                text-decoration: none;
+                color: #2873C9;
+            }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 400;
+            color: #000;
+            line-height: normal;
+            text-decoration: blink;
+        }
+
+        h2 {
+            font-size: 18px;
+            color: #000;
+            font-weight: normal;
+            border: ""0"";
+        }
+
+        h3 {
+            font-size: 14px;
+            color: #000;
+            font-weight: normal;
+        }
+
+        .body18 {
+            font-size: 18px;
+        }
+
+        .symbol {
+            font-family: ""Segoe UI Symbol"";
+            color: #2873C9;
+        }
+
+        .comment {
+            background-color: #FFAA00;
+        }
+    </style>
+</head>
+<body>
+    <h2>Action is required only from people in the ""To"" list of this email.</h2>
+    <p>
+        <font size=""4"">
+            <a title=""Click here to view in MSApprovals"" href=""#MSApprovalsDetailPage#"">View this request on the MSApprovals website</a>
+        </font><br /><br />
+    </p>
+    <div>
+        <h1>
+            Expense report #ApprovalIdentifier.DisplayDocumentNumber# for #UnitValue# #UnitOfMeasure# is pending for approval from
+            <strong>#Approver.Name#</strong>
+        </h1>
+        <font size=""4"">Go to <a title=""Click here to view in MSApprovals"" href=""#MSApprovalsDetailPage#"">MSApprovals website</a> to take action</font>
+    </div>
+    <p> #UserMessageForComplianceAndAction# </p>
+    <table id=""footer"" style=""width: 100%"">
+        <tbody>
+            <tr>
+                <td style=""background-color: #2873C9;"">
+                    <p style=""color: white;font-weight: bold;font-size: 16px;float: left;margin: 8px;"">MSApprovals</p>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>",String

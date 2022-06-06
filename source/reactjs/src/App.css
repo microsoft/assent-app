@@ -1,0 +1,564 @@
+body {
+    overflow: hidden;
+    padding: 0px 0px 0px !important;
+}
+
+@media only screen and (max-width: 1023px) {
+    body.scrollable-area {
+        overflow: auto !important;
+    }
+}
+
+.error {
+    color: red;
+}
+
+.sr-only {
+    border: 0; 
+    clip: rect(0 0 0 0); 
+    height: 1px; 
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    width: 1px;
+  }
+
+/* Overriding background-color for OCV feedback option selected based on contrast recommendation from accessibility */
+.obf-OverallAnchorActive {
+    background-color: #0078d4 !important;
+}
+
+.more-details-card-comment-open {
+    margin-bottom: 240px;
+}
+
+.more-details-card-comment-close {
+    margin-bottom: 40px;
+}
+
+.approve-note-input {
+    max-width: 75%;
+    width: 75%;
+}
+
+.approve-note-input-style {
+    max-width: 92%;
+}
+
+.horizontal-separator {
+    border-right: 1px solid lightgray;
+}
+
+@media only screen and (max-width: 768px) {
+    /* For mobile phones: */
+    .approve-note-input {
+        max-width: 70% !important;
+    }
+    .approve-note-input-style {
+        max-width: 92%;
+    }
+}
+
+@media (min-device-width: 1023px) and (max-width: 320px) {
+    ::-webkit-scrollbar-thumb {
+        border: 1px solid transparent !important;
+    }
+
+    ::-webkit-scrollbar {
+        width: 4px !important;
+        height: 8px;
+    }
+
+    div[role^='banner'],
+    div[role*=' banner'] {
+        height: 14px;
+    }
+
+    button[role^='switch'],
+    button[role*=' switch'] {
+        height: 12px;
+        width: 20px;
+        margin-top: 2.5px;
+        border-radius: 10px;
+    }
+
+    .ms-Toggle-thumb {
+        width: 8px;
+        height: 8px;
+        border-radius: 8px;
+        border-width: 4px;
+    }
+
+    label[class^='ms-Toggle-stateText'],
+    label[class*=' ms-Toggle-stateText'] {
+        font-size: 10px;
+    }
+
+    label[class^='ms-Toggle-label'],
+    label[class*=' ms-Toggle-label'] {
+        font-size: 5px;
+    }
+
+    body {
+        padding: 14px 0px 0px !important;
+    }
+    .primarybuttonsClass {
+        height: 3px !important;
+        font-size: 3px;
+        padding: 0px 0px;
+    }
+   
+    .caretDownWrapper,
+    .title {
+        height: 7px !important;
+        line-height: 3px !important;
+        font-size: 3px; 
+    }
+    .ms-Link{
+        height: 18px !important;
+        line-height: 14px !important;
+        font-size: 14px;
+    }
+    .ms-Dropdown-title {
+        height: 12px !important;
+        line-height: 10px !important;
+        font-size: 3px;
+        margin-top: -5.5px;
+    }
+    .ms-Dropdown-caretDownWrapper {
+        height: 7px !important;
+        line-height: 7px !important;
+        font-size: 3px;
+        margin-top: 3px;
+    }
+
+    .ms-Checkbox-text {
+        line-height: 12px !important;
+        font-size: 4px;
+        margin-left: 0px;
+    }
+
+    .ms-Checkbox-checkbox,
+    .checkbox {
+        height: 10px !important;
+        width: 10px;
+        line-height: 3px !important;
+        font-size: 8px;
+        margin-top: 2%;
+    }
+    .ms-Icon {
+        font-size: 10px;
+    }
+    .ms-MessageBar-icon {
+        height: 10px !important;
+        width: 10px;
+        font-size: 8px;
+        margin-top: 4px;
+    }
+
+    div[class^='searchBoxContainer'],
+    div[class*=' searchBoxContainer'] {
+        height: 7px !important;
+        line-height: 3px !important;
+        font-size: 3px;
+    }
+
+    div[class^='rightItemsContainer'],
+    div[class*=' rightItemsContainer'] {
+        height: 12px !important;
+        line-height: 3px !important;
+    }
+
+    div[class^='rightItemButton'],
+    div[class*=' rightItemButton'] {
+        height: 7px !important;
+        line-height: 2px !important;
+        font-size: 3px;
+    }
+    div[class^='ms-Persona-initials'],
+    div[class*=' ms-Persona-initials'] {
+        font-size: 0.5px;
+        height: 12px;
+        width: 12px;
+        line-height: 2px;
+        padding-top: 4.05px;
+    }
+    div[class^='mobileNavWrapper'],
+    div[class*=' mobileNavWrapper'] {
+        margin-top: -2px;
+    }
+    .ms-Button {
+        height: 15px !important;
+        font-size: 7px;
+    }
+}
+
+@media (min-device-width: 1023px) and (min-width: 639px) and (max-width: 916px) {
+    ::-webkit-scrollbar-thumb {
+        border: 1px solid transparent !important;
+    }
+
+    ::-webkit-scrollbar {
+        width: 8px !important;
+        height: 8px;
+    }
+}
+
+@media (min-device-width: 1023px) and (min-width: 320px) and (max-width: 639px) {
+    ::-webkit-scrollbar-thumb {
+        border: 1px solid transparent !important;
+    }
+
+    ::-webkit-scrollbar {
+        width: 5px !important;
+        height: 14px;
+    }
+
+    div[role^='banner'],
+    div[role*=' banner'] {
+        height: 24px;
+    }
+
+    button[role^='switch'],
+    button[role*=' switch'] {
+        height: 20px;
+        margin-top: 1px;
+    }
+
+    label[class^='ms-Toggle-stateText'],
+    label[class*=' ms-Toggle-stateText'] {
+        font-size: 14px;
+    }
+
+    label[class^='ms-Toggle-label'],
+    label[class*=' ms-Toggle-label'] {
+        font-size: 14px;
+    }
+
+    body {
+        padding: 0px 0px 0px !important;
+    }
+
+    .primarybuttonsClass {
+        height: 14px !important;
+        font-size: 8px;
+        padding: 0px 0px;
+    }
+    .ms-Checkbox-text {
+        line-height: 12px !important;
+        font-size: 6px;
+        margin-left: 0px;
+    }
+    .ms-Checkbox-checkbox,
+    .checkbox {
+        height: 12px !important;
+        width: 12px;
+        line-height: 12px !important;
+        font-size: 6px;
+    }
+    .searchBoxContainer-240,
+    .ms-Dropdown-caretDownWrapper,
+    .caretDownWrapper,
+    .ms-Dropdown-title,
+    .title,
+    .ms-Dropdown-title {
+        height: 14px !important;
+        line-height: 14px !important;
+        font-size: 6px;
+    }
+    .ms-Link {
+        font-size: 12px;
+    }
+    .ms-MessageBar-icon {
+        height: 10px !important;
+        width: 10px;
+        font-size: 8px;
+        margin-top: 3px;
+    }
+
+    div[class^='searchBoxContainer'],
+    div[class*=' searchBoxContainer'] {
+        height: 14px !important;
+        line-height: 14px !important;
+        font-size: 6px;
+    }
+
+    div[class^='rightItemsContainer'],
+    div[class*=' rightItemsContainer'] {
+        height: 24px !important;
+    }
+
+    div[class^='rightItemButton'],
+    div[class*=' rightItemButton'] {
+        height: 14px !important;
+        line-height: 14px !important;
+        font-size: 6px;
+        padding-top: 12px;
+    }
+    div[class^='ms-Persona-initials'],
+    div[class*=' ms-Persona-initials'] {
+        font-size: 6px;
+        height: 14px;
+        width: 14px;
+        line-height: 14px;
+    }
+    div[class^='mobileNavWrapper'],
+    div[class*=' mobileNavWrapper'] {
+        margin-top: 0px;
+    }
+
+    .ms-Button {
+        height: 24px !important;
+    }
+}
+@media (min-device-width: 1023px) and (min-width: 640px) and (max-width: 915px) {
+    .ms-lg12 {
+        width: 100vw;
+    }
+}
+
+.ms-CustomGrid-col {
+    position: relative;
+    min-height: 1px;
+    padding-left: 8px;
+    box-sizing: border-box;
+}
+
+[dir='ltr'] .ms-CustomGrid-col {
+    float: left;
+}
+
+[dir='rtl'] .ms-CustomGrid-col {
+    float: right;
+}
+
+.ms-CustomGrid-col .ms-CustomGrid {
+    padding: 0;
+}
+
+.lineItemGridContainer {
+    overflow-x: auto;
+}
+
+#main {
+    outline: none;
+}
+
+.navContainer {
+    position: fixed;
+    background: #e5e5e5; /*rgb(242, 242, 242)*/
+}
+
+.primarybuttonsClass {
+    font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto,
+        'Helvetica Neue', sans-serif;
+}
+
+@media only screen and (min-device-width: 1023px) and (max-width: 1023px) {
+    .loggedin-user-name .ms-Persona-primaryText {
+        width: 100px !important;
+    }
+}
+
+.custom-label {
+    font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto,
+        'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-size: 14px;
+    font-weight: 600;
+    color: rgb(23, 23, 23);
+    box-sizing: border-box;
+    box-shadow: none;
+    margin: 0px;
+    display: block;
+    padding: 5px 0px;
+    overflow-wrap: break-word;
+}
+
+.custom-label::after {
+    content: ' *';
+    color: rgb(164, 38, 44);
+    padding-right: 12px;
+}
+
+.custom-input-error {
+    font-family: 'Segoe UI', 'Segoe UI Web (West European)', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto,
+        'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-size: 12px;
+    font-weight: 400;
+    color: rgb(164, 38, 44);
+    margin: 0px;
+    padding-top: 5px;
+    display: flex;
+    align-items: center;
+}
+
+.datePicker-style {
+    width: 142px;
+    height: 30px;
+}
+
+.datePicker-style:focus {
+    outline: none;
+    border: 2px solid rgb(0, 120, 212);
+}
+
+::-webkit-scrollbar-thumb {
+    border: 7px solid transparent;
+    background: rgba(0, 0, 0, 0.2);
+    background: var(--palette-black-alpha-20, rgba(0, 0, 0, 0.2));
+    border-radius: 10px;
+    background-clip: padding-box;
+}
+
+@media only screen and (max-width: 320px) {
+    ::-webkit-scrollbar-thumb {
+        border: 2px solid transparent;
+    }
+}
+
+::-webkit-scrollbar {
+    width: 18px;
+    height: 18px;
+}
+
+.detail-panel-with-sticky-footer .ms-Panel-scrollableContent div[class^='body'] {
+    margin-left: -0px !important;
+    margin-right: -0px !important;
+}
+
+.directionChange {
+    flex-flow: row wrap;
+}
+
+.alignCenter {
+    margin: 15px 10px 0 0;
+}
+
+@media only screen and (min-device-width: 768px) and (max-device-width: 1024px) and (orientation: portrait) {
+    /* STYLES GO HERE */
+    .ms-width50 {
+        width: 50%;
+    }
+}
+
+.h3-width {
+    width: 100%;
+}
+
+@media (min-device-width: 1023px) and (min-width: 320px) and (max-width: 639px) {
+    .ms-Checkbox-text {
+        line-height: 16px !important;
+        font-size: 16px !important;       
+        margin-left: 0px;
+      
+    }
+    .ms-Checkbox-checkbox,
+    .checkbox {
+        height: 16px !important;
+        width: 16px;      
+        font-size: 16px;      
+    }
+   
+    .ms-Dropdown-title,
+    .ms-Dropdown-title {
+        height: 23px !important;      
+        font-size: 16px !important;   
+    }
+    .ms-Dropdown-caretDownWrapper {
+        height: 7px !important;
+        line-height: 7px !important;
+        font-size: 7px;
+        margin-top: 7px;
+    }    
+}
+
+@media only screen and  (orientation: portrait) {
+    /* STYLES GO HERE */
+    .h3-width {
+        width: 60%;
+    }
+}
+
+.bulkSelectedCardStyle {
+    background-color: #d0e7f8 !important;
+}
+
+.defaultCardStyle {
+    background-color: #ffffff !important;
+}
+
+@media (max-width: 480px) {
+    .approve-note-input {
+        width: 100%;
+        max-width: 100% !important;
+    }
+    .ms-Grid-col-mobile {
+        padding-right: 1%;
+    }
+}
+
+@media (min-width: 640px) {
+    .ms-lg12-docked {
+        width: 50%;
+    }
+}
+.ms-MessageBar-innerText {
+    overflow: visible;
+}
+
+@media (min-width: 1023px) {
+    .ms-xl8-docked {
+        width: 66.66666666666666%;
+    }
+}
+
+@media (min-width: 1366px) {
+    .ms-xxl8-docked {
+        width: 66.66666666666666%;
+    }
+}
+
+@media (min-width: 1920px) {
+    .ms-xxxl8-docked {
+        width: 66.66666666666666%;
+    }
+}
+
+@media (min-width: 1024px) {
+    .ms-xl6-docked {
+        width: 50%;
+    }
+}
+
+@media (max-width: 1023px) {
+    .ms-hiddenLaptopDown {
+        display: none !important;
+    }
+}
+
+@media (min-width: 641px) {
+    .hidden-LgUpCustom {
+        display: none !important;
+    }
+}
+
+@media only screen and (forced-colors: active) {
+    .text-365 {
+        forced-color-adjust: auto !important;
+    }
+    .checkbox-363 {
+        forced-color-adjust: auto !important;
+    }
+    .checkbox-314 {
+        forced-color-adjust: auto !important;
+    }
+    .checkbox-374 {
+        forced-color-adjust: auto !important;
+    }
+    .text-316 {
+        forced-color-adjust: auto !important;
+    }
+}

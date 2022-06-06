@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+        "target": "es5",
+        "moduleResolution": "node",
+        "strict": true,
+        "sourceMap": true,
+        "strictNullChecks": false,
+        "jsx": "react",
+        "lib": ["dom", "es6"]
+    }
+}

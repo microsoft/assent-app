@@ -1,0 +1,485 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`WarningView should render Warning view correctly when onDismiss and warningMessages is undefined 1`] = `
+Object {
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="ms-MessageBar ms-MessageBar--warning ms-MessageBar-multiline root-84"
+      >
+        <div
+          class="ms-MessageBar-content content-85"
+        >
+          <div
+            aria-hidden="true"
+            class="ms-MessageBar-icon iconContainer-86"
+          >
+            <i
+              aria-hidden="true"
+              class="icon-93"
+              data-icon-name="Info"
+            />
+          </div>
+          <div
+            aria-live="polite"
+            class="ms-MessageBar-text text-88"
+            id="MessageBar2"
+            role="status"
+          >
+            <span
+              aria-label="Warning message"
+              class="ms-MessageBar-innerText innerText-89"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="ms-MessageBar ms-MessageBar--warning ms-MessageBar-multiline root-84"
+    >
+      <div
+        class="ms-MessageBar-content content-85"
+      >
+        <div
+          aria-hidden="true"
+          class="ms-MessageBar-icon iconContainer-86"
+        >
+          <i
+            aria-hidden="true"
+            class="icon-93"
+            data-icon-name="Info"
+          />
+        </div>
+        <div
+          aria-live="polite"
+          class="ms-MessageBar-text text-88"
+          id="MessageBar2"
+          role="status"
+        >
+          <span
+            aria-label="Warning message"
+            class="ms-MessageBar-innerText innerText-89"
+          />
+        </div>
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;
+
+exports[`WarningView should render Warning view correctly when warningMessage is defined 1`] = `
+Object {
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="ms-MessageBar ms-MessageBar--warning ms-MessageBar-multiline root-84"
+      >
+        <div
+          class="ms-MessageBar-content content-85"
+        >
+          <div
+            aria-hidden="true"
+            class="ms-MessageBar-icon iconContainer-86"
+          >
+            <i
+              aria-hidden="true"
+              class="icon-93"
+              data-icon-name="Info"
+            />
+          </div>
+          <div
+            aria-live="polite"
+            class="ms-MessageBar-text text-88"
+            id="MessageBar3"
+            role="status"
+          >
+            <span
+              aria-label="Warning message"
+              class="ms-MessageBar-innerText innerText-89"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="ms-MessageBar ms-MessageBar--warning ms-MessageBar-multiline root-84"
+    >
+      <div
+        class="ms-MessageBar-content content-85"
+      >
+        <div
+          aria-hidden="true"
+          class="ms-MessageBar-icon iconContainer-86"
+        >
+          <i
+            aria-hidden="true"
+            class="icon-93"
+            data-icon-name="Info"
+          />
+        </div>
+        <div
+          aria-live="polite"
+          class="ms-MessageBar-text text-88"
+          id="MessageBar3"
+          role="status"
+        >
+          <span
+            aria-label="Warning message"
+            class="ms-MessageBar-innerText innerText-89"
+          />
+        </div>
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;
+
+exports[`WarningView should render Warning view correctly with undefined props 1`] = `
+Object {
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="ms-MessageBar ms-MessageBar--warning ms-MessageBar-multiline root-84"
+      >
+        <div
+          class="ms-MessageBar-content content-85"
+        >
+          <div
+            aria-hidden="true"
+            class="ms-MessageBar-icon iconContainer-86"
+          >
+            <i
+              aria-hidden="true"
+              class="icon-93"
+              data-icon-name="Info"
+            />
+          </div>
+          <div
+            aria-live="polite"
+            class="ms-MessageBar-text text-88"
+            id="MessageBar1"
+            role="status"
+          >
+            <span
+              aria-label="Warning message"
+              class="ms-MessageBar-innerText innerText-89"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="ms-MessageBar ms-MessageBar--warning ms-MessageBar-multiline root-84"
+    >
+      <div
+        class="ms-MessageBar-content content-85"
+      >
+        <div
+          aria-hidden="true"
+          class="ms-MessageBar-icon iconContainer-86"
+        >
+          <i
+            aria-hidden="true"
+            class="icon-93"
+            data-icon-name="Info"
+          />
+        </div>
+        <div
+          aria-live="polite"
+          class="ms-MessageBar-text text-88"
+          id="MessageBar1"
+          role="status"
+        >
+          <span
+            aria-label="Warning message"
+            class="ms-MessageBar-innerText innerText-89"
+          />
+        </div>
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;
+
+exports[`WarningView should render Warning view correctly with warning title 1`] = `
+Object {
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="ms-MessageBar ms-MessageBar--warning ms-MessageBar-multiline root-84"
+      >
+        <div
+          class="ms-MessageBar-content content-85"
+        >
+          <div
+            aria-hidden="true"
+            class="ms-MessageBar-icon iconContainer-86"
+          >
+            <i
+              aria-hidden="true"
+              class="icon-93"
+              data-icon-name="Info"
+            />
+          </div>
+          <div
+            aria-live="polite"
+            class="ms-MessageBar-text text-88"
+            id="MessageBar0"
+            role="status"
+          >
+            <span
+              aria-label="Warning message"
+              class="ms-MessageBar-innerText innerText-89"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="ms-MessageBar ms-MessageBar--warning ms-MessageBar-multiline root-84"
+    >
+      <div
+        class="ms-MessageBar-content content-85"
+      >
+        <div
+          aria-hidden="true"
+          class="ms-MessageBar-icon iconContainer-86"
+        >
+          <i
+            aria-hidden="true"
+            class="icon-93"
+            data-icon-name="Info"
+          />
+        </div>
+        <div
+          aria-live="polite"
+          class="ms-MessageBar-text text-88"
+          id="MessageBar0"
+          role="status"
+        >
+          <span
+            aria-label="Warning message"
+            class="ms-MessageBar-innerText innerText-89"
+          />
+        </div>
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;

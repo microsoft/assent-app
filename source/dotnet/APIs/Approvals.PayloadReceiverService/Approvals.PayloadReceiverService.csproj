@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <AssemblyName>Microsoft.CFS.Approvals.PayloadReceiverService</AssemblyName>
+    <RootNamespace>Microsoft.CFS.Approvals.PayloadReceiverService</RootNamespace>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DocumentationFile>Microsoft.CFS.Approvals.PayloadReceiverService.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
+    <UserSecretsId>d248b834-21dd-43fe-a156-aad89754d714</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.5.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="3.1.10" />
+    <PackageReference Include="Microsoft.Extensions.Azure" Version="1.1.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" Version="4.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="3.1.23" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="5.6.3" />
+    <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Common\Approvals.Data.Azure.CosmosDb\Approvals.Data.Azure.CosmosDb.csproj" />
+    <ProjectReference Include="..\..\Common\Approvals.LogManager\Approvals.LogManager.csproj" />
+    <ProjectReference Include="..\..\Contract\Approvals.Contracts\Approvals.Contracts.csproj" />
+    <ProjectReference Include="..\..\Core\Approvals.Common.BL\Approvals.Common.BL.csproj" />
+    <ProjectReference Include="..\..\Core\Approvals.PayloadReceiver.BL\Approvals.PayloadReceiver.BL.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Microsoft.CFS.Approvals.PayloadReceiverService.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

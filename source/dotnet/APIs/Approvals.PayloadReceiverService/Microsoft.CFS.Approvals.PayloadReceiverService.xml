@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Microsoft.CFS.Approvals.PayloadReceiverService</name>
+    </assembly>
+    <members>
+        <member name="T:Microsoft.CFS.Approvals.PayloadReceiverService.Controllers.api.v1.PayloadReceiverController">
+            <summary>
+            The PayloadReceiver controller class
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.PayloadReceiverService.Controllers.api.v1.PayloadReceiverController._payloadReceiverManager">
+            <summary>
+            The payload receiver manager.
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.PayloadReceiverService.Controllers.api.v1.PayloadReceiverController.#ctor(Microsoft.CFS.Approvals.PayloadReceiver.BL.Interface.IPayloadReceiverManager)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.PayloadReceiverService.Controllers.api.v1.PayloadReceiverController"/> class.
+            </summary>
+            <param name="payloadReceiverManager">The payload receiver manager.</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.PayloadReceiverService.Controllers.api.v1.PayloadReceiverController.Post(System.String)">
+            <summary>
+            Main controller method which accepts a post action from tenants to send the ApprovalRequestExpression for processing
+            This method de serializes and reconstructs the ARX, validates using Business Rules Validator, returns a GUID if successful or errors if validations fail and then sends the payload into destination (Topic, Service or Event Hubs etc.)
+            TODO:: When server side validations are introduced, especially the alias validation logic which makes http calls to GraphAPI, introduce an async controller manager
+            </summary>
+            <param name="tenantId">Unique TenantId (GUID) specifying a particular Tenant for which the Payload is received</param>
+            <returns>
+            This method returns a JSON which contains the PayloadId and ValidationResults if any validation rule fails during processing;
+            In case of success scenarios it returns ValidationResults as null
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP POST api/v1/PayloadReceiver?TenantId=[DocumentTypeId]
+            </para>
+            </remarks>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.PayloadReceiverService.Utils.AddRequiredHeaderParameter">
+            <summary>
+            Operation filter to add the requirement of the custom header
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.PayloadReceiverService.Utils.AddRequiredHeaderParameter.Apply(Microsoft.OpenApi.Models.OpenApiOperation,Swashbuckle.AspNetCore.SwaggerGen.OperationFilterContext)">
+            <summary>
+            Updated Swagger UI to add custom header
+            </summary>
+            <param name="operation"></param>
+            <param name="context"></param>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.PayloadReceiverService.Utils.AuthorizationMiddleware">
+            <summary>
+            Custom Authorization Middleware class which takes care of additional security checks
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.PayloadReceiverService.Utils.AuthorizationMiddleware.InvokeAsync(Microsoft.AspNetCore.Http.HttpContext,Microsoft.AspNetCore.Http.RequestDelegate)">
+            <summary>
+            Create Claims Principal from Request Headers which are added by Azure App Service Authentication (EasyAuth) and validate the required claims as applicable
+            </summary>
+            <param name="context"></param>
+            <param name="next"></param>
+            <returns></returns>
+        </member>
+    </members>
+</doc>

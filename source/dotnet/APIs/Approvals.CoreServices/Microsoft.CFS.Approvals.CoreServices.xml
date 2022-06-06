@@ -1,0 +1,1160 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Microsoft.CFS.Approvals.CoreServices</name>
+    </assembly>
+    <members>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AboutController">
+            <summary>
+            Class AboutController.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AboutController._aboutHelper">
+            <summary>
+            The about helper
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AboutController._performanceLogger">
+            <summary>
+            The performance logger
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AboutController._logProvider">
+            <summary>
+            The log provider
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AboutController.#ctor(Microsoft.CFS.Approvals.CoreServices.BL.Interface.IAboutHelper,Microsoft.CFS.Approvals.Common.DL.Interface.IPerformanceLogger,Microsoft.CFS.Approvals.LogManager.Provider.Interface.ILogProvider)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AboutController"/> class.
+            </summary>
+            <param name="aboutHelper">The about helper.</param>
+            <param name="performanceLogger">The performance logger</param>
+            <param name="logProvider">The log provider</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AboutController.Get(System.String)">
+            <summary>
+            Get information for About page
+            </summary>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <returns>
+            URLs from Configuration respective to the About page
+            </returns>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AdaptiveDetailController">
+            <summary>
+            the Adaptive Detail Controller
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AdaptiveDetailController._adaptiveDetailsHelper">
+            <summary>
+            The Adaptive Details Helper
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AdaptiveDetailController._performanceLogger">
+            <summary>
+            The performance logger
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AdaptiveDetailController._logProvider">
+            <summary>
+            The log provider
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AdaptiveDetailController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IAdaptiveDetailsHelper,Microsoft.CFS.Approvals.Common.DL.Interface.IPerformanceLogger,Microsoft.CFS.Approvals.LogManager.Provider.Interface.ILogProvider)">
+            <summary>
+            Constructor for AdaptiveDetailsController
+            </summary>
+            <param name="adaptiveDetailsHelper">Adaptive Details Helper class</param>
+            <param name="logProvider">Log provider</param>
+            <param name="performanceLogger">Performance logger</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AdaptiveDetailController.Get(System.Int32,System.String,System.String,System.String,System.String)">
+            <summary>
+            Retrieves adaptive card template in Dictionary format as per the template type
+            </summary>
+            <param name="tenantId">Indicates the Tenant for which the request's (documentNumber) data needs to be retrieved</param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <param name="tcv">GUID Transaction Id. Unique for each transaction</param>
+            <param name="xcv">GUID Cross Correlation Vector. Unique for each request across system boundaries</param>
+            <param name="templateType">Template Type which can be Summary, Details, Action, Footer, All, Full</param>
+            <returns>
+            This method returns the tenant specific adaptive templatefrom storage according to TemplateType passed
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            Gets Adaptive Templates for the tenant
+            HTTP GET api/AdaptiveDetail/[tenantMapIdId]
+            </para>
+            </remarks>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AlertsController">
+            <summary>
+            Class AlertsController.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AlertsController._tenantDownTimeMessagesHelper">
+            <summary>
+            The tenant down time messages helper
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AlertsController._performanceLogger">
+            <summary>
+            The performance logger
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AlertsController.#ctor(Microsoft.CFS.Approvals.CoreServices.BL.Interface.ITenantDownTimeMessagesHelper,Microsoft.CFS.Approvals.Common.DL.Interface.IPerformanceLogger)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AlertsController"/> class.
+            </summary>
+            <param name="tenantDownTimeMessagesHelper">The tenant down time messages helper.</param>
+            <param name="performanceLogger">The performance logger</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AlertsController.Get(System.String)">
+            <summary>
+            Gets the specified session identifier.
+            </summary>
+            <param name="sessionId">The session identifier.</param>
+            <returns>IHttpActionResult.</returns>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AllDocumentDownloadController">
+            <summary>
+            The alldocumentdownloadcontroller class.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AllDocumentDownloadController._detailsHelper">
+            <summary>
+            The Details Helper
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AllDocumentDownloadController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IDetailsHelper)">
+            <summary>
+            Constructor of AllDocumentDownloadController
+            </summary>
+            <param name="detailsHelper"></param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AllDocumentDownloadController.Post(System.Int32,System.String,System.String,System.String)">
+            <summary>
+            Retrieves attachment file for download on the details page from the tenant LOB system that the approval belongs to.
+            </summary>
+            <param name="tenantid">Indicates the Tenant for which the request's (documentNumber) data needs to be retrieved</param>
+            <param name="documentNumber">The request number for which data needs to be fetched</param>
+            <param name="displayDocumentNumber">The request number for which data needs to be fetched</param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <returns>
+            This method connects to the LOB system and based on the input parameters (documentNumber),
+            downloads all the Attachment for the request and return that to the client device as a HttpResponse in a zip
+            </returns>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AutoRefreshController">
+            <summary>
+            Class AutoRefreshController.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AutoRefreshController._approvalTenantInfoHelper">
+            <summary>
+            The Approval Tenant Info Helper.
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AutoRefreshController._clientActionHelper">
+            <summary>
+            The Client Action Helper.
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AutoRefreshController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalTenantInfoHelper,Microsoft.CFS.Approvals.Core.BL.Interface.IClientActionHelper)">
+            <summary>
+            Constructor of AutoRefreshController
+            </summary>
+            <param name="approvalTenantInfoHelper"></param>
+            <param name="clientActionHelper"></param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AutoRefreshController.Post(System.Int32,System.String)">
+            <summary>
+            This method checks the status of the Current Document
+            </summary>
+            <param name="tenantId">Tenant ID</param>
+            <param name="sessionId">Session ID</param>
+            <returns>Response that may contain the actionable card if the record is no longer pending with Logged in User</returns>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DetailController">
+            <summary>
+            the Details Controller
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DetailController._detailsHelper">
+            <summary>
+            The Details Helper
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DetailController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IDetailsHelper)">
+            <summary>
+            Constructor for Details Helper.
+            </summary>
+            <param name="detailsHelper"></param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DetailController.Get(System.Int32,System.String,System.String,System.String,System.Int32,System.String,System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            Retrieves details of approval item from tenant once a user clicks into the summary tile on the initial page.
+            </summary>
+            <param name="tenantId">Indicates the Tenant for which the request's (documentNumber) data needs to be retrieved</param>
+            <param name="documentNumber">The request number for which data needs to be fetched</param>
+            <param name="operation">The operation type (authsum/DTL/HDR/LINE) etc. This operation specifies what type of data will be retrieved</param>
+            <param name="fiscalYear">Fiscal Year of Request number (if any)</param>
+            <param name="page"></param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <param name="tcv">GUID Transaction Id. Unique for each transaction</param>
+            <param name="xcv">GUID Cross Correlation Vector. Unique for each request across system boundaries</param>
+            <param name="callType">Data Call Type which can be either Summary or Details OR All</param>
+            <param name="pageType">Page from where API is called eg. Detail, History</param>
+            <param name="source">Source for Details call eg. Summary, Notification</param>
+            <returns>
+            This method returns the request's details data from storage
+            if all data (Header/Additional Data/Line Items data) are present in storage along with authsum (Summary) data
+            else only the summary data along with the list of Callback URLs for missing data.
+            Per the information regarding a single approval, the details for that approval request are returned.
+            The details can include attachments and other options depending on the tenant, which means details can vary per certain tenant's requirements.
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            Gets all data for the documentNumber (includes summary/header/line data as well)
+            HTTP GET api/Detail/[tenantId]/[documentNumber]
+            </para>
+            <para>
+            e.g.
+            Gets only specific data for the documentNumber (either header/line etc.).
+            This is called when there are some missing details for that documentNumber and these additional missing details needs to be fetched from the LOB system
+            HTTP GET api/Detail/[tenantMapId]/[documentNumber]/[operation]
+            </para>
+            </remarks>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentActionController">
+            <summary>
+            Class DocumentActionController.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentActionController._approvalTenantInfoHelper">
+            <summary>
+            The Approval Tenant Info Helper
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentActionController._clientActionHelper">
+            <summary>
+            The Client Action Helper
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentActionController._documentActionHelperDelegate">
+            <summary>
+            The Document Action Helper Delegate
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentActionController._performanceLogger">
+            <summary>
+            The performance logger
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentActionController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalTenantInfoHelper,Microsoft.CFS.Approvals.Core.BL.Interface.IClientActionHelper,System.Func{System.String,Microsoft.CFS.Approvals.Core.BL.Interface.IDocumentActionHelper},Microsoft.CFS.Approvals.Common.DL.Interface.IPerformanceLogger)">
+            <summary>
+            Constructor of DocumentActionController
+            </summary>
+            <param name="approvalTenantInfoHelper"></param>
+            <param name="clientActionHelper"></param>
+            <param name="documentActionHelperDelegate"></param>
+            <param name="performanceLogger"></param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentActionController.Post(System.Int32,System.String,System.String)">
+            <summary>
+            Sends action of a given approval request whether it's an approval, rejection, etc...
+            The user is subsequently notified once the action is processed and completed through the notification center.
+            The ActionString is a part of the HttpRequest's Content, which contains details regarding the type of action taken;
+            the request or DocumentNumber on which action needs to be taken; the comments added by the approver; and additional information (if any)
+            </summary>
+            <param name="approvalRequest">The Approval Request object</param>
+            <param name="tenantId">The Unique TenantId (Int32) for which the action needs to be performed for the given request or documentNumber</param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <param name="clientDevice">Client Device</param>
+            <returns>
+            This method returns an OK HttpResponse if the action is successful;
+            else return a Bad Response along with the Error Message specifying the reason for failure
+            A tracking GUID is also sent in the response content for failure scenarios which can help in failure log analysis
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP POST api/DocumentAction/[tenantId]
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentActionController.Post(System.Int32,Newtonsoft.Json.Linq.JObject,System.String,System.String)">
+            <summary>
+            Sends action of a given approval request whether it's an approval, rejection, etc...
+            The user is subsequently notified once the action is processed and completed through the notification center.
+            The ActionString is a part of the HttpRequest's Content, which contains details regarding the type of action taken;
+            the request or DocumentNumber on which action needs to be taken; the comments added by the approver; and additional information (if any)
+            </summary>
+            <param name="tenantId">The Unique TenantId (Int32) for which the action needs to be performed for the given request or documentNumber</param>
+            <param name="actionString">ActionString is Json Content, which contains details regarding the type of action</param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <param name="clientDevice">Client Device</param>
+            <returns>
+            This method returns an OK HttpResponse if the action is successful;
+            else return a Bad Response along with the Error Message specifying the reason for failure
+            A tracking GUID is also sent in the response content for failure scenarios which can help in failure log analysis
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP POST api/DocumentAction/[tenantId]
+            </para>
+            </remarks>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentDownloadController">
+            <summary>
+            the DocumentDownloadController class
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentDownloadController._detailsHelper">
+            <summary>
+            The Details Helper.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentDownloadController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IDetailsHelper)">
+            <summary>
+            Constructor of Details Helper.
+            </summary>
+            <param name="detailsHelper"></param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentDownloadController.Get(System.Int32,System.String,System.String,System.String,System.Int32,System.String,System.String,System.String,System.String)">
+            <summary>
+            Retrieves attachment file for download on the details page from the tenant LOB system that the approval belongs to.
+            </summary>
+            <param name="tenantId">Indicates the Tenant for which the request's (documentNumber) data needs to be retrieved</param>
+            <param name="documentNumber">The request number for which data needs to be fetched</param>
+            <param name="displayDocumentNumber">The request number for which data needs to be fetched</param>
+            <param name="fiscalYear">Fiscal Year of Request number (if any)</param>
+            <param name="page"></param>
+            <param name="attachmentId">The unique attachmentId of the attachment to be downloaded from LOB system</param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <param name="tcv">GUID Transaction Id. Unique for each transaction</param>
+            <param name="xcv">GUID Cross Correlation Vector. Unique for each request across system boundaries</param>
+            <returns>
+            This method connects to the LOB system and based on the input parameters (documentNumber/attachmentId),
+            downloads the Attachment for the request and return that to the client device as a HttpResponse
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            This is called when there is no specific attachmentId
+            HTTP GET api/DocumentDownload/[tenantId]/[documentNumber]
+            </para>
+            <para>
+            e.g.
+            This is called when there is fiscalyear and attachmentId specified
+            HTTP GET api/DocumentDownload/[tenantId]/[documentNumber]/[fiscalYear]/[attachmentId]
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentDownloadController.Post(System.Int32,System.String,System.String)">
+            <summary>
+            Retrieves attachment file for download on the details page from the tenant LOB system that the approval belongs to.
+            </summary>
+            <param name="tenantId">Indicates the Tenant for which the request's (documentNumber) data needs to be retrieved</param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <param name="tcv">GUID Transaction Id. Unique for each transaction</param>
+            <returns>
+            This method connects to the LOB system and based on the request content (list of documentNumbers),
+            downloads all the Attachment for the set of requests and return that to the client device as a compressed file in a HttpResponse
+            </returns>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentPreviewController">
+            <summary>
+            The document preview controller.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentPreviewController._detailsHelper">
+            <summary>
+            The Details helper.
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentPreviewController._officeDocumentCreator">
+            <summary>
+            The Office document creator.
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentPreviewController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IDetailsHelper,Microsoft.CFS.Approvals.CoreServices.BL.Interface.IOfficeDocumentCreator)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentPreviewController"/> class.
+            </summary>
+            <param name="detailsHelper"></param>
+            <param name="officeDocumentCreator"></param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentPreviewController.Get(System.Int32,System.String,System.String,System.String,System.Int32,System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            Retrieves attachment file for preview on the details page from the tenant LOB system that the approval belongs to.
+            </summary>
+            <param name="tenantId">Indicates the Tenant for which the request's (documentNumber) data needs to be retrieved</param>
+            <param name="documentNumber">The request number for which data needs to be fetched</param>
+            <param name="displayDocumentNumber">The request number for which data needs to be fetched</param>
+            <param name="fiscalYear">Fiscal Year of Request number (if any)</param>
+            <param name="page"></param>
+            <param name="attachmentId">The unique attachmentId of the attachment to be previewed from LOB system</param>
+            <param name="attachmentName">The attachmentName of the attachment to be previewed from LOB system</param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <param name="tcv">GUID Transaction Id. Unique for each transaction</param>
+            <param name="xcv">GUID Cross Correlation Vector. Unique for each request across system boundaries</param>
+            <returns>
+            This method connects to the LOB system and based on the input parameters (documentNumber/attachmentId),
+            preview the Attachment for the request and return that to the client device as a HttpResponse
+            </returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentPreviewController.GetOfficeDocType(System.String)">
+            <summary>
+            Get office document type.
+            </summary>
+            <param name="attachmentName"></param>
+            <returns>document type</returns>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentStatusController">
+            <summary>
+            Class DocumentStatusController.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentStatusController._documentApprovalStatusHelper">
+            <summary>
+            The Document Approval Satus Helper
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentStatusController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IDocumentApprovalStatusHelper)">
+            <summary>
+            Constructor of DocumentStatusController
+            </summary>
+            <param name="documentApprovalStatusHelper"></param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentStatusController.Post(System.Int32,System.String,System.String,System.String)">
+            <summary>
+            Checks Document status based on tenantId and ApprovalIdentifier whether it is pending/approve/reject
+            The ApprovalIdentifier is a part of the HttpRequest's Content, which contains details of documentnumber and displaydocumentnumber;
+            </summary>
+            <param name="tenantId">The Unique TenantId (Int32) for which the action needs to be performed for the given request or documentNumber</param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <param name="tcv">GUID Transaction Id. Unique for each transaction</param>
+            <param name="xcv">Document number.</param>
+            <returns>
+            This method returns an OK HttpResponse if the action is successful;
+            else return a Bad Request along with the Error Message specifying the reason for failure
+            A tracking GUID is also sent in the response content for failure scenarios which can help in failure log analysis
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP POST api/DocumentStatus/[tenantId]
+            </para>
+            </remarks>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HelpController">
+            <summary>
+            Class HelpController.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HelpController._aboutHelper">
+            <summary>
+            The about helper
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HelpController.#ctor(Microsoft.CFS.Approvals.CoreServices.BL.Interface.IAboutHelper)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HelpController"/> class.
+            </summary>
+            <param name="aboutHelper">The about helper.</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HelpController.Get(System.String)">
+            <summary>
+            Get information for Help page
+            </summary>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <returns>
+            URLs respective to the Help page
+            </returns>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HistoryController">
+            <summary>
+            Class HistoryController.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HistoryController._approvalHistoryHelper">
+            <summary>
+            The approval history helper.
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HistoryController.#ctor(Microsoft.CFS.Approvals.CoreServices.BL.Interface.IApprovalHistoryHelper)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HistoryController"/> class.
+            </summary>
+            <param name="approvalHistoryHelper">The approval history helper.</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HistoryController.Get(System.Int32,System.String,System.String,System.String,System.Int32,System.String,System.String)">
+            <summary>
+            Gets the history data from mobile service data table for a particular user.
+            </summary>
+            <param name="page">Page number for which data needs to be fetched.</param>
+            <param name="sortColumn">Column on which sorting will be performed.</param>
+            <param name="sortDirection">Mentions ascending or descending order for sorting.</param>
+            <param name="searchCriteria">Criteria on which search needs to be done.</param>
+            <param name="timePeriod">Time period for which records needs to be fetched.</param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <param name="tenantId">TenantId. Unique for each Tenant</param>
+            <returns>
+            Paginated set of approvals history data filtered by search criteria for the given user, along with an array of all the historical data.
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP GET api/History?[QueryString]
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HistoryController.GetHistoryInExcel(System.Int32,System.String,System.String,System.String,System.String,System.String)">
+            <summary>
+            Creates an Excel Spreadsheet for the historical data.
+            </summary>
+            <param name="monthsOfData">time period for which records needs to be fetched.</param>
+            <param name="searchCriteria"> criteria on which search needs to be done.</param>
+            <param name="sortField">column on which sorting will be performed.</param>
+            <param name="sortDirection">mentions ascending or descending order for sorting.</param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <param name="tenantId">TenantId. Unique for each Tenant</param>
+            <returns>
+            This method returns a spreadsheet file which contains the historical data for the given user based on the specified search criteria and duration (in a CSV format).
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP GET api/History?[QueryString]
+            </para>
+            </remarks>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HistoryCountController">
+            <summary>
+            Class HistoryCountController.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HistoryCountController._approvalHistoryHelper">
+            <summary>
+            The approval history helper.
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HistoryCountController.#ctor(Microsoft.CFS.Approvals.CoreServices.BL.Interface.IApprovalHistoryHelper)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HistoryCountController"/> class.
+            </summary>
+            <param name="approvalHistoryHelper">The approval history helper.</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HistoryCountController.Get(System.String,System.Int32,System.String)">
+            <summary>
+            Retrieves count of historical approvals, based on search criteria.
+            </summary>
+            <param name="searchCriteria"> criteria on which search needs to be done</param>
+            <param name="timePeriod">time period for which records needs to be fetched</param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <returns>
+            This method returns an JSON with the total number of records for the given user
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP GET api/HistoryCount?[QueryString]
+            </para>
+            </remarks>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.OutOfSyncSummaryController">
+            <summary>
+            the OutOfSyncSummaryController
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController"/>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.OutOfSyncSummaryController._summaryHelper">
+            <summary>
+            The summary helper
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.OutOfSyncSummaryController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.ISummaryHelper)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.OutOfSyncSummaryController"/> class.
+            </summary>
+            <param name="summaryHelper"></param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.OutOfSyncSummaryController.Get(System.String)">
+            <summary>
+            Get summary for the current user from azure table storage.
+            </summary>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <returns>
+            Out of Sync requests from all tenants for the current user.
+            This contains only summary data (i.e. no details) to be displayed on the home page.
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP GET api/OutOfSyncSummary
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.OutOfSyncSummaryController.Get(System.String,System.String)">
+            <summary>
+            Get summary for the current user and particular tenant from azure table storage given Document Type ID.
+            </summary>
+            <param name="id">GUID DocumentTypeId of the Tenant</param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <returns>
+            This method returns a JSON for all the out of sync approval requests for the given user and Tenant combination.
+            This contains only summary data (i.e. no details) to be displayed on the home page.
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP GET api/OutOfSyncSummary?Id=[tenantDocTypeID]
+            </para>
+            </remarks>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.PullTenantController">
+            <summary>
+            the PullTenantController class.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.PullTenantController._pullTenantHelper">
+            <summary>
+            The pull tenant helper.
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.PullTenantController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IPullTenantHelper)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.PullTenantController"/> class.
+            </summary>
+            <param name="pullTenantHelper">The helper for pull model tenant.</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.PullTenantController.Get(System.Int32,System.String)">
+            <summary>
+            Get summary for the current user from tenant system.
+            </summary>
+            <param name="tenantId">TenantId which is unique to each Tenant.</param>
+            <param name="sessionId">SessionId which is unique to each user session.</param>
+            <returns>
+            Pending approvals for the current user from the tenant system.
+            This contains only summary data (i.e. no details) to be displayed on the tabular bulk approval view page.
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP GET api/PullTenant/[tenantId]?SessionId=[userSessionId]
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.PullTenantController.Get(System.Int32,System.String,System.String,System.String)">
+            <summary>
+            Get summary for the current user from tenant system.
+            </summary>
+            <param name="tenantId">TenantId which is unique to each Tenant.</param>
+            <param name="documentNumber">DocumentNumber which is unique to each record.</param>
+            <param name="operationType">Type of operation which needs to be executed from tenant info configuration.</param>
+            <param name="sessionId">SessionId which is unique to each user session.</param>
+            <returns>
+            The Details of an request from Details API of Tenant system.
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP GET api/PullTenant/[tenantId]/[documentNumber]?SessionId=[userSessionId]
+            UI should call with Header (FilterParameters) containing all the values to be replaced in the details URL.
+            </para>
+            </remarks>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.PullTenantSummaryCountController">
+            <summary>
+            the PullTenantSummaryCountController class.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.PullTenantSummaryCountController._pullTenantHelper">
+            <summary>
+            The pull tenant helper.
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.PullTenantSummaryCountController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IPullTenantHelper)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.PullTenantSummaryCountController"/> class.
+            </summary>
+            <param name="pullTenantHelper">The helper for pull model tenant.</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.PullTenantSummaryCountController.Get(System.String,System.String)">
+            <summary>
+            Get summary count for the current user and specified tenant list.
+            </summary>
+            <param name="operationType">The name of operation</param>
+            <param name="sessionId">The SessionId</param>
+            <returns> This method returns a JSON specifying the total number of request pending approval for the given user and tenant combination.</returns>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.ReadDetailsController">
+            <summary>
+            the ReadDetailsController class
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.ReadDetailsController._readDetailsHelper">
+            <summary>
+            The read details helper
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.ReadDetailsController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IReadDetailsHelper)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.ReadDetailsController"/> class.
+            </summary>
+            <param name="readDetailsHelper">The read details helper.</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.ReadDetailsController.Post(System.Int32,System.String,System.String,System.String)">
+            <summary>
+            Updates row in ReadDetails Table to indicate that details of a particular approval were successfully loaded, and therefore have been read.
+            Entries from this controller stored in the table include PartitionKey, RowKey (alias), TimeStamp, and JSONData.
+            JSON Data includes ActionDate, User who took action (alias), and the action (Read Details). JSON Data also stores the document key relative
+            to the approval as well as which client the details were loaded on.
+            </summary>
+            <param name="tenantId">The Unique TenantId (Int32) for which the action needs to be performed for the given request or documentNumber</param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <param name="tcv">GUID Transaction Id. Unique for each transaction</param>
+            <param name="xcv">GUID Cross Correlation Vector. Unique for each request across system boundaries</param>
+            <returns>
+            This method returns an OK HttpResponse if the action is successful;
+            else return a Bad Response along with the Error Message specifying the reason for failure
+            A tracking GUID is also sent in the reponse content for failure scenarios which can help in failure log analysis
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP POST api/ReadDetails/[tenantId]
+            </para>
+            </remarks>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SaveEditableDetailsController">
+            <summary>
+            Save Editable Details controller
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SaveEditableDetailsController._saveEditableDetailsHelper">
+            <summary>
+            The save details helper
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SaveEditableDetailsController._performanceLogger">
+            <summary>
+            The performance logger
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SaveEditableDetailsController._logProvider">
+            <summary>
+            The log provider
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SaveEditableDetailsController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.ISaveEditableDetailsHelper,Microsoft.CFS.Approvals.Common.DL.Interface.IPerformanceLogger,Microsoft.CFS.Approvals.LogManager.Provider.Interface.ILogProvider)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SaveEditableDetailsController"/> class.
+            </summary>
+            <param name="saveEditableDetailsHelper">The save details helper.</param>
+            <param name="performanceLogger">The performance logger</param>
+            <param name="logProvider">The log provider</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SaveEditableDetailsController.Get(System.Int32,System.String)">
+            <summary>
+            This method returns the flag so as to decide whether
+            the edit details functionality should be enabled for given
+            combination of Approver and Tenant
+            </summary>
+            <param name="tenantId"></param>
+            <param name="documentNumber"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SaveEditableDetailsController.Post(System.Int32,System.String,System.String,System.String)">
+            <summary>
+            This method saves the details edited by the user into ApprovalDetails table
+            The details are inserted if not present or replaced if already present
+            </summary>
+            <param name="tenantId"></param>
+            <param name="sessionId"></param>
+            <param name="xcv"></param>
+            <param name="tcv"></param>
+            <returns></returns>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController">
+            <summary>
+            Class SummaryController.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController._summaryHelper">
+            <summary>
+            The summary helper/
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.ISummaryHelper)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController"/> class.
+            </summary>
+            <param name="summaryHelper">The summary helper.</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController.Get(System.String)">
+            <summary>
+            Get summary for the current user from azure table storage.
+            </summary>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <returns>
+            Pending approvals from all tenants for the current user.
+            This contains only summary data (i.e. no details) to be displayed on the home page.
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP GET api/Summary
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController.Get(System.String,System.String)">
+            <summary>
+            Get summary for the current user and particular tenant from azure table storage given Document Type ID.
+            </summary>
+            <param name="Id">GUID DocumentTypeId of the Tenant</param>
+            <param name="SessionId">GUID SessionId. Unique for each user session</param>
+            <returns>
+            This method returns a JSON for all the Pending approval requests for the given user and Tenant combination.
+            This contains only summary data (i.e. no details) to be displayed on the home page.
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP GET api/Summary?Id=[tenantDocTypeID]
+            </para>
+            </remarks>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryCountController">
+            <summary>
+            Class SummaryCountController.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryCountController._summaryHelper">
+            <summary>
+            The summary helper
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryCountController._approvalTenantInfoHelper">
+            <summary>
+            The approval tenant information helper/
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryCountController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.ISummaryHelper,Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalTenantInfoHelper)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryCountController"/> class.
+            </summary>
+            <param name="summaryHelper">The summary helper.</param>
+            <param name="approvalTenantInfoHelper">The approval tenant information helper.</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryCountController.Get(System.String)">
+            <summary>
+            Get summary count for the current user from azure table storage.
+            </summary>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <returns>
+            This method returns a JSON specifying the total number of request pending approval grouped by tenant.
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP GET api/SummaryCount
+            </para>
+            </remarks>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryCountController.Get(System.String,System.String)">
+            <summary>
+            Get summary count for the current user and specified tenant from azure table storage given Document Type ID.
+            </summary>
+            <param name="tenantDocTypeID">GUID DocumentTypeId of the Tenant</param>
+            <param name="sessionId">GUID SessionId</param>
+            <returns>
+            This method returns a JSON specifying the total number of request pending approval for the given user and tenant combination.
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP GET api/SummaryCount?tenantDocTypeId=[tenantDocTypeID]
+            </para>
+            </remarks>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.TenantActionController">
+            <summary>
+            the TenantActionController class
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.TenantActionController.#ctor(Microsoft.Extensions.Configuration.IConfiguration,Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalTenantInfoHelper)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.TenantActionController"/> class.
+            </summary>
+            <param name="config">The configuration</param>
+            <param name="approvalTenantInfoHelper">The approval tenant information helper.</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.TenantActionController.Get(System.String)">
+            <summary>
+            Gets the specified session identifier.
+            </summary>
+            <param name="sessionId">The session identifier.</param>
+            <returns>return httpaction result</returns>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.TenantInfoController">
+            <summary>
+            Class - TenantInfoController handles the CRUD operation for ApprovalTenantInfo table.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.TenantInfoController._approvalTenantInfoHelper">
+            <summary>
+            The approval tenant info helper
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.TenantInfoController._performanceLogger">
+            <summary>
+            The performance logger
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.TenantInfoController._logProvider">
+            <summary>
+            The log provider
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.TenantInfoController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalTenantInfoHelper,Microsoft.CFS.Approvals.Common.DL.Interface.IPerformanceLogger,Microsoft.CFS.Approvals.LogManager.Provider.Interface.ILogProvider)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.TenantInfoController"/> class.
+            </summary>
+            <param name="approvalTenantInfoHelper"></param>
+            <param name="performanceLogger"></param>
+            <param name="logProvider"></param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.TenantInfoController.Get">
+            <summary>
+            HTTP GET api/TenantInfo
+            </summary>
+            <returns>Http action result</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.TenantInfoController.Get(System.Int32,System.String)">
+            <summary>
+            HTTP GET api/TenantInfo/{tenantId}?SessionId={SessionId}
+            </summary>
+            <param name="tenantId"></param>
+            <param name="sessionId"></param>
+            <returns>Returns Tenant Action Details</returns>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserDelegationSettingsController">
+            <summary>
+            the UserDelegationSettingsController class.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserDelegationSettingsController._delegationHelper">
+            <summary>
+            The delegation helper.
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserDelegationSettingsController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IDelegationHelper)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserDelegationSettingsController"/> class.
+            </summary>
+            <param name="delegationHelper">The delegation helper.</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserDelegationSettingsController.Get(System.String,System.String)">
+            <summary>
+            Gets the specified logged in alias.
+            </summary>
+            <param name="loggedInAlias">The logged in alias.</param>
+            <param name="sessionId">The session identifier.</param>
+            <returns>returns list</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserDelegationSettingsController.Get(System.Int32,System.String,System.String)">
+            <summary>
+            This method will retrieve delegated users for the loggedInAlias
+            </summary>
+            <param name="tenantId">The tenantId</param>
+            <param name="loggedInAlias">The logged in alias</param>
+            <param name="sessionId">The session Id</param>
+            <returns>returns HttpResponse Object</returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP GET api/UserDelegationSettings?tenantId=[tenantId]&amp;loggedInAlias=[loggedInAlias]&amp;SessionId=[userSessionId]
+            </para>
+            </remarks>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserPreferenceController">
+            <summary>
+            The UserPreferenceController class
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserPreferenceController._userPreferenceHelper">
+            <summary>
+            The user preference helper
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserPreferenceController._performanceLogger">
+            <summary>
+            The performance logger
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserPreferenceController._logProvider">
+            <summary>
+            The log provider
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserPreferenceController.#ctor(Microsoft.CFS.Approvals.CoreServices.BL.Interface.IUserPreferenceHelper,Microsoft.CFS.Approvals.Common.DL.Interface.IPerformanceLogger,Microsoft.CFS.Approvals.LogManager.Provider.Interface.ILogProvider)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserPreferenceController"/> class.
+            </summary>
+            <param name="userPreferenceHelper"></param>
+            <param name="performanceLogger"></param>
+            <param name="logProvider"></param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserPreferenceController.Get(System.String)">
+            <summary>
+            HTTP GET api/UserPreference
+            </summary>
+            <param name="sessionId">Session Id </param>
+            <returns>Http action result</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserPreferenceController.Post(System.String)">
+            <summary>
+            HTTP POST api/UserPreference
+            </summary>
+            <param name="sessionId">Session Id</param>
+            <returns>Http action result</returns>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController">
+            <summary>
+            The baseapicontroller class.
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController._config">
+            <summary>
+            The configuration.
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController"/> class.
+            </summary>
+        </member>
+        <member name="P:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.Alias">
+            <summary>
+            User alias.
+            </summary>
+        </member>
+        <member name="P:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.LoggedInAlias">
+            <summary>
+            Logged-in alias.
+            </summary>
+        </member>
+        <member name="P:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.Host">
+            <summary>
+            Client device.
+            </summary>
+        </member>
+        <member name="P:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.Xcv">
+            <summary>
+            Xcv.
+            </summary>
+        </member>
+        <member name="P:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.Tcv">
+            <summary>
+            Tcv.
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.GetAlias">
+            <summary>
+            The Get Alias
+            </summary>
+            <returns>user alias</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.GetLoggedInAlias">
+            <summary>
+            Get logged in alias.
+            </summary>
+            <returns>logged in alias</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.GetClientDevice">
+            <summary>
+            Get Client Device
+            </summary>
+            <returns>client device string</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.GetTokenOrCookie">
+            <summary>
+            Get Token or Cookie
+            </summary>
+            <returns>token or cookie string</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.GetFilterParameters">
+            <summary>
+            Get Filter Parameters
+            </summary>
+            <returns>Dictionary of filter parameters</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.GetXcv">
+            <summary>
+            The Get Xcv
+            </summary>
+            <returns>Xcv string</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.GetTcv">
+            <summary>
+            Get Tcv
+            </summary>
+            <returns>Tcv string</returns>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Utils.AddRequiredHeaderParameter">
+            <summary>
+            Operation filter to add the requirement of the custom header
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Utils.AddRequiredHeaderParameter.Apply(Microsoft.OpenApi.Models.OpenApiOperation,Swashbuckle.AspNetCore.SwaggerGen.OperationFilterContext)">
+            <summary>
+            Updated Swagger UI to add custom header
+            </summary>
+            <param name="operation"></param>
+            <param name="context"></param>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Utils.AuthorizationMiddleware">
+            <summary>
+            Custom Authorization Middleware class which takes care of additional security checks
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Utils.AuthorizationMiddleware.InvokeAsync(Microsoft.AspNetCore.Http.HttpContext,Microsoft.AspNetCore.Http.RequestDelegate)">
+            <summary>
+            Create Claims Principal from Request Headers which are added by Azure App Service Authentication (EasyAuth) and validate the required claims as applicable
+            </summary>
+            <param name="context"></param>
+            <param name="next"></param>
+            <returns></returns>
+        </member>
+    </members>
+</doc>
