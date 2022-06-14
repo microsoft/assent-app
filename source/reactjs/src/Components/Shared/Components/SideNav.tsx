@@ -38,6 +38,7 @@ export function SideNav(props: { links: INavLink[] }): React.ReactElement {
     const navButtonStyles: IButtonStyles = {
         root: { height: '40px', marginLeft: '5px', background: '#e5e5e5' },
         icon: { color: 'black' },
+        label: { textAlign: 'left', marginLeft: '6px'},
     };
 
     const toggleNav = () => {

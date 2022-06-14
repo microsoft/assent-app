@@ -8,6 +8,7 @@ interface IFilterCategory {
     key: string;
     label: string;
     filterOptions: IFilterOption[];
+    selectedKeys: string[];
 }
 
 interface IFilterPanelProps {
@@ -49,6 +50,7 @@ export function FilterPanel(props: IFilterPanelProps): React.ReactElement {
                     <FilterColumn
                         columnCategory={{ key: item.key, label: item.label }}
                         columnOptions={uniqueValues}
+                        selectedKeys={item.selectedKeys}
                         onChange={(
                             ev: React.FormEvent<HTMLElement>,
                             checked: boolean,

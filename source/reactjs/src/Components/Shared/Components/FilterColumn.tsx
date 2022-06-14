@@ -11,6 +11,7 @@ export interface IFilterOption {
 interface IFilterColumnProps {
     columnCategory: { key: string; label: string };
     columnOptions: IFilterOption[];
+    selectedKeys: string[];
     onChange: (
         ev: React.FormEvent<HTMLElement>,
         checked: boolean,
@@ -26,7 +27,12 @@ const stackTokens = { childrenGap: 10 };
 const isCollapsible = false;
 const showClear = true;
 
-function renderComboboxDropdown(columnOptions: IFilterOption[], onChange: any, columnCategory: any): JSX.Element {
+function renderComboboxDropdown(
+    columnOptions: IFilterOption[],
+    selectedKeys: string[],
+    onChange: any,
+    columnCategory: any
+): JSX.Element {
     const comboOptions: IComboBoxOption[] = columnOptions.map((item, index) => ({
         key: item.label,
         text: item.label.toString(),
@@ -43,6 +49,7 @@ function renderComboboxDropdown(columnOptions: IFilterOption[], onChange: any, c
             useComboBoxAsMenuWidth
             multiSelect
             autoComplete="off"
+            selectedKey={selectedKeys}
             onChange={(
                 event: React.FormEvent<IComboBox>,
                 option?: IComboBoxOption,
@@ -56,7 +63,7 @@ function renderComboboxDropdown(columnOptions: IFilterOption[], onChange: any, c
 }
 
 export function FilterColumn(props: IFilterColumnProps): React.ReactElement {
-    const { columnOptions, columnCategory, onChange, onClear, showDropdown } = props;
+    const { columnOptions, columnCategory, onChange, onClear, showDropdown, selectedKeys } = props;
     return (
         <Stack tokens={stackTokens}>
             {!isCollapsible && !showDropdown && (
@@ -80,7 +87,7 @@ export function FilterColumn(props: IFilterColumnProps): React.ReactElement {
                                     />
                                 </Stack.Item>
                             ))}
-                        {showDropdown && renderComboboxDropdown(columnOptions, onChange, columnCategory)}
+                        {showDropdown && renderComboboxDropdown(columnOptions, selectedKeys, onChange, columnCategory)}
                     </Stack>
                 </div>
             </Stack.Item>
