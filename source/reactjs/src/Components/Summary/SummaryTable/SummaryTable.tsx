@@ -10,13 +10,7 @@ import { detailsReducer, detailsReducerName } from '../../Shared/Details/Details
 import { detailsSagas } from '../../Shared/Details/Details.sagas';
 import SummaryTableColumns from './SummaryTableColumns';
 import * as SummaryStyled from '../SummaryStyling';
-import {
-    Dropdown,
-    IconButton,
-    IContextualMenuItem,
-    IContextualMenuProps,
-    IDropdownOption
-} from '@fluentui/react';
+import { Dropdown, IconButton, IContextualMenuItem, IContextualMenuProps, IDropdownOption } from '@fluentui/react';
 import { tableColumns } from './PullTenantColumns';
 import { forEach } from 'lodash';
 import { FilterPanel } from '../../Shared/Components/FilterPanel';
@@ -31,7 +25,7 @@ import {
     getSelectedApprovalRecords,
     getTableRowCount,
     getTenantIdFromAppName,
-    getToggleDetailsScreen
+    getToggleDetailsScreen,
 } from '../../Shared/SharedComponents.selectors';
 import { booleanToReadableValue, isMobileResolution } from '../../../Helpers/sharedHelpers';
 import { requestPullTenantSummary, updatePullTenantSearchSelection } from '../../Shared/SharedComponents.actions';
@@ -56,10 +50,10 @@ export function SummaryTable(props: any) {
 
     const [dimensions] = React.useState({
         height: window.innerHeight,
-        width: window.innerWidth
+        width: window.innerWidth,
     });
     const [isFilterPanelOpen, setIsFilterPanelOpen] = React.useState(false);
-    const [includedValuesObj, setIncludedValuesObj] = React.useState(undefined);
+    const [includedValuesObj, setIncludedValuesObj] = React.useState([]);
     const [filteredData, setFilteredData] = React.useState(props.tenantGroup);
     const [numFilters, setNumFilters] = React.useState(0);
     const [searchCriteriaOptions, setSearchCriteriaOptions] = React.useState([]);
@@ -102,7 +96,7 @@ export function SummaryTable(props: any) {
                     text: item.name,
                     onClick: onSearchCriteriaChange,
                     canCheck: true,
-                    isChecked: index === searchSelection
+                    isChecked: index === searchSelection,
                 };
             });
             const menuProps: IContextualMenuProps = { items: menuItems, directionalHintFixed: true };
@@ -115,13 +109,14 @@ export function SummaryTable(props: any) {
         setFilteredData(filtered);
     }, [includedValuesObj, numFilters, props.tenantGroup]);
 
-    function getUniqueValuesForColumn(data: any[], columnKey: string): any[] {
+    function getUniqueValuesForColumn(data: any[], columnKey: string): any {
         let res = [];
         let uniqueVals: any = [];
+        let selectedKeys: string[] = [];
         let i;
         for (i = 0; i < data.length; i++) {
             let curValue = columnKey.includes('.')
-                ? columnKey.split('.').reduce(function(p, prop) {
+                ? columnKey.split('.').reduce(function (p, prop) {
                       return p?.[prop];
                   }, data[i])
                 : data[i][columnKey];
@@ -131,6 +126,9 @@ export function SummaryTable(props: any) {
             if (curValue && !uniqueVals.includes(curValue)) {
                 const filterSelected = includedValuesObj?.[columnKey]?.includes(curValue) ?? false;
                 res.push({ label: curValue, checked: filterSelected });
+                if (filterSelected) {
+                    selectedKeys.push(curValue);
+                }
                 uniqueVals.push(curValue);
             }
         }
@@ -139,19 +137,20 @@ export function SummaryTable(props: any) {
                 const filterElement = includedValuesObj[columnKey][i];
                 if (!uniqueVals.includes(filterElement)) {
                     res.push({ label: filterElement, checked: true });
+                    selectedKeys.push(filterElement);
                     uniqueVals.push(filterElement);
                 }
             }
         }
-        return res;
+        return [res, selectedKeys];
     }
 
     function filterTable(data: any[], includedValuesObj: object): any[] {
-        return data.filter(item => {
+        return data.filter((item) => {
             let res = true;
-            forEach(includedValuesObj, function(value: any, key: any) {
+            forEach(includedValuesObj, function (value: any, key: any) {
                 let curValue = key.includes('.')
-                    ? key.split('.').reduce(function(p: any, prop: any) {
+                    ? key.split('.').reduce(function (p: any, prop: any) {
                           return p?.[prop];
                       }, item)
                     : item[key];
@@ -168,13 +167,14 @@ export function SummaryTable(props: any) {
 
     function renderFilterPanel(): any {
         const filterCategories = tableColumns
-            .filter(col => col.isFilterable)
+            .filter((col) => col.isFilterable)
             ?.map((item, index) => {
-                const uniqueValues = getUniqueValuesForColumn(props.tenantGroup, item.field);
+                const [uniqueValues, selectedKeys] = getUniqueValuesForColumn(props.tenantGroup, item.field);
                 return {
                     key: item.field,
                     label: item.title,
-                    filterOptions: uniqueValues
+                    filterOptions: uniqueValues,
+                    selectedKeys: selectedKeys,
                 };
             });
         return (
@@ -186,7 +186,7 @@ export function SummaryTable(props: any) {
                     columnCategory: { key: string; label: string },
                     optionLabel: string
                 ): void => {
-                    const curSelections = includedValuesObj[columnCategory.key] ?? [];
+                    const curSelections = includedValuesObj?.[columnCategory.key] ?? [];
                     let newSelectionObj: any = {};
                     if (checked && !curSelections.includes(optionLabel)) {
                         newSelectionObj[columnCategory.key] = curSelections.concat([optionLabel]);
@@ -205,7 +205,7 @@ export function SummaryTable(props: any) {
                     }
                 }}
                 onClear={(columnCategory: { key: string; label: string }): void => {
-                    const curSelections = includedValuesObj[columnCategory.key] ?? [];
+                    const curSelections = includedValuesObj?.[columnCategory.key] ?? [];
                     const numRemoved = curSelections.length;
                     let newSelectionObj: any = {};
                     newSelectionObj[columnCategory.key] = [];
@@ -266,7 +266,7 @@ export function SummaryTable(props: any) {
                 <div>
                     <Styled.SummaryTableContainer
                         style={{
-                            height: `${props.windowHeight - 300}px}`
+                            height: `${props.windowHeight - 300}px}`,
                         }}
                     >
                         <Stack horizontal horizontalAlign="space-between" styles={{ root: { marginBottom: '10px' } }}>
@@ -316,7 +316,7 @@ export function SummaryTable(props: any) {
                                 style={{
                                     height: `${
                                         dimensions.width < 1024 ? dimensions.height - 280 : dimensions.height - 490
-                                    }px}`
+                                    }px}`,
                                 }}
                             >
                                 {renderDataGrid()}
