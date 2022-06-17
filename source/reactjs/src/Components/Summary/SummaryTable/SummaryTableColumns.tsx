@@ -1208,11 +1208,6 @@ function SummaryTableColumns(props: any): React.ReactElement {
                     ariaLabel={`${props.tenantName} table`}
                     columns={renderColumns(isPullTenantSelected ? 'pullTenant' : 'all')}
                     items={summaryTableRecords}
-                    isSortable={true}
-                    isScrollable={false}
-                    telemetryHook={telemetryClient}
-                    initialSortedColumn={initialSortColumn}
-                    isLoading={isLoadingSummary}
                     selectionMode={isBulkSelected ? SelectionMode.multiple : SelectionMode.none}
                     checkboxVisibility={CheckboxVisibility.always}
                     selection={selectionState}
