@@ -40,7 +40,7 @@ export function TopHeader(): React.ReactElement {
                 styles={HeaderStyled.SecondaryHeaderStackStyles(false, true)}
             >
                 <Stack.Item styles={{ root: { paddingLeft: '1%' } }}>
-                    <HeaderStyled.topHeaderTitleLink> MSApprovals </HeaderStyled.topHeaderTitleLink>
+                    <HeaderStyled.topHeaderTitleLink href="/"> MSApprovals </HeaderStyled.topHeaderTitleLink>
                 </Stack.Item>
                 <Stack.Item align="center" styles={{ root: { paddingRight: '0.5%' } }}>
                     <Stack horizontal tokens={{ childrenGap: 'm' }}>
