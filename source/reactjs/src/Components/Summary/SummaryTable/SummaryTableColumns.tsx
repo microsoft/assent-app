@@ -74,7 +74,6 @@ function SummaryTableColumns(props: any): React.ReactElement {
         Context as React.Context<IEmployeeExperienceContext>
     );
 
-    const isLoadingSummary = useSelector(getIsLoadingSummary);
     const isBulkSelected = useSelector(getIsBulkSelected);
     const selectedApprovalRecords = useSelector(getSelectedApprovalRecords);
     const readRequests = useSelector(getReadRequests);
@@ -107,9 +106,8 @@ function SummaryTableColumns(props: any): React.ReactElement {
     const [isSelectAllConfigured, setIsSelectAllConfigured] = React.useState(false);
     const [savedSelection, setSavedSelection] = React.useState([]);
     const [numFilters, setNumFilters] = React.useState(0);
-    const [initialSortColumn] = React.useState(
-        isPullTenantSelected ? tableColumns?.find((col) => col.isDefaultSortColumn)?.field : 'SubmittedDate'
-    );
+    const [sortedColumn, setSortedColumn] = React.useState('');
+    const [isSortedDescending, setIsSortedDescending] = React.useState(false);
 
     const documentNumberPrefix = filteredTenantInfo?.documentNumberPrefix;
     const isSingleGroupShown = props?.isSingleGroupShown ?? false;
@@ -474,15 +472,16 @@ function SummaryTableColumns(props: any): React.ReactElement {
     const allColumns: IColumn[] = [
         {
             key: 'IsRead',
-            type: 'custom',
             name: 'IsRead',
             ariaLabel: 'Status',
             iconName: 'Page',
             className: fileIconCell,
             isIconOnly: true,
             isResizable: false,
+            isSorted: sortedColumn === 'isRead',
+            isSortedDescending: sortedColumn === 'isRead' ? isSortedDescending : true,
             fieldName: SummaryTableFieldNames.IsRead,
-            minColumnWidth: 45,
+            minWidth: 45,
             maxWidth: 60,
             onRender: (item: any) => {
                 let lastFailedLocal = item.LastFailed;
@@ -502,12 +501,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'ApprovalIdentifier',
             name: 'Document Number',
-            type: 'number',
             fieldName: SummaryTableFieldNames.ApprovalIdentifier,
             isResizable: true,
+            isSorted: sortedColumn === 'ApprovalIdentifier',
+            isSortedDescending: sortedColumn === 'ApprovalIdentifier' ? isSortedDescending : true,
             maxWidth: 200,
             invertAlignment: true,
             ariaLabel: 'Document Number',
+            onColumnClick: onSort,
             onRender: (item: any) => {
                 const isOpen = getIdentifyingKey(item) === displayDocumentNumber;
                 return (
@@ -544,12 +545,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'SubmittedDate',
             name: 'Submitted Date',
-            type: 'custom',
             fieldName: SummaryTableFieldNames.SubmittedDate,
             isResizable: true,
-            minColumnWidth: ColSize.Medium,
+            isSorted: sortedColumn === 'SubmittedDate',
+            isSortedDescending: sortedColumn === 'SubmittedDate' ? isSortedDescending : true,
+            minWidth: ColSize.Medium,
             maxWidth: ColSize.Medium,
             ariaLabel: 'Submitted Date',
+            onColumnClick: onSort,
             onRender: (item: any) => {
                 return (
                     <Stack horizontal>
@@ -563,12 +566,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'Submitter',
             name: 'Submitter',
-            type: 'custom',
             fieldName: SummaryTableFieldNames.Submitter,
             isResizable: true,
-            minColumnWidth: ColSize.Large,
+            isSorted: sortedColumn === 'Submitter',
+            isSortedDescending: sortedColumn === 'Submitter' ? isSortedDescending : true,
+            minWidth: ColSize.Large,
             maxWidth: ColSize.XL,
             ariaLabel: 'Submitter',
+            onColumnClick: onSort,
             onRender: (item: any) => {
                 if (item['Submitter']) {
                     return (
@@ -606,12 +611,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'Title',
             name: 'Title',
-            type: 'custom',
             fieldName: SummaryTableFieldNames.Title,
             isResizable: true,
-            minColumnWidth: 120,
+            isSorted: sortedColumn === 'Title',
+            isSortedDescending: sortedColumn === 'Title' ? isSortedDescending : true,
+            minWidth: 120,
             maxWidth: 200,
             ariaLabel: 'Title',
+            onColumnClick: onSort,
             onRender: (item: any) => {
                 if (item['Title']) {
                     return (
@@ -625,13 +632,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'UnitValue',
             name: 'Unit Value',
-            type: 'number',
             fieldName: SummaryTableFieldNames.UnitValue,
             isResizable: true,
-            minColumnWidth: ColSize.Large,
+            isSorted: sortedColumn === 'UnitValue',
+            isSortedDescending: sortedColumn === 'UnitValue' ? isSortedDescending : true,
+            minWidth: ColSize.Large,
             maxWidth: ColSize.Large,
             ariaLabel: 'Unit Value',
-            invertAlignment: true,
+            onColumnClick: onSort,
             onRender: (item: any) => {
                 return (
                     <Stack horizontal>
@@ -643,9 +651,10 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'CompanyCode',
             name: 'Company Code',
-            type: 'custom',
             fieldName: SummaryTableFieldNames.CompanyCode,
             isResizable: true,
+            isSorted: sortedColumn === 'CompanyCode',
+            isSortedDescending: sortedColumn === 'CompanyCode' ? isSortedDescending : true,
             maxWidth: 200,
             ariaLabel: 'Company Code',
             onRender: (item: any) => {
@@ -659,11 +668,13 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'CustomAttribute',
             name: 'Additional Information',
-            type: 'custom',
             fieldName: SummaryTableFieldNames.CustomAttribute,
             isResizable: true,
-            minColumnWidth: 120,
+            isSorted: sortedColumn === 'CustomAttribute',
+            isSortedDescending: sortedColumn === 'CustomAttribute' ? isSortedDescending : true,
+            minWidth: 120,
             maxWidth: 300,
+            onColumnClick: onSort,
             ariaLabel: 'Additional Information',
             onRender: (item: any) => {
                 if (item['CustomAttribute']) {
@@ -684,9 +695,10 @@ function SummaryTableColumns(props: any): React.ReactElement {
             ariaLabel: 'Status',
             iconName: 'Info',
             isIconOnly: true,
-            type: 'custom',
             fieldName: SummaryTableFieldNames.allowInBulkApproval,
-            minColumnWidth: 25,
+            isSorted: sortedColumn === 'allowInBulkApproval',
+            isSortedDescending: sortedColumn === 'allowInBulkApproval' ? isSortedDescending : true,
+            minWidth: 25,
             maxWidth: 25,
             onRender: (item: any) => {
                 let allowed = item['allowInBulkApproval'] ?? true;
@@ -710,10 +722,11 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'viewDetails',
             name: 'Details',
-            type: 'custom',
             fieldName: SummaryTableFieldNames.viewDetails,
-            minColumnWidth: ColSize.XS,
+            minWidth: ColSize.XS,
             maxWidth: ColSize.XS,
+            isSorted: sortedColumn === 'viewDetails',
+            isSortedDescending: sortedColumn === 'viewDetails' ? isSortedDescending : true,
             ariaLabel: 'Details',
             onRender: (item: any) => {
                 const isOpen = getIdentifyingKey(item) === displayDocumentNumber;
@@ -735,10 +748,11 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'actionDetails',
             name: 'Approval Status',
-            type: 'custom',
             fieldName: SummaryTableFieldNames.actionDetails,
-            minColumnWidth: ColSize.XS,
+            minWidth: ColSize.XS,
             maxWidth: ColSize.Small,
+            isSorted: sortedColumn === 'actionDetails',
+            isSortedDescending: sortedColumn === 'actionDetails' ? isSortedDescending : true,
             ariaLabel: 'Approval Status',
             isResizable: true,
             onRender: (item: any) => {
@@ -771,12 +785,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'submittedForFullName',
             name: 'Submitted For',
-            type: 'custom',
             fieldName: SummaryTableFieldNames.submittedForFullName,
-            minColumnWidth: getColSizeforDimension(ColSize.Medium),
+            minWidth: getColSizeforDimension(ColSize.Medium),
             maxWidth: dimensions.width >= breakpointMap.xxxl ? ColSize.XXL : ColSize.XL,
             ariaLabel: 'Submitted For',
+            isSorted: sortedColumn === 'submittedForFullName',
+            isSortedDescending: sortedColumn === 'submittedForFullName' ? isSortedDescending : true,
             isResizable: true,
+            onColumnClick: onSort,
             onRender: (item: any) => {
                 const displayText = item['submittedForFullName'] ?? '';
                 return (
@@ -793,12 +809,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'assignmentName',
             name: 'Assignment Name',
-            type: 'custom',
             ariaLabel: 'Assignment Name',
             fieldName: SummaryTableFieldNames.assignmentName,
-            minColumnWidth: getColSizeforDimension(ColSize.Large),
+            minWidth: getColSizeforDimension(ColSize.Large),
             maxWidth: ColSize.XXXL,
+            isSorted: sortedColumn === 'assignmentName',
+            isSortedDescending: sortedColumn === 'assignmentName' ? isSortedDescending : true,
             isResizable: true,
+            onColumnClick: onSort,
             onRender: (item: any) => {
                 const displayText = item?.assignmentDetails?.assignmentName || '';
                 return (
@@ -815,12 +833,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'laborDate',
             name: 'Labor Date',
-            type: 'custom',
             ariaLabel: 'Labor Date',
             fieldName: SummaryTableFieldNames.laborDate,
-            minColumnWidth: ColSize.XS,
+            minWidth: ColSize.XS,
             maxWidth: ColSize.Small,
+            isSorted: sortedColumn === 'laborDate',
+            isSortedDescending: sortedColumn === 'laborDate' ? isSortedDescending : true,
             isResizable: true,
+            onColumnClick: onSort,
             onRender: (item: any) => {
                 return (
                     <Stack horizontal>
@@ -832,14 +852,16 @@ function SummaryTableColumns(props: any): React.ReactElement {
             },
         },
         {
-            key: 'laborHours',
+            key: 'displayLaborHours',
             name: 'Labor Duration',
-            type: 'custom',
             fieldName: SummaryTableFieldNames.laborHours,
-            minColumnWidth: ColSize.XS,
+            minWidth: ColSize.XS,
             maxWidth: ColSize.Small,
             ariaLabel: 'Labor Duration',
+            isSorted: sortedColumn === 'laborHours',
+            isSortedDescending: sortedColumn === 'laborHours' ? isSortedDescending : true,
             isResizable: true,
+            onColumnClick: onSort,
             onRender: (item: any) => {
                 return (
                     <Stack horizontal>
@@ -853,12 +875,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'laborCategoryName',
             name: 'Labor Category',
-            type: 'custom',
             fieldName: SummaryTableFieldNames.laborCategoryName,
-            minColumnWidth: ColSize.Small,
+            minWidth: ColSize.Small,
             ariaLabel: 'Labor Category',
+            isSorted: sortedColumn === 'laborCategoryName',
+            isSortedDescending: sortedColumn === 'laborCategoryName' ? isSortedDescending : true,
             maxWidth: ColSize.Large,
             isResizable: true,
+            onColumnClick: onSort,
             onRender: (item: any) => {
                 return (
                     <TooltipHost content={item['laborCategoryName']}>
@@ -874,12 +898,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'submittedByFullName',
             name: 'Submitted By',
-            type: 'custom',
             fieldName: SummaryTableFieldNames.submittedByFullName,
-            minColumnWidth: ColSize.Small,
+            minWidth: ColSize.Small,
             maxWidth: ColSize.Large,
             ariaLabel: 'Submitted By',
+            isSorted: sortedColumn === 'submittedByFullName',
+            isSortedDescending: sortedColumn === 'submittedByFullName' ? isSortedDescending : true,
             isResizable: true,
+            onColumnClick: onSort,
             onRender: (item: any) => {
                 const displayText = item['submittedByFullName'] ?? '';
                 return (
@@ -896,12 +922,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'isBillable',
             name: 'Is Billable',
-            type: 'custom',
             fieldName: SummaryTableFieldNames.isBillable,
-            minColumnWidth: ColSize.XXS,
+            minWidth: ColSize.XXS,
             ariaLabel: 'Is Billable',
             maxWidth: ColSize.XXS,
+            isSorted: sortedColumn === 'isBillable',
+            isSortedDescending: sortedColumn === 'isBillable' ? isSortedDescending : true,
             isResizable: true,
+            onColumnClick: onSort,
             onRender: (item: any) => {
                 return (
                     <Stack horizontal>
@@ -915,11 +943,13 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'laborNotes',
             name: 'Notes',
-            type: 'custom',
             fieldName: SummaryTableFieldNames.laborNotes,
-            minColumnWidth: ColSize.Small,
+            minWidth: ColSize.Small,
             isResizable: true,
+            isSorted: sortedColumn === 'laborNotes',
+            isSortedDescending: sortedColumn === 'laborNotes' ? isSortedDescending : true,
             ariaLabel: 'Notes',
+            onColumnClick: onSort,
             onRender: (item: any) => {
                 const notesValue = item?.['laborNotes'] || '';
                 return (
@@ -999,6 +1029,13 @@ function SummaryTableColumns(props: any): React.ReactElement {
 
     function onSort(event: React.MouseEvent<HTMLElement, MouseEvent>, column: IColumn): void {
         event.preventDefault();
+        //if no column is currently sorted, keep default false value for isSortedDescending
+        if (sortedColumn !== column.key) {
+            setIsSortedDescending(false);
+        } else {
+            setIsSortedDescending(!isSortedDescending);
+        }
+        setSortedColumn(column.key);
         switch (column.key) {
             case 'ApprovalIdentifier':
                 if (column.isSorted) {
@@ -1177,6 +1214,12 @@ function SummaryTableColumns(props: any): React.ReactElement {
                 }
                 break;
             default:
+                const isSortedDescendingNew = column.isSorted ? !column.isSortedDescending : false;
+                const key = column.key;
+                props.tenantGroup.sort((a: T, b: T) =>
+                    (isSortedDescendingNew ? a[key] < b[key] : a[key] > b[key]) ? 1 : -1
+                );
+                setTableRecords(props.tenantGroup);
                 break;
         }
     }
