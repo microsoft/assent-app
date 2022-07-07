@@ -46,6 +46,7 @@ import { initializeIcons } from '@fluentui/font-icons-mdl2';
 import { UserSettingsPanel } from './Components/UserSettingsPanel/UserSettingsPanel';
 import { helpPanelReducer, helpPanelReducerName } from './Components/HelpPanel/HelpPanel.reducer';
 import { helpPanelSagas } from './Components/HelpPanel/HelpPanel.sagas';
+import { ProfilePanel } from './Components/ProfilePanel';
 
 export function App(): React.ReactElement {
     useLoginOnStartup(true, { scopes: ['https://graph.microsoft.com/.default'] });
@@ -187,8 +188,9 @@ export function App(): React.ReactElement {
             <HelpPanel />
             <UserSettingsPanel />
             <NotificationPanelCustom />
+            <ProfilePanel />
             <BrowserRouter>
-                <TopHeader />
+                <TopHeader upn={user?.email} displayName={user?.name} />
                 <SideNav links={navConfig} />
                 <div>
                     <Stack horizontal className={isPanelOpen ? 'ms-hiddenSm' : ''}>
