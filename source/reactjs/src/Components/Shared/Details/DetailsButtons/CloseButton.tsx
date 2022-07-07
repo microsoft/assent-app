@@ -55,7 +55,10 @@ function CloseButton(props: { action?(): void }): React.ReactElement {
                         props.action();
                     } else {
                         if (history && location) {
-                            if (location.pathname.length > 1) {
+                            if (
+                                location.pathname.length > 1 &&
+                                !location.pathname?.toLowerCase()?.includes('history')
+                            ) {
                                 history.push('/');
                             }
                         }

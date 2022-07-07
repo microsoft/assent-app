@@ -102,6 +102,7 @@ export interface ISharedComponentsState {
     successfulPullTenantRequests: string[];
     successfulPullTenantCount: number;
     successfulPullTenantCountDict: IPullTenantSuccessfulCountDict;
+    isProfilePanelOpen: boolean;
 }
 
 export interface ISharedComponentsPersistentState {
