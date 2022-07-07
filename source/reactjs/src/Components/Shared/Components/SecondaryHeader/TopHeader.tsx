@@ -8,21 +8,31 @@ import { IComponentsAppState } from '../../SharedComponents.types';
 import { sharedComponentsSagas } from '../../SharedComponents.sagas';
 import { Reducer } from 'redux';
 import { Stack } from '@fluentui/react/lib/Stack';
-import { IconButton, Text } from '@fluentui/react';
-import { toggleSettingsPanel } from '../../SharedComponents.actions';
+import { IconButton, PersonaSize, Text } from '@fluentui/react';
+import { toggleProfilePanel, toggleSettingsPanel } from '../../SharedComponents.actions';
 import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
 import { getIsNotficationsPanelOpen } from '../../../NotificationsPanel/NotificationsPanel.selectors';
 import { toggleNotificationPanel } from '../../../NotificationsPanel/NotificationsPanel.actions';
 import { updateHelpPanelState } from '../../../HelpPanel/HelpPanel.actions';
 import { getIsHelpPanelOpen } from '../../../HelpPanel/HelpPanel.selectors';
+import { Persona } from '../Persona';
+import { CommandBarButton } from '@fluentui/react/lib/Button';
+import { getIsProfilePanelOpen } from '../../SharedComponents.selectors';
+import { CoherenceColors } from '../../SharedColors';
 
-export function TopHeader(): React.ReactElement {
+export function TopHeader(props: { upn: string; displayName: string }): React.ReactElement {
+    const { upn, displayName } = props;
     const { useSelector, dispatch } = React.useContext(Context as React.Context<IEmployeeExperienceContext>);
 
     const isHelpPanelOpen = useSelector(getIsHelpPanelOpen);
+    const isProfilePanelOpen = useSelector(getIsProfilePanelOpen);
 
     const handleSettingsClick = (): void => {
         dispatch(toggleSettingsPanel(true));
+    };
+
+    const handleProfileClick = (): void => {
+        dispatch(toggleProfilePanel(!isProfilePanelOpen));
     };
 
     const handleNotificationsClick = (): void => {
@@ -31,6 +41,11 @@ export function TopHeader(): React.ReactElement {
 
     const handleHelpClick = (): void => {
         dispatch(updateHelpPanelState(!isHelpPanelOpen));
+    };
+
+    const interactiveStyles = {
+        rootHovered: { backgroundColor: CoherenceColors.blueInteractive },
+        rootPressed: { backgroundColor: CoherenceColors.blueInteractive },
     };
     return (
         <HeaderStyled.SecondaryHeaderContainer isTopHeader>
@@ -46,22 +61,31 @@ export function TopHeader(): React.ReactElement {
                     <Stack horizontal tokens={{ childrenGap: 'm' }}>
                         <IconButton
                             iconProps={{ iconName: 'Settings' }}
-                            styles={{ icon: { color: 'white' } }}
+                            styles={{ icon: { color: 'white' }, ...interactiveStyles }}
                             onClick={handleSettingsClick}
                             title="Settings"
                         />
                         <IconButton
                             iconProps={{ iconName: 'Ringer' }}
-                            styles={{ icon: { color: 'white' } }}
+                            styles={{ icon: { color: 'white' }, ...interactiveStyles }}
                             onClick={handleNotificationsClick}
                             title="Notifications"
                         />
                         <IconButton
                             iconProps={{ iconName: 'Help' }}
-                            styles={{ icon: { color: 'white' } }}
+                            styles={{ icon: { color: 'white' }, ...interactiveStyles }}
                             onClick={handleHelpClick}
                             title="Help"
                         />
+                        <CommandBarButton
+                            onClick={handleProfileClick}
+                            styles={{
+                                root: { backgroundColor: CoherenceColors.bluePrimary },
+                                ...interactiveStyles,
+                            }}
+                        >
+                            <Persona emailAlias={upn} size={PersonaSize.size32} styles={{ root: { width: '32px' } }} />
+                        </CommandBarButton>
                     </Stack>
                 </Stack.Item>
             </Stack>

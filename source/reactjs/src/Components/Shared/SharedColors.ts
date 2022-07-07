@@ -23,3 +23,8 @@ export enum MessagingColors {
     defaultBackground = '#f3f2f1',
     defaultIcon = '#605e5c',
 }
+
+export enum CoherenceColors {
+    bluePrimary = '#0078d4',
+    blueInteractive = '#0064BF',
+}

@@ -754,3 +754,10 @@ export const getDerivedCountForPullTenant = createSelector(
         }
     }
 );
+
+export const getIsProfilePanelOpen = (state: IComponentsAppState): boolean => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.isProfilePanelOpen ||
+        sharedComponentsInitialState.isProfilePanelOpen
+    );
+};

@@ -29,7 +29,7 @@ import {
     updatePanelState,
     updateSelectedTenantDelegation,
     requestPullTenantSummary,
-    receiveTenantDelegations
+    receiveTenantDelegations,
 } from '../../SharedComponents.actions';
 import { setAliasMessagebarHeight } from '../../Details/Details.actions';
 import { detailsInitialState, detailsReducerName } from '../../Details/Details.reducer';
@@ -64,14 +64,14 @@ import {
     getTenantDelegations,
     getSelectedTenantDelegation,
     getSuccessfulPullTenantCount,
-    getDerivedTotalPullTenantCount
+    getDerivedTotalPullTenantCount,
 } from '../../SharedComponents.selectors';
 import { trackFeatureUsageEvent, TrackingEventId } from '../../../../Helpers/telemetryHelpers';
 import { IContextualMenuProps, DirectionalHint } from '@fluentui/react';
 import {
     sharedComponentsPersistentReducerName,
     SharedComponentsPersistentInitialState,
-    sharedComponentsPersistentReducer
+    sharedComponentsPersistentReducer,
 } from '../../SharedComponents.persistent-reducer';
 import { usePersistentReducer } from '../PersistentReducer';
 import { GroupingBy } from '../GroupingBy';
@@ -82,7 +82,7 @@ import {
     getTeachingBubbleStep,
     getTeachingBubbleVisibility,
     getUserAlias,
-    getUserName
+    getUserName,
 } from '../../SharedComponents.persistent-selectors';
 import { DATE_FORMAT_OPTION, DEFAULT_LOCALE } from '../../SharedConstants';
 
@@ -153,7 +153,7 @@ function SecondaryHeader(): React.ReactElement {
     React.useEffect(() => {
         dispatch(requestMyProfile());
     }, [dispatch]);
-    
+
     React.useEffect(() => {
         if (profile) {
             dispatch(requestMyDelegations(profile.userPrincipalName));
@@ -225,7 +225,7 @@ function SecondaryHeader(): React.ReactElement {
                     if (!isCardViewSelected) {
                         setViewType(null, false);
                     }
-                }
+                },
             },
             {
                 key: 'table',
@@ -236,9 +236,9 @@ function SecondaryHeader(): React.ReactElement {
                     if (isCardViewSelected) {
                         setViewType(null, true);
                     }
-                }
-            }
-        ]
+                },
+            },
+        ],
     };
 
     const historyMenuProps: IContextualMenuProps = {
@@ -250,11 +250,11 @@ function SecondaryHeader(): React.ReactElement {
                 isChecked: true,
                 onClick: () => {
                     dispatch(updateGroupedHistory(GroupingBy.Tenant));
-                }
-            }
+                },
+            },
         ],
         directionalHint: DirectionalHint.bottomRightEdge,
-        directionalHintFixed: true
+        directionalHintFixed: true,
     };
 
     const getFilteredMenuItems = (): void => {
@@ -276,7 +276,7 @@ function SecondaryHeader(): React.ReactElement {
         }
 
         let secondaryIndex: string;
-        if (summaryGroupedBy === GroupingBy.Submitter && selectedPage == "summary") {
+        if (summaryGroupedBy === GroupingBy.Submitter && selectedPage == 'summary') {
             secondaryIndex = 'Name';
         }
         for (const key in allItems) {
@@ -301,7 +301,7 @@ function SecondaryHeader(): React.ReactElement {
             // format the dates
             filterMenuItems.forEach((date, index, dateArray) => {
                 dateArray[index] = new Date(date).toLocaleDateString(DEFAULT_LOCALE, DATE_FORMAT_OPTION);
-            });           
+            });
         }
         filterMenuItems.unshift('All'); //have All always on top
 
@@ -309,11 +309,11 @@ function SecondaryHeader(): React.ReactElement {
         let filterMenuProps: IContextualMenuProps = {
             items: [],
             directionalHint: DirectionalHint.bottomRightEdge,
-            directionalHintFixed: true
+            directionalHintFixed: true,
         };
         switch (selectedPage) {
             case 'history':
-                filterMenuProps.items = filterMenuItems.map(x => ({
+                filterMenuProps.items = filterMenuItems.map((x) => ({
                     ['key']: x,
                     ['text']: x,
                     ['title']: x,
@@ -332,10 +332,10 @@ function SecondaryHeader(): React.ReactElement {
                                 appNameToTenantIdMapping[x]
                             )
                         );
-                    }
+                    },
                 }));
             default:
-                filterMenuProps.items = filterMenuItems.map(x => ({
+                filterMenuProps.items = filterMenuItems.map((x) => ({
                     ['key']: x,
                     ['text']: x,
                     ['title']: x,
@@ -345,7 +345,7 @@ function SecondaryHeader(): React.ReactElement {
                     ['isChecked']: x === filterValue ? true : false,
                     ['onClick']: () => {
                         dispatch(updateFilterValue(x));
-                    }
+                    },
                 }));
         }
         setFilterMenuProps(filterMenuProps);
@@ -358,25 +358,25 @@ function SecondaryHeader(): React.ReactElement {
                 text: 'Application',
                 canCheck: true,
                 isChecked: summaryGroupedBy === GroupingBy.Tenant ? true : false,
-                onClick: () => handleSummaryGrouping(GroupingBy.Tenant)
+                onClick: () => handleSummaryGrouping(GroupingBy.Tenant),
             },
             {
                 key: 'submitter',
                 text: 'Submitter',
                 canCheck: true,
                 isChecked: summaryGroupedBy === GroupingBy.Submitter ? true : false,
-                onClick: () => handleSummaryGrouping(GroupingBy.Submitter)
+                onClick: () => handleSummaryGrouping(GroupingBy.Submitter),
             },
             {
                 key: 'date',
                 text: 'Date',
                 canCheck: true,
                 isChecked: summaryGroupedBy === GroupingBy.Date ? true : false,
-                onClick: () => handleSummaryGrouping(GroupingBy.Date)
-            }
+                onClick: () => handleSummaryGrouping(GroupingBy.Date),
+            },
         ],
         directionalHint: DirectionalHint.bottomRightEdge,
-        directionalHintFixed: true
+        directionalHintFixed: true,
     };
 
     const mobileMenuProps: IContextualMenuProps = {
@@ -386,17 +386,17 @@ function SecondaryHeader(): React.ReactElement {
                 text: 'Pending Approvals',
                 canCheck: true,
                 isChecked: selectedSummary == 'pending',
-                onClick: () => getSummaryRecords('pending')
+                onClick: () => getSummaryRecords('pending'),
             },
             {
                 key: 'Out Of Sync',
                 text: 'Out Of Sync',
                 canCheck: true,
                 isChecked: selectedSummary == 'outofsync',
-                onClick: () => getSummaryRecords('outofsync')
-            }
+                onClick: () => getSummaryRecords('outofsync'),
+            },
         ],
-        directionalHintFixed: true
+        directionalHintFixed: true,
     };
 
     const failedRecords = failedCount(selectedSummaryData);
@@ -412,13 +412,13 @@ function SecondaryHeader(): React.ReactElement {
         items.push({
             key: `Working on behalf of ${userName}`,
             text: `Working on behalf of ${userName}`,
-            title: `Working on behalf of ${userName}`
+            title: `Working on behalf of ${userName}`,
         });
     } else {
         items.push({
             key: `${userAlias && userName ? userName : profile?.displayName} `,
             text: `${userAlias && userName ? userName : profile?.displayName} `,
-            title: `${userAlias && userName ? userName : profile?.displayName} `
+            title: `${userAlias && userName ? userName : profile?.displayName} `,
         });
     }
 
@@ -426,14 +426,14 @@ function SecondaryHeader(): React.ReactElement {
         items.push({
             key: `${requestedRecords} ${requestedRecordsText}`,
             text: `${requestedRecords} ${requestedRecordsText}`,
-            title: `${requestedRecords} ${requestedRecordsText}`
+            title: `${requestedRecords} ${requestedRecordsText}`,
         });
     }
     if (failedRecords > 0) {
         items.push({
             key: `${failedRecords} ${failedRecordsText}`,
             text: `${failedRecords} ${failedRecordsText}`,
-            title: `${failedRecords} ${failedRecordsText}`
+            title: `${failedRecords} ${failedRecordsText}`,
         });
     }
 
@@ -442,20 +442,20 @@ function SecondaryHeader(): React.ReactElement {
         items: [
             {
                 key: 'requestedRecordsText',
-                text: requestedRecords + ' ' + requestedRecordsText
+                text: requestedRecords + ' ' + requestedRecordsText,
             },
             {
                 key: 'failedRecordsText',
-                text: failedRecords + ' ' + failedRecordsText               
-            }
+                text: failedRecords + ' ' + failedRecordsText,
+            },
         ],
         directionalHint: DirectionalHint.bottomRightEdge,
-        directionalHintFixed: true
+        directionalHintFixed: true,
     };
 
     const mobileMenus: IContextualMenuProps = {
         items,
-        directionalHintFixed: true
+        directionalHintFixed: true,
     };
 
     let menuProps: IContextualMenuProps;
@@ -475,16 +475,29 @@ function SecondaryHeader(): React.ReactElement {
         if (tenantDelegations && !checked && filterValue === tenantDelegations.appName && selectedTenantDelegation) {
             dispatch(updateSelectedTenantDelegation(null));
         }
-        
-        if(checked) {
-            trackFeatureUsageEvent(authClient, telemetryClient, "ViewType", 'MSApprovals.TableView', TrackingEventId.TableView, summaryCommonProperties )  
+
+        if (checked) {
+            trackFeatureUsageEvent(
+                authClient,
+                telemetryClient,
+                'ViewType',
+                'MSApprovals.TableView',
+                TrackingEventId.TableView,
+                summaryCommonProperties
+            );
         } else {
-            trackFeatureUsageEvent(authClient, telemetryClient, "ViewType", 'MSApprovals.CardView', TrackingEventId.CardView, summaryCommonProperties )
+            trackFeatureUsageEvent(
+                authClient,
+                telemetryClient,
+                'ViewType',
+                'MSApprovals.CardView',
+                TrackingEventId.CardView,
+                summaryCommonProperties
+            );
         }
-        
     };
 
-    const getSummaryRecords = (summaryType: String) => {
+    const getSummaryRecords = (summaryType: string) => {
         if (summaryType === 'pending') {
             dispatch(updateSelectedSummarytoPending());
         } else if (summaryType === 'outofsync') {
@@ -510,7 +523,7 @@ function SecondaryHeader(): React.ReactElement {
         if ((!userDelegations || userDelegations.length === 0) && !tenantDelegations) {
             const delegationMenuProps: IContextualMenuProps = {
                 items: [],
-                directionalHintFixed: true
+                directionalHintFixed: true,
             };
             setDelegationsMenuProps(delegationMenuProps);
             return;
@@ -529,9 +542,9 @@ function SecondaryHeader(): React.ReactElement {
                     dispatch(updateBulkSelected(false));
                     dispatch(setAliasMessagebarHeight(0));
                     dispatch(receiveTenantDelegations(null));
-                }
+                },
             })),
-            directionalHintFixed: true
+            directionalHintFixed: true,
         };
         const allMenuProps = delegationMenuProps;
         if (tenantDelegations && !isCardViewSelected && filterValue === tenantDelegations.appName) {
@@ -542,7 +555,7 @@ function SecondaryHeader(): React.ReactElement {
                 ['onClick']: () => {
                     dispatch(updateSelectedTenantDelegation(x));
                     dispatch(requestPullTenantSummary(tenantDelegations.tenantId, x.alias, null, true));
-                }
+                },
             }));
             allMenuProps.items = allMenuProps.items.concat(tenantDelegationMenuItems);
         }
@@ -554,7 +567,7 @@ function SecondaryHeader(): React.ReactElement {
             dispatch(toggleTeachingBubbleVisibility());
             return;
         }
-        const newStep = teachingSteps.find(teachingStep => teachingStep?.step === nextKey);
+        const newStep = teachingSteps.find((teachingStep) => teachingStep?.step === nextKey);
         if (!newStep) {
             dispatch(toggleTeachingBubbleVisibility());
             return;
@@ -564,13 +577,13 @@ function SecondaryHeader(): React.ReactElement {
 
     const teachingStepSuccessButtonProps: IButtonProps = {
         children: teachingBubbleStep?.successButtonLabel,
-        onClick: () => updateTeachingBubbleStep(teachingBubbleStep.successNextStep)
+        onClick: () => updateTeachingBubbleStep(teachingBubbleStep.successNextStep),
     };
 
     const teachingStepDeclineButtonProps: IButtonProps = React.useMemo(
         () => ({
             children: teachingBubbleStep?.declineButtonLabel,
-            onClick: () => updateTeachingBubbleStep(teachingBubbleStep.declineNextStep)
+            onClick: () => updateTeachingBubbleStep(teachingBubbleStep.declineNextStep),
         }),
         []
     );
@@ -601,7 +614,7 @@ function SecondaryHeader(): React.ReactElement {
                         styles={HeaderStyled.PersonaMobileStyling}
                     />
                 </Stack.Item>
-               {/* <Stack.Item align="center" className={'ms-hiddenLgUp'}>
+                {/* <Stack.Item align="center" className={'ms-hiddenLgUp'}>
                     <Persona
                         // use dyanamic domain in the future
                         emailAlias={emailAlias}
@@ -669,19 +682,19 @@ function SecondaryHeader(): React.ReactElement {
                                     {displayPendingItemsButton && (
                                         // hidden when medium and down - "requested count"
                                         <Stack.Item align="center" className={'hidden-LgUpCustom'}>
-                                        <Stack horizontalAlign="end" horizontal>
-                                            <TooltipHost content="Summary">
-                                                <IconButton
-                                                    menuIconProps={{ iconName: 'More' }}
-                                                    title="Summary"
-                                                    ariaLabel="Status"
-                                                    style={HeaderStyled.SecondaryHeaderIconStyling}
-                                                    menuProps={pendingMenuProps}
-                                                />
-                                            </TooltipHost>
-                                        </Stack>
-                                    </Stack.Item>
-                                    )}                                  
+                                            <Stack horizontalAlign="end" horizontal>
+                                                <TooltipHost content="Summary">
+                                                    <IconButton
+                                                        menuIconProps={{ iconName: 'More' }}
+                                                        title="Summary"
+                                                        ariaLabel="Status"
+                                                        style={HeaderStyled.SecondaryHeaderIconStyling}
+                                                        menuProps={pendingMenuProps}
+                                                    />
+                                                </TooltipHost>
+                                            </Stack>
+                                        </Stack.Item>
+                                    )}
                                 </Stack>
                             </Stack.Item>
                         </>
@@ -773,7 +786,7 @@ function SecondaryHeader(): React.ReactElement {
                                         label="View Type"
                                         styles={HeaderStyled.ToggleStackStyles}
                                         offText="Card"
-                                        onText="Table"                                       
+                                        onText="Table"
                                         role="switch"
                                         checked={!isCardViewSelected}
                                         onChange={setViewType}
@@ -786,7 +799,7 @@ function SecondaryHeader(): React.ReactElement {
                                         menuProps={viewTypeMenuProps}
                                         style={{
                                             ...HeaderStyled.SecondaryHeaderIconStyling,
-                                            ...{ backgroundColor: 'inherit' }
+                                            ...{ backgroundColor: 'inherit' },
                                         }}
                                     />
                                 </>
@@ -801,23 +814,23 @@ function SecondaryHeader(): React.ReactElement {
                                         {/* Always display Group by icon(even when disabled) */}
                                         <IconButton
                                             id="groupBy"
-                                            iconProps={{ iconName: 'GroupList' }}                                            
+                                            iconProps={{ iconName: 'GroupList' }}
                                             ariaLabel="Group By"
                                             style={HeaderStyled.SecondaryHeaderIconStyling}
                                             menuProps={menuProps}
-                                            disabled={isBulkSelected && selectedPage === 'summary'}                                            
-                                        /> 
+                                            disabled={isBulkSelected && selectedPage === 'summary'}
+                                        />
                                     </TooltipHost>
                                     <TooltipHost content="Filter" className={isBulkSelected ? 'ms-hiddenMdDown' : null}>
                                         {/* Always display Filter icon(even when disabled) */}
                                         <IconButton
                                             id="filter"
-                                            iconProps={{ iconName: filterValue === 'All' ? 'Filter' : 'FilterSolid' }}                                         
+                                            iconProps={{ iconName: filterValue === 'All' ? 'Filter' : 'FilterSolid' }}
                                             ariaLabel="Filter"
                                             style={HeaderStyled.SecondaryHeaderIconStyling}
                                             menuProps={filterMenuProps}
-                                            disabled={isBulkSelected && selectedPage === 'summary'}                                           
-                                        />                                        
+                                            disabled={isBulkSelected && selectedPage === 'summary'}
+                                        />
                                     </TooltipHost>
                                 </>
                             )}
@@ -860,7 +873,7 @@ function SecondaryHeader(): React.ReactElement {
                 )}
             {/* working on behalf of banner */}
             {onBehalfOfText && (
-                <HeaderStyled.BulkMessageHeight ref={element => setAliasMessageBarRef(element)}>
+                <HeaderStyled.BulkMessageHeight ref={(element) => setAliasMessageBarRef(element)}>
                     <MessageBar
                         styles={HeaderStyled.DelegationBarStyles}
                         isMultiline={false}

@@ -143,11 +143,11 @@ function* fetchDelegations(action: IRequestDelegationsAction): IterableIterator<
         const httpClient: IHttpClient = yield getContext('httpClient');
         let url = `${__API_BASE_URL__}${__API_URL_ROOT__}/userDelegationSettings`;
         if (action.tenantId) {
-            url = url + `?tenantMapId=${action.tenantId}&`;
+            url = url + `/${action.tenantId}/`;
         } else if (!action.tenantId) {
-            url += '?';
+            url += '/';
         }
-        url = url + `loggedInAlias=${loggedInAlias}`;
+        url = url + `${loggedInAlias}`;
         const { data: delegations }: IHttpClientRequest = yield call([httpClient, httpClient.request], {
             url: url,
             resource: __RESOURCE_URL__,

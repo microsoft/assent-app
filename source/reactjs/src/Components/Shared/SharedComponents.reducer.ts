@@ -101,6 +101,7 @@ export const sharedComponentsInitialState: ISharedComponentsState = {
     successfulPullTenantRequests: [],
     successfulPullTenantCount: 0,
     successfulPullTenantCountDict: {},
+    isProfilePanelOpen: false,
 };
 
 export function sharedComponentsReducer(
@@ -589,6 +590,11 @@ export function sharedComponentsReducer(
                     [action.tenantId]:
                         (prev.successfulPullTenantCountDict[action.tenantId] ?? 0) + action.requests?.length,
                 },
+            };
+        case SharedComponentsActionType.TOGGLE_PROFILE_PANEL:
+            return {
+                ...prev,
+                isProfilePanelOpen: action.isOpen,
             };
         default:
             return prev;
