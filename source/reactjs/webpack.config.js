@@ -4,7 +4,7 @@ const webpack = require('webpack');
 
 function stringifyConfigValues(config) {
     const result = {};
-    Object.keys(config).forEach(key => {
+    Object.keys(config).forEach((key) => {
         result[key] = JSON.stringify(config[key]);
     });
 
@@ -12,8 +12,9 @@ function stringifyConfigValues(config) {
 }
 
 const NodePolyfillPlugin = require('node-polyfill-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 
-module.exports = env => {
+module.exports = (env) => {
     const NODE_ENV = env && env.NODE_ENV ? env.NODE_ENV : 'local';
     console.log('Environment', NODE_ENV);
     const config = require(path.join(__dirname, 'config', NODE_ENV));
@@ -25,13 +26,15 @@ module.exports = env => {
             devtool: 'source-map',
             entry: config.staticComponents,
             output: {
-                path: path.join(__dirname, 'public', 'bundles')
+                path: path.join(__dirname, 'public', 'bundles'),
+                filename: '[name].[contenthash].js',
+                clean: true,
             },
             externals: {
                 react: 'React',
                 'react-dom': 'ReactDOM',
                 'react-router-dom': 'ReactRouterDOM',
-                'styled-components': 'styled'
+                'styled-components': 'styled',
             },
             module: {
                 rules: [
@@ -40,8 +43,8 @@ module.exports = env => {
                         loader: 'ts-loader',
                         exclude: /node_modules/,
                         options: {
-                            transpileOnly: true
-                        }
+                            transpileOnly: true,
+                        },
                     },
                     {
                         test: /\.(png|jpg|gif)$/,
@@ -52,7 +55,7 @@ module.exports = env => {
                     },
                     {
                         test: /\.css$/i,
-                        use: ['style-loader', 'css-loader']
+                        use: ['style-loader', 'css-loader'],
                     },
                     {
                         test: /\.svg$/,
@@ -60,19 +63,26 @@ module.exports = env => {
                             {
                                 loader: 'svg-url-loader',
                                 options: {
-                                    limit: 10000
-                                }
-                            }
-                        ]
-                    }
-                ]
+                                    limit: 10000,
+                                },
+                            },
+                        ],
+                    },
+                ],
             },
             resolve: {
                 extensions: ['.ts', '.tsx', '.js'],
                 modules: [path.resolve(__dirname, 'node_modules'), 'node_modules'],
                 fallback: { buffer: require.resolve('buffer/'), fs: false },
             },
-            plugins: [new webpack.DefinePlugin(stringifyConfigValues(config.globals)), new NodePolyfillPlugin()],
+            plugins: [
+                new webpack.DefinePlugin(stringifyConfigValues(config.globals)),
+                new NodePolyfillPlugin(),
+                new HtmlWebpackPlugin({
+                    template: 'public/index_template.html',
+                    filename: '../index.html',
+                }),
+            ],
             devServer: {
                 //contentBase: path.join(__dirname, 'public'),
                 compress: true,
@@ -85,7 +95,7 @@ module.exports = env => {
                 },
                 open: true,
             },
-        }
+        },
         //commenting out dynamic component webpack config until we integrate microfrontends through cdn
         /* {
             name: 'dynamic',
