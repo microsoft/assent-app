@@ -71,7 +71,7 @@
         "styled-components": "^5.3.3",
         "tslib": "^2.3.1",
         "ua-parser-js": "^0.7.24",
-        "xlsx": "0.8.8"
+        "xlsx": "0.17.0"
     },
     "devDependencies": {
         "@babel/plugin-syntax-jsx": "^7.12.1",
