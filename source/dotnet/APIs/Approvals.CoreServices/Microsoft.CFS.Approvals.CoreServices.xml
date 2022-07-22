@@ -598,25 +598,9 @@
             </summary>
             <param name="summaryHelper"></param>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.OutOfSyncSummaryController.Get(System.String)">
-            <summary>
-            Get summary for the current user from azure table storage.
-            </summary>
-            <param name="sessionId">GUID SessionId. Unique for each user session</param>
-            <returns>
-            Out of Sync requests from all tenants for the current user.
-            This contains only summary data (i.e. no details) to be displayed on the home page.
-            </returns>
-            <remarks>
-            <para>
-            e.g.
-            HTTP GET api/OutOfSyncSummary
-            </para>
-            </remarks>
-        </member>
         <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.OutOfSyncSummaryController.Get(System.String,System.String)">
             <summary>
-            Get summary for the current user and particular tenant from azure table storage given Document Type ID.
+            Get out of sync requests for the current user sorted/ filtered by tenant from azure table storage given Document Type ID (optional).
             </summary>
             <param name="id">GUID DocumentTypeId of the Tenant</param>
             <param name="sessionId">GUID SessionId. Unique for each user session</param>
@@ -627,7 +611,7 @@
             <remarks>
             <para>
             e.g.
-            HTTP GET api/OutOfSyncSummary?Id=[tenantDocTypeID]
+            HTTP GET api/v1/OutOfSyncSummary?id=[tenantDocTypeID]
             </para>
             </remarks>
         </member>
@@ -816,25 +800,9 @@
             </summary>
             <param name="summaryHelper">The summary helper.</param>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController.Get(System.String)">
-            <summary>
-            Get summary for the current user from azure table storage.
-            </summary>
-            <param name="sessionId">GUID SessionId. Unique for each user session</param>
-            <returns>
-            Pending approvals from all tenants for the current user.
-            This contains only summary data (i.e. no details) to be displayed on the home page.
-            </returns>
-            <remarks>
-            <para>
-            e.g.
-            HTTP GET api/Summary
-            </para>
-            </remarks>
-        </member>
         <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController.Get(System.String,System.String)">
             <summary>
-            Get summary for the current user and particular tenant from azure table storage given Document Type ID.
+            Get summary for the current user sorted/ filtered by tenant from azure table storage given Document Type ID (optional).
             </summary>
             <param name="Id">GUID DocumentTypeId of the Tenant</param>
             <param name="SessionId">GUID SessionId. Unique for each user session</param>
@@ -845,7 +813,7 @@
             <remarks>
             <para>
             e.g.
-            HTTP GET api/Summary?Id=[tenantDocTypeID]
+            HTTP GET api/v1/Summary?Id=[tenantDocTypeID]
             </para>
             </remarks>
         </member>
@@ -1002,7 +970,7 @@
             <remarks>
             <para>
             e.g.
-            HTTP GET api/UserDelegationSettings?tenantId=[tenantId]&amp;loggedInAlias=[loggedInAlias]&amp;SessionId=[userSessionId]
+            HTTP GET api/UserDelegationSettings/[tenantId]/loggedInAlias]?SessionId=[userSessionId]
             </para>
             </remarks>
         </member>
