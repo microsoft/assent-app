@@ -37,6 +37,8 @@ namespace Microsoft.CFS.Approvals.Data.Azure.Storage.Interface
 
         List<T> GetDataCollectionByTableQuery<T>(string TableName, TableQuery<T> query) where T : ITableEntity, new();
 
+        List<T> GetDataCollectionByTableQuerySegmented<T>(string TableName, TableQuery<T> query) where T : ITableEntity, new();
+
         Task InsertOrReplaceRows<T>(string TableName, List<T> entities, bool caseConstraint = false) where T : ITableEntity, new();
 
         List<T> GetDataCollectionByColumns<T>(string TableName, KeyValuePair<string, string> columnOne, string columnOneQComparison, string tableOperator, KeyValuePair<string, string> columnTwo, string columnTwoQComparison) where T : ITableEntity, new();

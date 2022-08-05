@@ -117,7 +117,7 @@ namespace Microsoft.CFS.Approvals.Common.BL
             {
                 if (photo == null)
                 {
-                    photo = _localFileCache.GetFile(@"~/Content/images/defaultUser.jpg");
+                    photo = _localFileCache.GetFile(@"~/Content/images/blankUserImage.jpg");
                 }
             }
             return photo;

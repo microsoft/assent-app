@@ -8,7 +8,6 @@ namespace Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.CFS.Approvals.Contracts;
     using Microsoft.CFS.Approvals.Core.BL.Interface;
-    using Microsoft.CFS.Approvals.Extensions;
     using Microsoft.CFS.Approvals.Utilities.Helpers;
     using Swashbuckle.AspNetCore.Annotations;
 

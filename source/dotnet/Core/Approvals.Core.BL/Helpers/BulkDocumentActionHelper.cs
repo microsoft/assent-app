@@ -220,7 +220,7 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
 
                             // Authorization check
                             // If this fails, user gets a 401 status code (Unauthorized)
-                            CheckAuthorization(alias, approvalRequest, approvalSummaryRow, tenantInfo);
+                            await CheckAuthorization(alias, approvalRequest, approvalSummaryRow, tenantInfo);
 
                             // Version check
                             // If this fails, user gets a 400 status code (Invalid data - Stale request)

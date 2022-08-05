@@ -70,7 +70,7 @@ namespace Microsoft.CFS.Approvals.WatchdogProcessor.BL.Helpers
                                 TableQuery.GenerateFilterConditionForDate("NextReminderTime", QueryComparisons.GreaterThanOrEqual, currentTime.Subtract(new TimeSpan(daysForReminderMails, 0, 0, 0)))
                     ));
 
-            List<ApprovalSummaryRow> approvals = _tableHelper.GetDataCollectionByTableQuery(_config[ConfigurationKey.ApprovalSummaryAzureTableName.ToString()], query);
+            List<ApprovalSummaryRow> approvals = _tableHelper.GetDataCollectionByTableQuerySegmented(_config[ConfigurationKey.ApprovalSummaryAzureTableName.ToString()], query);
 
             return approvals;
         }

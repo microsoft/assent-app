@@ -159,7 +159,7 @@ namespace Microsoft.CFS.Approvals.Common.DL
         /// <returns></returns>
         public List<UserDelegationSetting> GetUserDelegationsForCurrentUser(string loggedInAlias)
         {
-            return _tableHelper.GetTableEntityListByPartitionKey<UserDelegationSetting>(Constants.UserDelegationSettingsAzureTableName, loggedInAlias);
+            return _tableHelper.GetTableEntityListByPartitionKey<UserDelegationSetting>(Constants.UserDelegationSettingsAzureTableName, loggedInAlias.ToLowerInvariant());
         }
 
         /// <summary>

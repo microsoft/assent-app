@@ -5,7 +5,6 @@ namespace Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1
 {
     using System;
     using System.IO;
-    using System.Net.Http;
     using System.Threading.Tasks;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.CFS.Approvals.Common.BL.Interface;

@@ -192,7 +192,7 @@ namespace Microsoft.CFS.Approvals.Data.Azure.Storage.Helpers
         /// <returns>Task</returns>
         public async Task UploadText(string data, string containerName, string blobName, string storageAccountName = "", string storageAccountKey = "")
         {
-            MemoryStream stream = new MemoryStream(Encoding.ASCII.GetBytes(data));
+            MemoryStream stream = new MemoryStream(Encoding.UTF8.GetBytes(data));
             await UploadStreamData(stream, containerName, blobName, storageAccountName, storageAccountKey);
         }
 

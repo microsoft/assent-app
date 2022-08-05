@@ -58,6 +58,11 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
         /// </summary>
         private readonly ITenantFactory _tenantFactory;
 
+        /// <summary>
+        /// The performance logger
+        /// </summary>
+        private readonly IPerformanceLogger _performanceLogger = null;
+
         #endregion Variables
 
         /// <summary>
@@ -75,7 +80,8 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
             IConfiguration config,
             IFlightingDataProvider flightingDataProvider,
             IBlobStorageHelper blobStorageHelper,
-            ITenantFactory tenantFactory)
+            ITenantFactory tenantFactory,
+            IPerformanceLogger performanceLogger)
         {
             _logProvider = logProvider;
             _approvalTenantInfoHelper = approvalTenantInfoHelper;
@@ -83,6 +89,7 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
             _flightingDataProvider = flightingDataProvider;
             _blobStorageHelper = blobStorageHelper;
             _tenantFactory = tenantFactory;
+            _performanceLogger = performanceLogger;
         }
 
         /// <summary>
@@ -147,110 +154,117 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
                 logData[LogDataKey.DocumentTypeId] = tenantInfo.DocTypeId;
 
                 #endregion Getting the Tenant ID
-
-                var isModernAdaptiveUI = tenantInfo.EnableModernAdaptiveUI switch
+                using (_performanceLogger.StartPerformanceLogger("PerfLog", string.IsNullOrWhiteSpace(clientDevice) ? Constants.WebClient : clientDevice, string.Format(Constants.PerfLogAction, "AdaptiveDetail", "Get Adaptive Templates for the tenant"), logData))
                 {
-                    (int)EnableModernAdaptiveUI.DisableForAll => false,
-                    (int)EnableModernAdaptiveUI.EnableForFlightedUsers => _flightingDataProvider.IsFeatureEnabledForUser(userAlias, (int)FlightingFeatureName.ModernAdaptiveDetailsUI),
-                    (int)EnableModernAdaptiveUI.EnableForAll => true,
-                    _ => false,
-                };
-                if (isModernAdaptiveUI)
-                {
-                    #region Get Tenant Type
-
-                    ITenant tenantAdaptor = null;
-                    tenantAdaptor = _tenantFactory.GetTenant(
-                            tenantInfo,
-                            userAlias,
-                            clientDevice,
-                            aadUserToken);
-
-                    #endregion Get Tenant Type
-
-                    #region Get Template List
-
-                    var templateList = new Dictionary<string, string>();
-                    await GetAllIconsFromBlob(templateList);
-                    await GetBlobTemplateByFileName(tenantInfo, clientDevice, templateList, templateType);
-
-                    #endregion Get Template List
-
-                    Dictionary<string, JObject> adaptiveTemplates = new Dictionary<string, JObject>();
-                    JArray bodyArray = new JArray();
-
-                    switch (templateType)
+                    var isModernAdaptiveUI = tenantInfo.EnableModernAdaptiveUI switch
                     {
-                        case (int)TemplateType.Summary:
-                            var summaryTemplate = JObject.Parse(tenantAdaptor.GetSummaryAdaptiveTemplate(templateList));
-                            bodyArray = MoveBodyInsideContainer(summaryTemplate);
-                            summaryTemplate["body"] = bodyArray;
-                            adaptiveTemplates.Add("SUM", summaryTemplate);
-                            break;
-
-                        case (int)TemplateType.Details:
-                            var detailTemplate = GetDetailTemplate(clientDevice, templateList);
-                            bodyArray = MoveBodyInsideContainer(detailTemplate);
-                            detailTemplate["body"] = bodyArray;
-                            adaptiveTemplates.Add("DTL", detailTemplate);
-                            break;
-
-                        case (int)TemplateType.Action:
-                            adaptiveTemplates.Add("ACT", GetActionTemplate(clientDevice, templateList));
-                            break;
-
-                        case (int)TemplateType.Footer:
-                            adaptiveTemplates.Add("FOOTER", GetFooterTemplate(clientDevice, templateList));
-                            break;
-
-                        case (int)TemplateType.All:
-                            adaptiveTemplates.Add("SUM", JObject.Parse(tenantAdaptor.GetSummaryAdaptiveTemplate(templateList)));
-                            adaptiveTemplates.Add("DTL", GetDetailTemplate(clientDevice, templateList));
-                            adaptiveTemplates.Add("ACT", GetActionTemplate(clientDevice, templateList));
-                            adaptiveTemplates.Add("FOOTER", GetFooterTemplate(clientDevice, templateList));
-                            break;
-
-                        case (int)TemplateType.Full:
-                            var fullTemplate = tenantAdaptor.GetAdaptiveTemplate(templateList);
-                            bodyArray = MoveBodyInsideContainer(fullTemplate);
-                            fullTemplate["body"] = bodyArray;
-                            adaptiveTemplates.Add("FULL", fullTemplate);
-                            break;
-
-                        default:
-                            break;
-                    }
-
-                    List<string> keys = new List<string>(adaptiveTemplates.Keys);
-                    foreach (var key in keys)
+                        (int)EnableModernAdaptiveUI.DisableForAll => false,
+                        (int)EnableModernAdaptiveUI.EnableForFlightedUsers => _flightingDataProvider.IsFeatureEnabledForUser(userAlias, (int)FlightingFeatureName.ModernAdaptiveDetailsUI),
+                        (int)EnableModernAdaptiveUI.EnableForAll => true,
+                        _ => false,
+                    };
+                    if (isModernAdaptiveUI)
                     {
-                        var adaptiveTemplateJson = adaptiveTemplates[key].ToJson();
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#MSApprovalsCoreServiceURL#", _config[ConfigurationKey.ApprovalsCoreServicesURL.ToString()]);
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#ExpenseImg#", await GetIconUrl(templateList, "money-icon.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#approveIcon#", await GetIconUrl(templateList, "greenTick.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#pendingIcon#", await GetIconUrl(templateList, "refresh.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#rejectIcon#", await GetIconUrl(templateList, "error.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#attachmentIcon#", await GetIconUrl(templateList, "attachment.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#ImageIcon#", await GetIconUrl(templateList, "image-icon.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#upIcon#", await GetIconUrl(templateList, "up.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#downIcon#", await GetIconUrl(templateList, "down.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#receiptIcon#", await GetIconUrl(templateList, "receipt.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#policyIcon#", await GetIconUrl(templateList, "policy.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#car-sideIcon#", await GetIconUrl(templateList, "car-side.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#airplaneIcon#", await GetIconUrl(templateList, "airplane.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#downloadIcon#", await GetIconUrl(templateList, "download.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#previewIcon#", await GetIconUrl(templateList, "preview.png"));
-                        adaptiveTemplates[key] = JObject.Parse(adaptiveTemplateJson);
+                        #region Get Tenant Type
+
+                        ITenant tenantAdaptor = null;
+                        tenantAdaptor = _tenantFactory.GetTenant(
+                                tenantInfo,
+                                userAlias,
+                                clientDevice,
+                                aadUserToken);
+
+                        #endregion Get Tenant Type
+
+                        #region Get Template List
+
+                        var templateList = new Dictionary<string, string>();
+                        await GetAllIconsFromBlob(templateList);
+                        await GetBlobTemplateByFileName(tenantInfo, clientDevice, templateList, templateType);
+
+                        #endregion Get Template List
+
+                        Dictionary<string, JObject> adaptiveTemplates = new Dictionary<string, JObject>();
+                        JArray bodyArray = new JArray();
+
+                        switch (templateType)
+                        {
+                            case (int)TemplateType.Summary:
+                                var summaryTemplate = JObject.Parse(tenantAdaptor.GetSummaryAdaptiveTemplate(templateList));
+                                bodyArray = MoveBodyInsideContainer(summaryTemplate, clientDevice);
+                                summaryTemplate["body"] = bodyArray;
+                                adaptiveTemplates.Add("SUM", summaryTemplate);
+                                break;
+
+                            case (int)TemplateType.Details:
+                                var detailTemplate = GetDetailTemplate(clientDevice, templateList);
+                                bodyArray = MoveBodyInsideContainer(detailTemplate, clientDevice);
+                                detailTemplate["body"] = bodyArray;
+                                adaptiveTemplates.Add("DTL", detailTemplate);
+                                break;
+
+                            case (int)TemplateType.Action:
+                                adaptiveTemplates.Add("ACT", GetActionTemplate(clientDevice, templateList));
+                                break;
+
+                            case (int)TemplateType.Footer:
+                                adaptiveTemplates.Add("FOOTER", GetFooterTemplate(clientDevice, templateList));
+                                break;
+
+                            case (int)TemplateType.All:
+                                adaptiveTemplates.Add("SUM", JObject.Parse(tenantAdaptor.GetSummaryAdaptiveTemplate(templateList)));
+                                adaptiveTemplates.Add("DTL", GetDetailTemplate(clientDevice, templateList));
+                                adaptiveTemplates.Add("ACT", GetActionTemplate(clientDevice, templateList));
+                                adaptiveTemplates.Add("FOOTER", GetFooterTemplate(clientDevice, templateList));
+                                break;
+
+                            case (int)TemplateType.Full:
+                                var fullTemplate = tenantAdaptor.GetAdaptiveTemplate(templateList);
+                                bodyArray = MoveBodyInsideContainer(fullTemplate, clientDevice);
+                                fullTemplate["body"] = bodyArray;
+                                adaptiveTemplates.Add("FULL", fullTemplate);
+                                break;
+
+                            default:
+                                break;
+                        }
+
+                        List<string> keys = new List<string>(adaptiveTemplates.Keys);
+                        foreach (var key in keys)
+                        {
+                            var adaptiveTemplateJson = adaptiveTemplates[key].ToJson();
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#MSApprovalsCoreServiceURL#", _config[ConfigurationKey.ApprovalsCoreServicesURL.ToString()]);
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#MSApprovalsBaseUrl#", _config[ConfigurationKey.ApprovalsBaseUrl.ToString()]);
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#ExpenseImg#", await GetIconUrl(templateList, "money-icon.png"));
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#approveIcon#", await GetIconUrl(templateList, "greenTick.png"));
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#pendingIcon#", await GetIconUrl(templateList, "refresh.png"));
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#rejectIcon#", await GetIconUrl(templateList, "error.png"));
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#attachmentIcon#", await GetIconUrl(templateList, "attachment.png"));
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#ImageIcon#", await GetIconUrl(templateList, "image-icon.png"));
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#upIcon#", await GetIconUrl(templateList, "up.png"));
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#downIcon#", await GetIconUrl(templateList, "down.png"));
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#receiptIcon#", await GetIconUrl(templateList, "receipt.png"));
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#policyIcon#", await GetIconUrl(templateList, "policy.png"));
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#car-sideIcon#", await GetIconUrl(templateList, "car-side.png"));
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#airplaneIcon#", await GetIconUrl(templateList, "airplane.png"));
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#downloadIcon#", await GetIconUrl(templateList, "download.png"));
+                            adaptiveTemplateJson = adaptiveTemplateJson.Replace("#previewIcon#", await GetIconUrl(templateList, "preview.png"));
+                            adaptiveTemplates[key] = JObject.Parse(adaptiveTemplateJson);
+                        }
+                        logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
+                        _logProvider.LogInformation(TrackingEvent.AdaptiveTemplateFetchSuccess, logData);
+                        return adaptiveTemplates;
                     }
-                    return adaptiveTemplates;
-                }
-                else
-                {
-                    throw new InvalidOperationException(Constants.NotFlightedMornUIErrorMessage);
+                    else
+                    {
+                        throw new InvalidOperationException(Constants.NotFlightedMornUIErrorMessage);
+                    }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
+                _logProvider.LogError(TrackingEvent.AdaptiveTemplateFetchFailure, ex, logData);
                 throw;
             }
         }
@@ -470,7 +484,8 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
         /// Move the entire body items except the header auto-refresh message item into single container
         /// </summary>
         /// <param name="adaptiveJSON">Adaptive Full body template</param>
-        private JArray MoveBodyInsideContainer(JObject adaptiveJSON)
+        /// <param name="clientDevice">Client Device</param>
+        private JArray MoveBodyInsideContainer(JObject adaptiveJSON, string clientDevice)
         {
             var bodyArray = adaptiveJSON["body"];
             var array = new JArray();
@@ -483,7 +498,15 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
             AdaptiveContainer container = new AdaptiveContainer();
             JObject obj = container.ToJson().FromJson<JObject>();
             (obj["items"] as JArray).Merge(bodyArray);
-            obj["$when"] = "${or(not(exists(Message)), Message == '')}";
+            switch (clientDevice)
+            {
+                case Constants.TeamsClient:
+                    obj["$when"] = "${and(or(not(exists(Message)), Message == ''), or(not(exists(ActionTakeOnMessage)), ActionTakeOnMessage == ''))}";
+                    break;
+                default:
+                    obj["$when"] = "${or(not(exists(Message)), Message == '')}";
+                    break;
+            }
             array.Add(obj);
             return array;
         }

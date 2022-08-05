@@ -414,15 +414,15 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
         /// <param name="approvalRequest">Approval request object</param>
         /// <param name="approvalSummaryRow">Approval summary row data</param>
         /// <param name="tenantInfo"></param>
-        protected void CheckAuthorization(string alias, ApprovalRequest approvalRequest, ApprovalSummaryRow approvalSummaryRow, ApprovalTenantInfo tenantInfo)
+        protected async Task CheckAuthorization(string alias, ApprovalRequest approvalRequest, ApprovalSummaryRow approvalSummaryRow, ApprovalTenantInfo tenantInfo)
         {
             if (approvalSummaryRow == null)
             {
-                var actionAuditLog = _actionAuditLogHelper.GetActionAuditLogsByDocumentNumberAndApprover(approvalRequest.ApprovalIdentifier.DisplayDocumentNumber, alias).OrderByDescending(a => a.ActionTime).FirstOrDefault();
+                var actionAuditLog = (await _actionAuditLogHelper.GetActionAuditLogsByDocumentNumberAndApprover(approvalRequest.ApprovalIdentifier.DisplayDocumentNumber, alias)).OrderByDescending(a => a.ActionDateTime).FirstOrDefault();
                 if (actionAuditLog != null)
                 {
                     // You have already taken action "{0}" on this request on {1} from {2}. No further action is required.
-                    throw new UnauthorizedAccessException(string.Format(_config[ConfigurationKey.ActionAlreadyTakenFromApprovalsMessage.ToString()], actionAuditLog.ActionType, actionAuditLog.ActionTime, actionAuditLog.ClientType));
+                    throw new UnauthorizedAccessException(string.Format(_config[ConfigurationKey.ActionAlreadyTakenFromApprovalsMessage.ToString()], actionAuditLog.ActionTaken, actionAuditLog.ActionDateTime, actionAuditLog.ClientType));
                 }
                 else
                 {
@@ -1183,7 +1183,7 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
             {
                 // Authorization check
                 // If this fails, user gets a 401 status code (Unauthorized)
-                CheckAuthorization(alias, approvalRequest, approvalSummaryRow, tenantInfo);
+                await CheckAuthorization(alias, approvalRequest, approvalSummaryRow, tenantInfo);
 
                 // Version check
                 // If this fails, user gets a 400 status code (Invalid data - Stale request)

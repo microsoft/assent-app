@@ -5,6 +5,8 @@ namespace Microsoft.CFS.Approvals.Utilities.Helpers
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
+    using System.Net;
     using System.Net.Http;
     using System.Threading.Tasks;
     using Microsoft.CFS.Approvals.Common.DL.Interface;
@@ -15,6 +17,7 @@ namespace Microsoft.CFS.Approvals.Utilities.Helpers
     using Microsoft.Extensions.Configuration;
     using Microsoft.Graph;
     using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
     using Constants = Contracts.Constants;
 
     /// <summary>
@@ -84,6 +87,22 @@ namespace Microsoft.CFS.Approvals.Utilities.Helpers
             if (graphApiResponse.IsSuccessStatusCode)
             {
                 return JsonConvert.DeserializeObject<User>(await graphApiResponse.Content.ReadAsStringAsync());
+            }
+            else if (graphApiResponse.StatusCode is HttpStatusCode.NotFound)
+            {
+                graphApiResponse = await _httpHelper.SendRequestAsync(
+                HttpMethod.Get,
+                clientId,
+                clientSecret,
+                authority,
+                "https://graph.microsoft.com",
+                string.Format("https://graph.microsoft.com/v1.0/users/?$filter=proxyAddresses/any(c:c eq 'smtp:{0}')", alias + _config[ConfigurationKey.DomainName.ToString()]));
+
+                var user = JsonConvert.DeserializeObject<JObject>(await graphApiResponse.Content.ReadAsStringAsync())?.SelectToken("value")?.Value<JArray>();
+                if (graphApiResponse.IsSuccessStatusCode && user?.Count > 0)
+                {
+                    return JsonConvert.DeserializeObject<User>(user?.FirstOrDefault()?.ToString());
+                }
             }
             return null;
         }

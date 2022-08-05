@@ -69,8 +69,7 @@ namespace Microsoft.CFS.Approvals.Common.BL
         {
             try
             {
-                
-                var filestream = File.Open(_hostingEnvironment.ContentRootPath + @"\Content\images\defaultUser.jpg", FileMode.Open);
+                var filestream = File.Open(_hostingEnvironment.ContentRootPath + pathLocal, FileMode.Open);
                 var file = new byte[(int)filestream.Length];
                 filestream.Read(file, 0, (int)filestream.Length);
                 filestream.Close();

@@ -97,14 +97,14 @@ namespace Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1
                     var result = await _adaptiveDetailsHelper.GetAdaptiveTemplate(tenantId, Alias, LoggedInAlias, Host, GetTokenOrCookie(), sessionId, xcv, tcv, (int)type);
 
                     logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
-                    _logProvider.LogInformation(TrackingEvent.WebApiAdaptiveDetailFail, logData);
+                    _logProvider.LogInformation(TrackingEvent.WebApiAdaptiveDetailSuccess, logData);
                     return Ok(result);
                 }
             }
             catch (Exception ex)
             {
                 logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
-                _logProvider.LogError(TrackingEvent.WebApiAdaptiveDetailSuccess, ex, logData);
+                _logProvider.LogError(TrackingEvent.WebApiAdaptiveDetailFail, ex, logData);
                 return BadRequest(ex.Message);
             }
         }

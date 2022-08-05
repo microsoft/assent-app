@@ -373,6 +373,12 @@ namespace Microsoft.CFS.Approvals.Model
         public bool EnableUserDelegation { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether [enable external user delegation].
+        /// </summary>
+        /// <value><c>true</c> if [enable external user delegation]; otherwise, <c>false</c>.</value>
+        public bool EnableExternalUserDelegation { get; set; }
+
+        /// <summary>
         /// Gets or sets the type of the tenant.
         /// </summary>
         /// <value>The type of the tenant.</value>

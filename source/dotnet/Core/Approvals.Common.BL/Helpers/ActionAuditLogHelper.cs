@@ -36,26 +36,9 @@ namespace Microsoft.CFS.Approvals.Common.DL.Helpers
         /// <param name="documentNumber"></param>
         /// <param name="actualApprover"></param>
         /// <returns></returns>
-        public List<ActionAuditLogTableRow> GetActionAuditLogsByDocumentNumberAndApprover(string documentNumber, string actualApprover)
+        public async Task<List<ActionAuditLogInfo>> GetActionAuditLogsByDocumentNumberAndApprover(string documentNumber, string actualApprover)
         {
-            return _logger.GetActionAuditLogsByDocumentNumberAndApprover(documentNumber, actualApprover);
-        }
-        
-        /// <summary>
-        /// Method to log action audit details.
-        /// </summary>
-        /// <param name="documentNumber"></param>
-        /// <param name="impersonatedUser"></param>
-        /// <param name="actualApprover">original approver</param>
-        /// <param name="actionType"> type of action i.e. approve, reject, complete etc.</param>
-        /// <param name="clientDevice">device from which action is taken</param>
-        /// <param name="tenantId"></param>
-        /// <param name="actionDate"> action time & date of action</param>
-        /// <param name="summaryJson">additional parameter for audit action logging details</param>
-        /// <returns></returns>
-        public Task LogActionDetails(string documentNumber, string impersonatedUser, string actualApprover, string actionType, string clientDevice, string tenantId, DateTime actionDate, SummaryJson summaryJson)
-        {
-            return _logger.LogActionDetailsAsync(documentNumber, impersonatedUser, actualApprover, actionType, clientDevice, tenantId, actionDate, summaryJson);
+            return await _logger.GetActionAuditLogsByDocumentNumberAndApprover(documentNumber, actualApprover);
         }
 
         /// <summary>
