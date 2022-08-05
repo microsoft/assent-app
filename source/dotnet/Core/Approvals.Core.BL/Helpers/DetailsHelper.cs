@@ -506,10 +506,14 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
 
                         if (documentSummary == null)
                         {
-                            var actionAuditLog = _actionAuditLogHelper.GetActionAuditLogsByDocumentNumberAndApprover(documentNumber, alias).OrderByDescending(a => a.ActionTime).FirstOrDefault();
+                            var actionAuditLog = (await _actionAuditLogHelper.GetActionAuditLogsByDocumentNumberAndApprover(documentNumber, alias)).OrderByDescending(a => a.ActionDateTime).FirstOrDefault();
                             if (actionAuditLog != null)
                             {
-                                responseObject["ActionTakeOnMessage"] = string.Format(_config[ConfigurationKey.ActionAlreadyTakenFromApprovalsMessage.ToString()], documentNumber, actionAuditLog.ActionTime, actionAuditLog.ClientType);
+                                responseObject["ActionTakeOnMessage"] = string.Format(_config[ConfigurationKey.ActionAlreadyTakenFromApprovalsMessage.ToString()], actionAuditLog.ActionTaken, actionAuditLog.ActionDateTime, actionAuditLog.ClientType);
+                            }
+                            else
+                            {
+                                responseObject["ActionTakeOnMessage"] = Constants.ActionTakenMessage;
                             }
                         }
                         else if (documentSummary.LobPending) // Show notification that action is already taken.
@@ -1564,7 +1568,7 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
             string base64String = clientDevice switch
             {
                 Constants.TeamsClient => string.Format("{0},{1}", "data:image/svg+xml;base64", Constants.DefaultTeamsUserImageBase64String),
-                _ => Constants.DefaultUserImageBase64String,
+                _ => string.Format("{0},{1}", "data:image/jpeg;base64", Constants.DefaultUserImageBase64String),
             };
             byte[] photo = null;
 
@@ -2808,7 +2812,7 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
             string source)
         {
             JObject missingDataResponseJObject = null;
-            var urls = responseJObject.Property("CallBackURLCollection").Value.ToList();
+            var urls = responseJObject.Property("CallBackURLCollection") != null ? responseJObject.Property("CallBackURLCollection").Value.ToList() : new List<JToken>();
 
             if (urls.Any())
             {

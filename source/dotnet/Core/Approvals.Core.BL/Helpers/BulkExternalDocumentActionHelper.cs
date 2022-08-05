@@ -84,9 +84,6 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
         /// <summary>
         /// Process user actions as an asynchronous operation.
         /// </summary>
-        /// <param name="configurationHelper">The configuration helper.</param>
-        /// <param name="actionAuditLogHelper">The action audit log helper.</param>
-        /// <param name="logger">The logger.</param>
         /// <param name="tenantAdapter">The tenant adapter.</param>
         /// <param name="tenantInfo">The tenant information.</param>
         /// <param name="tenantId">The tenant map identifier.</param>

@@ -226,9 +226,8 @@ namespace Microsoft.CFS.Approvals.Utilities.Helpers
         /// </summary>
         /// <param name="userAccessToken">current AAD user token</param>
         /// <param name="parameterObject">AAD token generation parameters</param>
-        /// <param name="userIdentifier">Claim</param>
         /// <returns>AAD User token with changed resource URL</returns>
-        public async Task<string> GetOnBehalfUserToken(string userAccessToken, JObject parameterObject, Claim userIdentifier)
+        public async Task<string> GetOnBehalfUserToken(string userAccessToken, JObject parameterObject)
         {
             var logData = new Dictionary<LogDataKey, object>
             {

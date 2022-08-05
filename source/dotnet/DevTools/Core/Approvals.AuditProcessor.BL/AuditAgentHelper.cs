@@ -130,9 +130,12 @@ namespace Microsoft.CFS.Approvals.AuditProcessor.BL
                     }
                 }
 
-                if (await _blobStorageHelper.DoesExist(Constants.AuditAgentMessageContainer, blobId))
+                if (message.UserProperties.ContainsKey("ApprovalRequestVersion") && message.UserProperties["ApprovalRequestVersion"].ToString() == _config[Microsoft.CFS.Approvals.Contracts.ConfigurationKey.ApprovalRequestVersion.ToString()])
                 {
-                    await _blobStorageHelper.DeleteBlob(Constants.AuditAgentMessageContainer, blobId);
+                    if (await _blobStorageHelper.DoesExist(Constants.AuditAgentMessageContainer, blobId))
+                    {
+                        await _blobStorageHelper.DeleteBlob(Constants.AuditAgentMessageContainer, blobId);
+                    }
                 }
                 // Log processing of message has completed
                 // TODO:: Logging into critical logs still throwing exception. Need to work on this getting the issue fixed.

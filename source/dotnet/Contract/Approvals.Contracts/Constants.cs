@@ -277,6 +277,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string CookieHeader = "Cookie";
         public const string UserAlias = "UserAlias";
         public const string LoggedInUserAlias = "LoggedInUserAlias";
+        public const string DelegatedUserAlias = "DelegatedUserAlias";
         public const string DetailOpsList = "DetailOpsList";
         public const string OperationType = "operationtype";
         public const string ServiceParameter = "ServiceParameter";
@@ -399,6 +400,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string Xcv = "Xcv";
         public const string Tcv = "Tcv";
         public const string MessageId = "MessageId";
+        public const string TenantId = "TenantId";
 
         #endregion Request/Response Headers Mappings
 

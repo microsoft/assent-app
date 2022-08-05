@@ -64,65 +64,12 @@ namespace Microsoft.CFS.Approvals.Common.DL
         /// <param name="documentNumber">The document number.</param>
         /// <param name="actualApprover">The actual approver.</param>
         /// <returns>List of ActionAuditLogTableRow as per the query results.</returns>
-        public List<ActionAuditLogTableRow> GetActionAuditLogsByDocumentNumberAndApprover(string documentNumber, string actualApprover)
+        public async Task<List<ActionAuditLogInfo>> GetActionAuditLogsByDocumentNumberAndApprover(string documentNumber, string actualApprover)
         {
-            TableQuery<ActionAuditLogTableRow> query = (new TableQuery<ActionAuditLogTableRow>()
-                .Where(TableQuery.CombineFilters(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, documentNumber), TableOperators.And, TableQuery.GenerateFilterCondition("ActualUser", QueryComparisons.Equal, actualApprover))));
-            return _tableHelper.GetDataCollectionByTableQuery<ActionAuditLogTableRow>(_config[ConfigurationKey.ActionAuditLogAzureTableName.ToString()], query);
-        }
+            var sqlQuery = "select * from c where c.DisplayDocumentNumber = '" + documentNumber + "' and c.Approver = '" +
+                           actualApprover.ToLowerInvariant() + "'";
 
-        /// <summary>
-        /// log action details as an asynchronous operation.
-        /// </summary>
-        /// <param name="documentNumber">The document number.</param>
-        /// <param name="impersonatedUser">The impersonated user.</param>
-        /// <param name="actualApprover">The actual approver.</param>
-        /// <param name="actionType">Type of the action.</param>
-        /// <param name="clientDevice">The client device.</param>
-        /// <param name="tenantId">The tenant identifier.</param>
-        /// <param name="actionTime">The action time.</param>
-        /// <param name="summaryJson">SummaryJson object for Cosmos DB logging ActionAuditLog</param>
-        /// <returns>Task.</returns>
-        public async Task LogActionDetailsAsync(string documentNumber, string impersonatedUser, string actualApprover, string actionType, string clientDevice, string tenantId, DateTime actionTime, SummaryJson summaryJson)
-        {
-            try
-            {
-                var actionAuditLogTableRow = new ActionAuditLogTableRow
-                {
-                    PartitionKey = documentNumber,
-                    RowKey = Guid.NewGuid().ToString(),
-                    ActionTime = actionTime,
-                    ActualUser = actualApprover,
-                    ImpersonatedUser = impersonatedUser,
-                    ClientType = clientDevice,
-                    ActionType = actionType,
-                    TenantId = tenantId
-                };
-
-                await _tableHelper.Insert<ActionAuditLogTableRow>(_config[ConfigurationKey.ActionAuditLogAzureTableName.ToString()], actionAuditLogTableRow);
-
-                // Insert into Cosmos DB
-                ActionAuditLogInfo auditDataObject = null;
-
-                auditDataObject = new ActionAuditLogInfo()
-                {
-                    DisplayDocumentNumber = documentNumber,
-                    ActionDateTime = actionTime.ToUniversalTime().ToString("o"),
-                    TenantId = tenantId,
-                    ActionTaken = actionType,
-                    UnitValue = summaryJson?.UnitValue ?? string.Empty,
-                    UnitOfMeasure = summaryJson?.UnitOfMeasure ?? string.Empty,
-                    ActionStatus = "Success",
-                    ErrorMessage = string.Empty,
-                    ClientType = clientDevice,
-                    Approver = actualApprover
-                };
-                await Task.Run(() => _cosmosDbHelper.InsertDocumentAsync(auditDataObject));
-            }
-            catch (Exception ex)
-            {
-                _logProvider.LogError(TrackingEvent.LogActionAuditFailure, ex);
-            }
+            return await _cosmosDbHelper.GetAllDocumentsAsync<ActionAuditLogInfo>(sqlQuery);
         }
 
         /// <summary>

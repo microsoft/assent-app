@@ -137,8 +137,15 @@ namespace Microsoft.CFS.Approvals.NotificationProcessor.BL
                 {
                     logData.Add(LogDataKey.SubscriptionName, _config[ConfigurationKey.SubscriptionNameNotification.ToString()]);
 
-                    byte[] message = await _blobStorageHelper.DownloadByteArray(Constants.NotificationMessageContainer, blobId);
-
+                    byte[] message;
+                    if (serviceBusMessage.UserProperties.ContainsKey("ApprovalNotificationRequestVersion") && serviceBusMessage.UserProperties["ApprovalNotificationRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
+                    {
+                        message = await _blobStorageHelper.DownloadByteArray(Constants.NotificationMessageContainer, blobId);
+                    }
+                    else
+                    {
+                        message = serviceBusMessage.Body;
+                    }
                     var numberOfRetries = int.Parse(_config[ConfigurationKey.MainTopicFailCountThreshold.ToString()]);
                     Stream stream = new MemoryStream(message);
                     int tenantId = 0;
@@ -176,7 +183,7 @@ namespace Microsoft.CFS.Approvals.NotificationProcessor.BL
                         #endregion Logging
 
                         // Process the message if valid
-                        await ProcessMainApproval(approvalNotificationDetails, blobId, numberOfRetries);
+                        await ProcessMainApproval(approvalNotificationDetails, blobId, numberOfRetries, serviceBusMessage);
                     }
                 }
                 catch (MessageLockLostException lockLostException)
@@ -198,7 +205,8 @@ namespace Microsoft.CFS.Approvals.NotificationProcessor.BL
         /// <param name="requestExpressions"></param>
         /// <param name="blobId"></param>
         /// <param name="numberOfRetries"></param>
-        private async Task ProcessMainApproval(ApprovalNotificationDetails requestExpressions, string blobId, int numberOfRetries)
+        /// <param name="sbMessage">service bus message</param>
+        private async Task ProcessMainApproval(ApprovalNotificationDetails requestExpressions, string blobId, int numberOfRetries, Message sbMessage)
         {
             using (var perfTracer = _performanceLogger.StartPerformanceLogger("PerfLog", "NotificationWorker", string.Format(Constants.PerfLogAction, requestExpressions.ApprovalTenantInfo.AppName, "Processes received Brokered Message")
                    , new Dictionary<LogDataKey, object>())) // TODO: log message ID here.
@@ -209,13 +217,16 @@ namespace Microsoft.CFS.Approvals.NotificationProcessor.BL
                     var failedRequest = await ProcessNotificationDetails(requestExpressions, blobId);
                     if (failedRequest != null)
                     {
-                        await ProcessMainApproval(requestExpressions, blobId, numberOfRetries - 1);
+                        await ProcessMainApproval(requestExpressions, blobId, numberOfRetries - 1, sbMessage);
                     }
                     else
                     {
-                        if (await _blobStorageHelper.DoesExist(Constants.NotificationMessageContainer, blobId))
+                        if (sbMessage.UserProperties.ContainsKey("ApprovalNotificationRequestVersion") && sbMessage.UserProperties["ApprovalNotificationRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
                         {
-                            await _blobStorageHelper.DeleteBlob(Constants.NotificationMessageContainer, blobId);
+                            if (await _blobStorageHelper.DoesExist(Constants.NotificationMessageContainer, blobId))
+                            {
+                                await _blobStorageHelper.DeleteBlob(Constants.NotificationMessageContainer, blobId);
+                            }
                         }
                     }
                 }

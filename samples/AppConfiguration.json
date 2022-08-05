@@ -9,6 +9,7 @@
   "APIUrlRoot": "/api/v1/",
   "ApprovalEmailNotificationTemplatesAzureTableName": "ApprovalEmailNotificationTemplates",
   "ApprovalRequestExpressionClass": "Microsoft.CFS.Approvals.Contracts.DataContracts.ApprovalRequestExpressionV1,  Microsoft.CFS.Approvals.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null",
+  "ApprovalRequestVersion": "1",
   "ApprovalSummaryAzureTableName": "ApprovalSummary",
   "ApprovalTenantInfo": "ApprovalTenantInfo",
   "ApprovalsAudienceUrl": "",

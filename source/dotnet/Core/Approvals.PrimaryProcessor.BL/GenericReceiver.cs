@@ -170,6 +170,7 @@ namespace Microsoft.CFS.Approvals.PrimaryProcessor.BL
                         logData.Add(LogDataKey.EventName, TrackingEvent.NewMessageRecievedInRetryTopic.ToString());
                         LogMessageProgress(requestExpressions, TrackingEvent.ARXReceivedSuccessfullyByServiceBusInRetryTopic, message, null, CriticalityLevel.Yes);
 
+                        _approvalPresenter.TenantInfo = TenantInfo;
                         var failedRequest = await _approvalPresenter.ProcessApprovalRequestExpressions(requestExpressions, message);
                         if (failedRequest != null && failedRequest.Count > 0)
                         {
@@ -357,14 +358,15 @@ namespace Microsoft.CFS.Approvals.PrimaryProcessor.BL
                         logData.Add(LogDataKey.TenantTelemetryData, expression.Telemetry.TenantTelemetry);
                         logData.Add(LogDataKey.BusinessProcessName, string.Format(TenantInfo.BusinessProcessName, Constants.BusinessProcessNameSendPayload, expression.Operation));
 
-                        byte[] messageToUpload = ConvertToByteArray(expression);
-
-                        if (await _blobHelper.DoesExist(Constants.PrimaryMessageContainer, blobId))
+                        if (message.UserProperties.ContainsKey("ApprovalRequestVersion") && message.UserProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
                         {
-                            await _blobHelper.DeleteBlob(Constants.PrimaryMessageContainer, blobId);
+                            byte[] messageToUpload = ConvertToByteArray(expression);
+                            if (await _blobHelper.DoesExist(Constants.PrimaryMessageContainer, blobId))
+                            {
+                                await _blobHelper.DeleteBlob(Constants.PrimaryMessageContainer, blobId);
+                            }
+                            await _blobHelper.UploadByteArray(messageToUpload, Constants.PrimaryMessageContainer, blobId);
                         }
-                        await _blobHelper.UploadByteArray(messageToUpload, Constants.PrimaryMessageContainer, blobId);
-
                         var brokreredMessage = BuildBrokeredMessage(expression, message);
                         retryMessages.Add(brokreredMessage);
                     }
@@ -387,9 +389,12 @@ namespace Microsoft.CFS.Approvals.PrimaryProcessor.BL
                         logData.Add(LogDataKey.BusinessProcessName, string.Format(TenantInfo.BusinessProcessName, Constants.BusinessProcessNameSendPayload, requestExpression.Operation));
                         if (!failedApprovalRequests.Any(f => f.ApprovalIdentifier.DisplayDocumentNumber == requestExpression.ApprovalIdentifier.DisplayDocumentNumber))
                         {
-                            if (await _blobHelper.DoesExist(Constants.PrimaryMessageContainer, blobId))
+                            if (message.UserProperties.ContainsKey("ApprovalRequestVersion") && message.UserProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
                             {
-                                await _blobHelper.DeleteBlob(Constants.PrimaryMessageContainer, blobId);
+                                if (await _blobHelper.DoesExist(Constants.PrimaryMessageContainer, blobId))
+                                {
+                                    await _blobHelper.DeleteBlob(Constants.PrimaryMessageContainer, blobId);
+                                }
                             }
                             LogMessageProgress(requestExpressions, TrackingEvent.ARXProcessedSuccessfullyInMainTopic, message, null, CriticalityLevel.Yes);
                         }
@@ -531,7 +536,7 @@ namespace Microsoft.CFS.Approvals.PrimaryProcessor.BL
 
             // Adding properties to the Message
             brokeredMessage.UserProperties["ApplicationId"] = message.UserProperties.ToJson().FromJson<Dictionary<string, string>>()["ApplicationId"];
-            brokeredMessage.UserProperties["ApprovalRequestVersion"] = _config[ConfigurationKey.ApprovalRequestVersion.ToString()].ToString();
+            brokeredMessage.UserProperties["ApprovalRequestVersion"] = message.UserProperties["ApprovalRequestVersion"]?.ToString();
             brokeredMessage.UserProperties["CreatedDate"] = DateTime.UtcNow;
             brokeredMessage.UserProperties["ContentType"] = "ApprovalRequestExpression";
             brokeredMessage.ContentType = "application/json";

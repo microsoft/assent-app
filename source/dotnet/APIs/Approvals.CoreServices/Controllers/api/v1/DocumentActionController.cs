@@ -11,7 +11,6 @@ namespace Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.CFS.Approvals.Common.DL.Interface;
     using Microsoft.CFS.Approvals.Contracts;
-    using Microsoft.CFS.Approvals.Contracts.DataContracts;
     using Microsoft.CFS.Approvals.Core.BL.Interface;
     using Microsoft.CFS.Approvals.Extensions;
     using Microsoft.CFS.Approvals.LogManager.Model;
@@ -71,7 +70,6 @@ namespace Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1
         /// The ActionString is a part of the HttpRequest's Content, which contains details regarding the type of action taken;
         /// the request or DocumentNumber on which action needs to be taken; the comments added by the approver; and additional information (if any)
         /// </summary>
-        /// <param name="approvalRequest">The Approval Request object</param>
         /// <param name="tenantId">The Unique TenantId (Int32) for which the action needs to be performed for the given request or documentNumber</param>
         /// <param name="sessionId">GUID SessionId. Unique for each user session</param>
         /// <param name="clientDevice">Client Device</param>

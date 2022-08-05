@@ -1427,7 +1427,7 @@ namespace Microsoft.CFS.Approvals.Domain.BL.Tenants.Core
                     {
                         StatusCode = HttpStatusCode.OK,
                         Content = new StringContent(JObject.FromObject(
-                                    new { Message = Constants.TenantDetailFetchFailureMessage }).ToJson())
+                                    new { Message = string.Format(Constants.TenantDetailFetchFailureMessage, Config[ConfigurationKey.SupportEmailId.ToString()]) }).ToJson())
                     };
                     return responseAdaptor;
                 }
@@ -1786,6 +1786,7 @@ namespace Microsoft.CFS.Approvals.Domain.BL.Tenants.Core
         /// Gets the action object.
         /// </summary>
         /// <param name="approvalRequests">List of approval requests.</param>
+        /// <param name="summaryRowParent">Summary Row</param>
         /// <returns>returns string</returns>
         protected virtual string PrepareActionContentForSubmissionIntoTenantService(List<ApprovalRequest> approvalRequests, ApprovalSummaryRow summaryRowParent = null)
         {
@@ -3281,25 +3282,9 @@ namespace Microsoft.CFS.Approvals.Domain.BL.Tenants.Core
                 case AuthenticationModelType.UserOnBehalf:
                     try
                     {
-                        var identity = (ClaimsIdentity)ClaimsPrincipal.Current?.Identity;
-                        var userIdentifier = identity.FindFirst("http://schemas.microsoft.com/identity/claims/objectidentifier");
-                        if (userIdentifier != null)
-                        {
-                            accessToken = await AuthenticationHelper.GetOnBehalfUserToken(UserToken.Replace("Bearer ", string.Empty).Replace("bearer ", string.Empty),
-                                serviceParameterObject, userIdentifier);
-                            logData.Add(LogDataKey.AADTokenType, "OnBehalfUserToken");
-                        }
-                        else
-                        {
-                            accessToken = (await AuthenticationHelper.AcquireOAuth2TokenAsync(
-                                  serviceParameterObject[Constants.ClientID].ToString(),
-                                  serviceParameterObject[Constants.AuthKey].ToString(),
-                                  serviceParameterObject[Constants.AADInstanceName].ToString(),
-                                  serviceParameterObject[Constants.ResourceURL].ToString(),
-                                  serviceParameterObject[Constants.TenantID].ToString())).AccessToken;
-
-                            logData.Add(LogDataKey.AADTokenType, "AADAppToken");
-                        }
+                        accessToken = await AuthenticationHelper.GetOnBehalfUserToken(UserToken.Replace("Bearer ", string.Empty).Replace("bearer ", string.Empty),
+                            serviceParameterObject);
+                        logData.Add(LogDataKey.AADTokenType, "OnBehalfUserToken");
                     }
                     catch (Exception ex)
                     {

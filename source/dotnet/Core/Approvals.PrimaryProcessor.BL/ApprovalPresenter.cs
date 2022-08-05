@@ -423,17 +423,26 @@ namespace Microsoft.CFS.Approvals.PrimaryProcessor.BL
                         byte[] messageToUpload = ConvertToByteArray(notificationDetails);
                         string blobId = Encoding.UTF8.GetString(message.Body);
 
-                        if (await _blobStorageHelper.DoesExist(Constants.NotificationMessageContainer, blobId))
+                        if (message.UserProperties.ContainsKey("ApprovalRequestVersion") && message.UserProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
                         {
-                            await _blobStorageHelper.DeleteBlob(Constants.NotificationMessageContainer, blobId);
+                            if (await _blobStorageHelper.DoesExist(Constants.NotificationMessageContainer, blobId))
+                            {
+                                await _blobStorageHelper.DeleteBlob(Constants.NotificationMessageContainer, blobId);
+                            }
                         }
+                        else
+                        {
+                            blobId = string.Format("{0}|{1}|{2}", approvalRequest.DocumentTypeId, approvalRequest.ApprovalIdentifier.DisplayDocumentNumber, approvalRequest.Operation.ToString());
+                        }
+
                         await _blobStorageHelper.UploadByteArray(messageToUpload, Constants.NotificationMessageContainer, blobId);
 
                         // Create a BrokeredMessage of the customized class,
                         // with ApplicationId property set to DocumentTypeId, and the same CorrelationID as the orginal BrokeredMessage
-                        Message newMessage = new Message(message.Body);
+                        Message newMessage = new Message(Encoding.UTF8.GetBytes(blobId));
                         newMessage.UserProperties["ApplicationId"] = message.UserProperties["ApplicationId"];
                         newMessage.UserProperties["ApprovalNotificationDetails"] = true;
+                        newMessage.UserProperties["ApprovalNotificationRequestVersion"] = _config[ConfigurationKey.ApprovalRequestVersion.ToString()];
                         newMessage.CorrelationId = message.GetCorrelationId();
                         logData[LogDataKey.BrokerMessage] = new { MessageBody = blobId, newMessage.UserProperties, newMessage.CorrelationId }.ToJson();
                         var client = new TopicClient(_serviceBusConnectionString, _notificationTopic);

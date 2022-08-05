@@ -630,6 +630,9 @@ namespace Microsoft.CFS.Approvals.LogManager.Model
         DocumentActionSuccess = 831,
         DocumentDownloadFailure = 833,
 
+        AdaptiveTemplateFetchSuccess = 834,
+        AdaptiveTemplateFetchFailure = 835,
+
         #endregion BL Tracking Events
 
         #region DAL Tracking Events

@@ -169,7 +169,7 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
                 {
                     responseJObject = GetDetailsDataforApprovalRequest(tenantInfo, deviceNotificationInfo.ApprovalIdentifier, summaryRows.FirstOrDefault(), logData);
 
-                    if (responseJObject == null || (responseJObject.Property("Message") != null && responseJObject.Property("Message").Value.ToString() != string.Empty))
+                    if (responseJObject == null || (responseJObject.Property("Message") != null && !String.IsNullOrWhiteSpace(responseJObject.Property("Message").Value.ToString())))
                     {
                         // Send generic email with tile details
                         deviceNotificationInfo.NotificationTemplateKey = GetOriginalNotificationTemplateKey(deviceNotificationInfo.NotificationTemplateKey);
@@ -428,6 +428,10 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
                     // Fetch missing details from LOB system and store it in azuretable
                     missingDataResponseJObject = GetDetailsDataforApprovalRequest(tenantInfo, approvalIdentifier, summaryRow, logData, operationName);
 
+                    if (missingDataResponseJObject != null && missingDataResponseJObject.Property("Message") != null && !string.IsNullOrWhiteSpace(missingDataResponseJObject.Property("Message").Value.ToString()))
+                    {
+                        throw new Exception(missingDataResponseJObject.Property("Message").Value.ToString());
+                    }
                     if (missingDataResponseJObject != null && missingDataResponseJObject.Count > 0)
                     {
                         // Merge missing details call into mail responseJObject to build complete adaptive card with all required details
@@ -946,7 +950,7 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers
             {
                 var listBlobs = await _blobStorageHelper.ListBlobsHierarchicalListing(
                     Constants.OutlookDynamicTemplates,
-                    string.IsNullOrWhiteSpace(tenantInfo.ActionableEmailFolderName) ? tenantInfo.AppName : tenantInfo.ActionableEmailFolderName,
+                    (string.IsNullOrWhiteSpace(tenantInfo.ActionableEmailFolderName) ? tenantInfo.AppName : tenantInfo.ActionableEmailFolderName) + "/",
                     null);
 
                 var listCommonBlobs = await _blobStorageHelper.ListBlobsHierarchicalListing(

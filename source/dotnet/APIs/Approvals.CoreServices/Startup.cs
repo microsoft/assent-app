@@ -97,10 +97,18 @@ namespace Microsoft.CFS.Approvals.CoreServices
             services.AddScoped<IFlightingDataProvider, FlightingDataProvider>();
             services.AddSingleton((Func<IServiceProvider, ICosmosDbHelper>)(c => new CosmosDbHelper(config?[ConfigurationKey.CosmosDbEndPoint.ToString()], config?[ConfigurationKey.CosmosDbAuthKey.ToString()])));
             services.AddSingleton<IHistoryStorageFactory, HistoryStorageFactory>();
+
+            var tableHelper = services.BuildServiceProvider().GetService<ITableHelper>();
+            var logger = services.BuildServiceProvider().GetService<ILogProvider>();
+            var performanceLogger = services.BuildServiceProvider().GetService<IPerformanceLogger>();
+            var approvalTenantInfoProvider = services.BuildServiceProvider().GetService<IApprovalTenantInfoProvider>();
+            var historyStorageFactory = services.BuildServiceProvider().GetService<IHistoryStorageFactory>();
+            var cosmosDbHelper = services.BuildServiceProvider().GetService<ICosmosDbHelper>();
+
             if (bool.Parse(config?[ConfigurationKey.IsAzureSearchEnabled.ToString()]))
-                services.AddScoped<IApprovalHistoryProvider, ApprovalHistoryAzureSearchProvider>();
+                services.AddScoped<IApprovalHistoryProvider, ApprovalHistoryAzureSearchProvider>(h => new ApprovalHistoryAzureSearchProvider(config, tableHelper, logger, performanceLogger, approvalTenantInfoProvider, historyStorageFactory, cosmosDbHelper));
             else
-                services.AddScoped<IApprovalHistoryProvider, ApprovalHistoryProvider>();
+                services.AddScoped<IApprovalHistoryProvider, ApprovalHistoryProvider>(h => new ApprovalHistoryProvider(config, approvalTenantInfoProvider, logger, performanceLogger, cosmosDbHelper, historyStorageFactory));
             services.AddScoped<ITenantFactory, TenantFactory>();
             services.AddScoped<IApprovalTenantInfoHelper, ApprovalTenantInfoHelper>();
             services.AddScoped<IAboutHelper, AboutHelper>();

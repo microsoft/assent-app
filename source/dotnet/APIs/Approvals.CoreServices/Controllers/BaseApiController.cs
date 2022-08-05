@@ -57,7 +57,7 @@ namespace Microsoft.CFS.Approvals.CoreServices.Controllers
         public string Tcv => GetTcv();
 
         /// <summary>
-        /// The Get Alias
+        /// Get alias
         /// </summary>
         /// <returns>user alias</returns>
         private string GetAlias()
@@ -67,13 +67,7 @@ namespace Microsoft.CFS.Approvals.CoreServices.Controllers
             {
                 alias = Request.Headers.FirstOrDefault(x => x.Key.ToLower().Equals(Constants.UserAlias.ToLower())).Value.FirstOrDefault();
             }
-            else
-            {
-                if (Request.Headers.Keys.Contains("X-MS-CLIENT-PRINCIPAL-NAME"))
-                {
-                    alias = new MailAddress(Request.Headers["X-MS-CLIENT-PRINCIPAL-NAME"].ToString()).User;
-                }
-            }
+
             return alias;
         }
 

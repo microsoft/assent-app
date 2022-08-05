@@ -54,9 +54,8 @@ namespace Microsoft.CFS.Approvals.Utilities.Interface
         /// </summary>
         /// <param name="userAccessToken">current AAD user token</param>
         /// <param name="parameterObject">AAD token generation parameters</param>
-        /// <param name="userIdentifier">Claim</param>
         /// <returns>AAD User token with changed resource URL</returns>
-        public Task<string> GetOnBehalfUserToken(string userAccessToken, JObject parameterObject, Claim userIdentifier);
+        public Task<string> GetOnBehalfUserToken(string userAccessToken, JObject parameterObject);
 
         /// <summary>
         /// Get Acs simple web token from shared secret.

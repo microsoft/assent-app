@@ -7,8 +7,6 @@ namespace Microsoft.CFS.Approvals.NotificationProcessor.BL
     using System.Collections.Generic;
     using System.Linq;
     using System.Net.Http;
-    using System.Net.Http.Headers;
-    using System.Text;
     using System.Threading.Tasks;
     using Microsoft.CFS.Approvals.Common.DL.Interface;
     using Microsoft.CFS.Approvals.Contracts;

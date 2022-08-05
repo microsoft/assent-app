@@ -327,6 +327,27 @@ namespace Microsoft.CFS.Approvals.Data.Azure.Storage.Helpers
         }
 
         /// <summary>
+        /// Get collection of entities by table query segmented
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="TableName"></param>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        public List<T> GetDataCollectionByTableQuerySegmented<T>(string TableName, TableQuery<T> query) where T : ITableEntity, new()
+        {
+            List<T> result = new List<T>();
+            CloudTable table = CloudTableClient.GetTableReference(TableName);
+            TableContinuationToken continuationToken = null;
+            do
+            {
+                var response = table.ExecuteQuerySegmented(query, continuationToken);
+                continuationToken = response.ContinuationToken;
+                result.AddRange(response);
+            } while (continuationToken != null);
+            return result;
+        }
+
+        /// <summary>
         /// Get collection of entities by columns
         /// </summary>
         /// <typeparam name="T"></typeparam>
