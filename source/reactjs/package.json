@@ -48,7 +48,7 @@
         "lodash": "^4.17.21",
         "markdown-it": "^12.3.2",
         "moment": "^2.29.4",
-        "moment-timezone": "0.5.33",
+        "moment-timezone": "0.5.35",
         "msal": "^1.2.2",
         "node-polyfill-webpack-plugin": "^1.1.4",
         "react": "~16.8.5",
