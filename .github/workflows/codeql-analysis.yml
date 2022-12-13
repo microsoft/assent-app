@@ -33,7 +33,6 @@ jobs:
       fail-fast: false
       matrix:
         language: [ 'csharp', 'javascript' ]
-        dotnet: [ '3.1.x' ]
         # CodeQL supports [ 'cpp', 'csharp', 'go', 'java', 'javascript', 'python', 'ruby' ]
         # Learn more about CodeQL language support at https://git.io/codeql-language-support
 
@@ -53,7 +52,7 @@ jobs:
     
     - uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: ${{ matrix.dotnet }}
+        dotnet-version: '3.1.x'
     
     # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
     # If this step fails, then you should remove it and run the build manually (see below)
