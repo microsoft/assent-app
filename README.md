@@ -1,6 +1,6 @@
 # Microsoft Assent
 ## Assent <sub>**A***pproval* **S***olution* **S***implified for* **ENT***erprise*<sub>
-Microsoft Assent (*a.k.a Approvals*) as a platform provides the “one stop shop” solution for approvers via a model that brings together disparate different approval requests in a consistent and ultra-modern model. Approvals delivers a unified approvals experience for any approval on multiple form factors - Website, Outlook Actionable email, Teams. It consolidates approvals across organization's line of business applications, building on modern technology and powered by Microsoft Azure. It serves as a showcase for solving modern IT scenarios using the latest technologies.
+Microsoft Assent (*a.k.a Approvals*) as a platform provides the "one stop shop" solution for approvers via a model that brings together disparate different approval requests in a consistent and ultra-modern model. Approvals delivers a unified approvals experience for any approval on multiple form factors - Website, Outlook Actionable email, Teams. It consolidates approvals across organization's line of business applications, building on modern technology and powered by Microsoft Azure. It serves as a showcase for solving modern IT scenarios using the latest technologies.
 - Payload API - Accepts payload from tenant system.
 - Audit Agent Processor - Logs the payload data into Cosmos db.
 - Primary Processor - Processes the payload pushed by payload API to service bus.
