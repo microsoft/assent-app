@@ -1,9 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Microsoft.CFS.Approvals.Contracts</RootNamespace>
     <AssemblyName>Microsoft.CFS.Approvals.Contracts</AssemblyName>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageId>Microsoft.CFS.Approvals.Contracts</PackageId>
+    <Version>6.0.1</Version>
+    <Authors>msapprovalscore</Authors>
+    <Company>Microsoft</Company>
+    <Description>This NuGet package, published by the Approvals team, provides the data contract to build approval request objects (ARX) which is sent to Approvals system by the LoB systems.</Description>
+    <Copyright>Copyright ©2022 Microsoft Corporation</Copyright>
+    <RepositoryUrl>https://microsoftit.visualstudio.com/OneITVSO/_git/FIN-FSS-MSAPR-AP-Platform/</RepositoryUrl>
+    <PackageTags>MSApprovals Approvals Contract ARX</PackageTags>
+    <PackageReleaseNotes>Approvals Contract - v6.0.1</PackageReleaseNotes>
+    <Title>Microsoft.CFS.Approvals.Contracts</Title>
   </PropertyGroup>
 
   <ItemGroup>

@@ -11,7 +11,7 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
     /// Represents the current approver.
     /// </summary>
     [DataContract]
-    public class Approver: NameAliasEntity
+    public class Approver : NameAliasEntity
     {
         /// <summary>
         /// Instantiates an Approver object setting the CanEdit flag to false by default

@@ -2,12 +2,10 @@
 // Licensed under the MIT License.
 
 
-namespace Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Interface
-{
-    using NJsonSchema;
+namespace Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Interface;
+using NJsonSchema;
 
-    public interface ISchemaGenerator
-    {
-        JsonSchema Generate(string json);
-    }
+public interface ISchemaGenerator
+{
+    JsonSchema Generate(string json);
 }

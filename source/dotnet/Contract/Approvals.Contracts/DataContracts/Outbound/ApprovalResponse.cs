@@ -12,7 +12,7 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
     /// </summary>
     [DataContract]
     public sealed class ApprovalResponse
-    {        
+    {
         /// <summary>
         /// Approvals assigned unique identifier for each tenant.
         /// Required field and helps to identify the tenant.
@@ -53,7 +53,7 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
         /// Extension data.
         /// </summary>
         [Obsolete]
-        public ExtensionDataObject ExtensionData { get; set; }        
+        public ExtensionDataObject ExtensionData { get; set; }
 
         /// <summary>
         /// Contains the Xcv/Tcv/BusinessProcessName which is used for Telemetry and Logging.

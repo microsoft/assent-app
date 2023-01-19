@@ -1,6 +1,6 @@
 # Microsoft Assent
 ## Assent <sub>**A***pproval* **S***olution* **S***implified for* **ENT***erprise*<sub>
-Microsoft Assent (*a.k.a Approvals*) as a platform provides the â€œone stop shopâ€ solution for approvers via a model that brings together disparate different approval requests in a consistent and ultra-modern model. Approvals delivers a unified approvals experience for any approval on multiple form factors - Website, Outlook Actionable email, Teams. It consolidates approvals across organization's line of business applications, building on modern technology and powered by Microsoft Azure. It serves as a showcase for solving modern IT scenarios using the latest technologies.
+Microsoft Assent (*a.k.a Approvals*) as a platform provides the “one stop shop” solution for approvers via a model that brings together disparate different approval requests in a consistent and ultra-modern model. Approvals delivers a unified approvals experience for any approval on multiple form factors - Website, Outlook Actionable email, Teams. It consolidates approvals across organization's line of business applications, building on modern technology and powered by Microsoft Azure. It serves as a showcase for solving modern IT scenarios using the latest technologies.
 - Payload API - Accepts payload from tenant system.
 - Audit Agent Processor - Logs the payload data into Cosmos db.
 - Primary Processor - Processes the payload pushed by payload API to service bus.
@@ -47,13 +47,13 @@ Step 3: Select 'Build your own template in the editor' and paste the content of 
 
 ```
 Step 4: Save and go the next step. Select the subscription, resource group & location.
-Update the settings to update any of the parameter values if required and click on purchase 
+Update the settings to update any of the parameter values if required and click on purchase
 
 Note : If there is any failure, try re-deploying again before proceeding for any troubleshooting.
 ```
 
 ## Clean-up
-It might have happened that some of the resources which got created may be already present in your subscription. 
+It might have happened that some of the resources which got created may be already present in your subscription.
 In that case, you can continue to use the same and delete the newly created resources. (e.g. Storage Account, Application Insights, ServiceBus - In case of ServiceBus make sure to create the Topics in your exisiting ServiceBus namespace before deleting).
 
 The following table will help in deciding which components can be cleaned-up.
@@ -90,7 +90,6 @@ Step 1: Download the configuration file (AppCofiguration.json) from the samples 
 ```
 Step 2: Add/update the values for the following keys in the JSON
 ```
-
 | Key Name | Source | In KeyVault ? |
 |--------|------|--------|
 | AADTenantId | Azure Active Directory (AAD) Tenant ID | No |
@@ -127,21 +126,21 @@ Step 2: Add/update the values for the following keys in the JSON
 | UrlPlaceholderTenants | [Optional] Int32 identifiers for simulating LoB apps in self-server portal | No |
 
 ```
-Step 3: Go to the App Configuration service on Azure Portal and select the resource 
+Step 3: Go to the App Configuration service on Azure Portal and select the resource
 where the configuration needs to be imported.
 ```
 ```
 Step 4: Go to 'Operations' -> 'Import/Export'
 ```
 ```
-Step 5: Select 'Import' in the toggle button and 
+Step 5: Select 'Import' in the toggle button and
 choose 'Configuration file' from the dropdown 'Source service'.
 ```
-``` 
+```
 Step 6: In the 'For language' drop down select 'Other'
 ```
 ```
-Step 7: Choose 'Json' as the value from the 'File type' dropdown and 
+Step 7: Choose 'Json' as the value from the 'File type' dropdown and
 select the 'AppConfiguration.json' updated in the previous step file from the File Explorer.
 ```
 ```
@@ -154,19 +153,19 @@ Select the 'Label' under which the configurations needs to be added (e.g., DEV) 
 * For the Function Apps add/update the below AppSetting keys:
   > APPINSIGHTS_INSTRUMENTATIONKEY
   > > This is an instrumentation key of Application Insights which was created from ARM Template.
-  > 
-  > AzureAppConfiguration
-  > > This would be Key vault Reference to Azure App Configuration's connection string.
+  >
+  > AzureAppConfigurationUrl
+  > > This would be Azure App Configuration's endpoint URL.
   >
   > AppConfigurationLabel
   > > This would be Azure App Configuration's label value corresponding to the environment the App service is running for.
   >
   > AzureWebJobsStorage
   > > This would be Key vault Reference to storage account's connection string.
-  > 
+  >
   > AzureWebJobsDashboard
   > > This would be Key vault Reference to storage account's connection string.
-  > 
+  >
   > ComponentName
   > > Name of the component which could be name of the component like *ApprovalsPrimaryProcessor or ApprovalsNotificationProcessor*.
   >
@@ -181,18 +180,18 @@ Select the 'Label' under which the configurations needs to be added (e.g., DEV) 
   > APPINSIGHTS_INSTRUMENTATIONKEY
   > > This is an instrumentation key of Application Insights which was created from ARM Template.
   >
-  > AzureAppConfiguration
-  > > This would be Key vault Reference to Azure App Configuration's connection string.
+  > AzureAppConfigurationUrl
+  > > This would be Azure App Configuration's endpoint URL.
   >
   > AppConfigurationLabel
   > > This would be Azure App Configuration's label value corresponding to the environment the App service is running for.
-  >  
+  >
   > ComponentName
   > > Name of the component which could be name of the component like *ApprovalsCoreServicesAPI or ApprovalsPayloadServiceAPI*.
   >
   > ValidAppIds
   > > This is AzureAD App's ClientIds which are authorized to access this component (; separated).
-  >  
+  >
 	```
     Note: The connection string should be the KeyVault url
     i.e. Enter the value in this format: @Microsoft.KeyVault(SecretUri=<keyvault Secret Identifier url for AzureAppConfigurationConnectionString>)
@@ -200,9 +199,9 @@ Select the 'Label' under which the configurations needs to be added (e.g., DEV) 
 #### Setup Authentication/Access Permission
 * For all the System assinged Managed Identity created earlier assign the following roles to the Azure Storage Account
   > Storage Blob Data Contributor
-  
+
 * Setup Authentication for APIs and Function Apps
-  * Update the Reply Urls section of the AzureAD App created earlier with the URLs of the App Services and FunctionApps (HttpTriggered) URLs suffixed with '/auth/login/aad/callback' 
+  * Update the Reply Urls section of the AzureAD App created earlier with the URLs of the App Services and FunctionApps (HttpTriggered) URLs suffixed with '/auth/login/aad/callback'
   * In the 'Authentication' section of the AppServices / FunctionApps (HttpTriggered),
     * Add or update the Authentication values (ClientId/Secret/Issuer/Audience)
     * Select 'Login with Azure Active Directory' for the option 'Action to take when the request is not authenticated'
@@ -210,7 +209,7 @@ Select the 'Label' under which the configurations needs to be added (e.g., DEV) 
 ## Deploy
 Deploy the code in these new components using Azure DevOps (Build and Release pipelines)
 
-The deployment might fail sometimes due to locked files. Try restarting the service, before redeploying. 
+The deployment might fail sometimes due to locked files. Try restarting the service, before redeploying.
 If the issue persists, add the following AppSettings in the service configuration
 ```
     "MSDEPLOY_RENAME_LOCKED_FILES": "1"
@@ -240,8 +239,8 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 
 ## Trademarks
 
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft
+trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.

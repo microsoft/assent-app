@@ -1,58 +1,57 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.Utilities.Helpers
+namespace Microsoft.CFS.Approvals.Utilities.Helpers;
+
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Threading.Tasks;
+using Microsoft.Graph;
+using Microsoft.Identity.Client;
+
+/// <summary>
+/// The MSAL Authentication provider class
+/// </summary>
+public class AuthenticationProvider : IAuthenticationProvider
 {
-    using System.Net.Http;
-    using System.Net.Http.Headers;
-    using System.Threading.Tasks;
-    using Microsoft.Graph;
-    using Microsoft.Identity.Client;
+    /// <summary>
+    /// The confidential client application
+    /// </summary>
+    private readonly IConfidentialClientApplication _clientApplication;
+
+    private readonly string[] _scopes;
 
     /// <summary>
-    /// The MSAL Authentication provider class
+    /// Constructor of MsalAuthenticationProvider
     /// </summary>
-    public class AuthenticationProvider : IAuthenticationProvider
+    /// <param name="_clientApplication"></param>
+    /// <param name="_scopes"></param>
+    public AuthenticationProvider(IConfidentialClientApplication clientApplication, string[] scopes)
     {
-        /// <summary>
-        /// The confidential client application
-        /// </summary>
-        private readonly IConfidentialClientApplication _clientApplication;
+        _clientApplication = clientApplication;
+        _scopes = scopes;
+    }
 
-        private readonly string[] _scopes;
+    /// <summary>
+    /// Authenticate request
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    public async Task AuthenticateRequestAsync(HttpRequestMessage request)
+    {
+        var token = await GetTokenAsync();
+        request.Headers.Authorization = new AuthenticationHeaderValue("bearer", token);
+    }
 
-        /// <summary>
-        /// Constructor of MsalAuthenticationProvider
-        /// </summary>
-        /// <param name="_clientApplication"></param>
-        /// <param name="_scopes"></param>
-        public AuthenticationProvider(IConfidentialClientApplication clientApplication, string[] scopes)
-        {
-            _clientApplication = clientApplication;
-            _scopes = scopes;
-        }
+    /// <summary>
+    /// Get token asynchronously
+    /// </summary>
+    /// <returns></returns>
+    public async Task<string> GetTokenAsync()
+    {
+        AuthenticationResult authResult;
+        authResult = await _clientApplication.AcquireTokenForClient(_scopes).ExecuteAsync();
 
-        /// <summary>
-        /// Authenticate request
-        /// </summary>
-        /// <param name="request"></param>
-        /// <returns></returns>
-        public async Task AuthenticateRequestAsync(HttpRequestMessage request)
-        {
-            var token = await GetTokenAsync();
-            request.Headers.Authorization = new AuthenticationHeaderValue("bearer", token);
-        }
-
-        /// <summary>
-        /// Get token asynchronously
-        /// </summary>
-        /// <returns></returns>
-        public async Task<string> GetTokenAsync()
-        {
-            AuthenticationResult authResult;
-            authResult = await _clientApplication.AcquireTokenForClient(_scopes).ExecuteAsync();
-
-            return authResult.AccessToken;
-        }
+        return authResult.AccessToken;
     }
 }

@@ -1,28 +1,25 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.Model
+namespace Microsoft.CFS.Approvals.Model;
+
+public class EditableConfigurationEntity : BaseTableEntity
 {
-    using Microsoft.Azure.Cosmos.Table;
-
-    public class EditableConfigurationEntity : TableEntity
+    #region Constructor
+    public EditableConfigurationEntity()
     {
-        #region Constructor
-        public EditableConfigurationEntity()
-        {
 
-        }
-        #endregion
-
-        public string RegularExpression
-        {
-            get;
-            set;
-        }
-
-
-        //PartitionKey - TenantID 
-
-        //RowKey - ColumnName
     }
+    #endregion
+
+    public string RegularExpression
+    {
+        get;
+        set;
+    }
+
+
+    //PartitionKey - TenantID 
+
+    //RowKey - ColumnName
 }

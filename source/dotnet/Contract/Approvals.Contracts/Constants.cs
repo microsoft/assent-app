@@ -157,6 +157,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string ServiceTreeAppId = "0685ecb0-8dfa-4ff5-9485-31d4ba8e867f";
 
         public const string AzureAppConfiguration = "AzureAppConfiguration";
+        public const string AzureAppConfigurationUrl = "AzureAppConfigurationUrl";
         public const string AppConfigurationLabel = "AppConfigurationLabel";
         public const string MustUpdateConfig = "MustUpdateConfig";
 
@@ -228,9 +229,13 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string NotificationFrameworkProvider = "NotificationFrameworkProvider";
 
         public const string RoutingIdColumnName = "RoutingId";
+        public const string CosmicApproverDetailsIdKey = "ApproverDetailId";
+
         public const string AzureTableRowKeyStandardPrefix = "{0}" + Constants.FieldsSeparator;
         public const string FieldsSeparator = "|";
         public const string ApprovalDetailsAzureTableName = "ApprovalDetails";
+        public const string ApprovalSummaryAzureTableName = "ApprovalSummary";
+        public const string ApprovalEmailNotificationTemplatesAzureTableName = "ApprovalEmailNotificationTemplates";
         public const string TransactionHistoryTableName = "TransactionHistory";
         public const string ApprovalAzureBlobContainerName = "approvalblobdata";
         public const string TenantImagesBlobContainerName = "tenanticons";
@@ -289,8 +294,6 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string BulkDocumentDownloadAction = "BULKDOC";
 
         public const string SingleDownloadAction = "Download";
-
-        public const string InvoiceDetailsAction = "DT1";
 
         public const string AuthSumOperationType = "authsum";
         public const string ApprovalChainOperation = "APPRCHAIN";
@@ -516,6 +519,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string MessageTitle = "MessageTitle";
         public const string ActionBody = "ActionBody";
         public const string JustificationKey = "Justification";
+        public const string ActionBodyLineItemId = "LineItemID";
         public const string StatusGood = "Good";
         public const string UserImage = "UserImage";
 
@@ -564,26 +568,5 @@ namespace Microsoft.CFS.Approvals.Contracts
 
         public const string SummaryTemplate = "SummaryTemplate";
         public const string DetailsTemplate = "DetailsTemplate";
-
-        #region ElevateCapexConstants
-
-        public const string StandardServerRequest = "standardsrvs";
-        public const string StandardServerAction = "StandardServersAction";
-        public const string StandardServerApproverComment = "StandardServersApproverComment";
-        public const string ManualStandardServerRequest = "manualstdrvs";
-        public const string ManualStandardServerAction = "ServerManualAction";
-        public const string ManualStandardServerApproverComment = "ServerManualApproverComment";
-        public const string NetworkEquipmentRequest = "networkequip";
-        public const string NetworkEquipmentAction = "NetworkT1EquipmentsAction";
-        public const string NetworkEquipmentApproverComment = "NetworkT1EquipmentsApproverComment";
-        public const string ManualNetworkRequest = "manualntwrk";
-        public const string ManualNetworkAction = "NetworkT1ManualAction";
-        public const string ManualNetworkComment = "NetworkT1ManualApproverComment";
-        public const string RequestLineItemId = "lineitemid";
-        public const string ActionBodyLineItemId = "LineItemID";
-        public const string AdaptiveCardBody = "body";
-        public const string ActionBlock = "actionBlock";
-
-        #endregion ElevateCapexConstants
     }
 }

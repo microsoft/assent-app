@@ -1,69 +1,68 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.Core.BL.Helpers
+namespace Microsoft.CFS.Approvals.Core.BL.Helpers;
+
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Threading.Tasks;
+using Microsoft.CFS.Approvals.Common.BL.Interface;
+using Microsoft.CFS.Approvals.Contracts.AttributeValidators;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
+using Microsoft.CFS.Approvals.Core.BL.Interface;
+
+/// <summary>
+/// The Payload validator class
+/// </summary>
+public class PayloadValidator : IPayloadValidator
 {
-    using System;
-    using System.Collections.Generic;
-    using System.ComponentModel.DataAnnotations;
-    using System.Threading.Tasks;
-    using Microsoft.CFS.Approvals.Common.BL.Interface;
-    using Microsoft.CFS.Approvals.Contracts.AttributeValidators;
-    using Microsoft.CFS.Approvals.Contracts.DataContracts;
-    using Microsoft.CFS.Approvals.Core.BL.Interface;
+    /// <summary>
+    /// The validation factory
+    /// </summary>
+    private readonly IValidationFactory _validationFactory = null;
+
+    public PayloadValidator()
+    {
+    }
+
+    public PayloadValidator(IValidationFactory validationFactory)
+    {
+        _validationFactory = validationFactory;
+    }
 
     /// <summary>
-    /// The Payload validator class
+    /// Validates the payload of type ApprovalRequestExpressionV1
     /// </summary>
-    public class PayloadValidator : IPayloadValidator
+    /// <param name="arx"></param>
+    /// <returns></returns>
+    public List<ValidationResult> Validate(ApprovalRequestExpressionV1 arx)
     {
-        /// <summary>
-        /// The validation factory
-        /// </summary>
-        private readonly IValidationFactory _validationFactory = null;
-
-        public PayloadValidator()
+        try
         {
+            return new ApprovalRequestExpressionValidator().Validator(arx);
         }
-
-        public PayloadValidator(IValidationFactory validationFactory)
+        catch (Exception ex)
         {
-            _validationFactory = validationFactory;
+            throw new ApplicationException("Payload validation encountered errors and cannot be completed. Please check details or contact Approvals Engineering Team", ex);
         }
+    }
 
-        /// <summary>
-        /// Validates the payload of type ApprovalRequestExpressionV1
-        /// </summary>
-        /// <param name="arx"></param>
-        /// <returns></returns>
-        public List<ValidationResult> Validate(ApprovalRequestExpressionV1 arx)
+    /// <summary>
+    /// Performs Additional Serverside validations
+    /// </summary>
+    /// <param name="arx"></param>
+    /// <returns></returns>
+    public async Task<List<ValidationResult>> ServerSideValidation(ApprovalRequestExpression arx)
+    {
+        try
         {
-            try
-            {
-                return new ApprovalRequestExpressionValidator().Validator(arx);
-            }
-            catch (Exception ex)
-            {
-                throw new ApplicationException("Payload validation encountered errors and cannot be completed. Please check details or contact Approvals Engineering Team", ex);
-            }
+            var dynamicClass = await _validationFactory.Validations(arx);
+            return await dynamicClass.ValidateAlias(arx);
         }
-
-        /// <summary>
-        /// Performs Additional Serverside validations
-        /// </summary>
-        /// <param name="arx"></param>
-        /// <returns></returns>
-        public async Task<List<ValidationResult>> ServerSideValidation(ApprovalRequestExpression arx)
+        catch (Exception ex)
         {
-            try
-            {
-                var dynamicClass = await _validationFactory.Validations(arx);
-                return await dynamicClass.ValidateAlias(arx);
-            }
-            catch (Exception ex)
-            {
-                throw new ApplicationException("Payload validation encountered errors and cannot be completed. Please check details or contact Approvals Engineering Team", ex);
-            }
+            throw new ApplicationException("Payload validation encountered errors and cannot be completed. Please check details or contact Approvals Engineering Team", ex);
         }
     }
 }

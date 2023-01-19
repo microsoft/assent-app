@@ -1,10 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <AssemblyName>Microsoft.CFS.Approvals.PayloadReceiver.BL</AssemblyName>
     <RootNamespace>Microsoft.CFS.Approvals.PayloadReceiver.BL</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.6.0" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.9.0" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Approvals.Common.BL\Approvals.Common.BL.csproj" />

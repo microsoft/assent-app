@@ -1,124 +1,114 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.PayloadReceiver.BL
+namespace Microsoft.CFS.Approvals.PayloadReceiver.BL;
+
+using System;
+using System.Threading.Tasks;
+using global::Azure.Identity;
+using global::Azure.Messaging.ServiceBus;
+using Microsoft.CFS.Approvals.Contracts;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
+using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.PayloadReceiver.BL.Interface;
+using Microsoft.Extensions.Configuration;
+
+/// <summary>
+/// The Payload Delivery class
+/// </summary>
+public class PayloadDelivery : IPayloadDelivery
 {
-    using System;
-    using System.Threading.Tasks;
-    using Microsoft.Azure.ServiceBus;
-    using Microsoft.Azure.ServiceBus.Core;
-    using Microsoft.CFS.Approvals.Contracts;
-    using Microsoft.CFS.Approvals.Contracts.DataContracts;
-    using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
-    using Microsoft.CFS.Approvals.PayloadReceiver.BL.Interface;
-    using Microsoft.Extensions.Configuration;
+    /// <summary>
+    /// The blob storage helper
+    /// </summary>
+    private readonly IBlobStorageHelper _blobStorageHelper = null;
 
     /// <summary>
-    /// The Payload Delivery class
+    /// Configuration
     /// </summary>
-    public class PayloadDelivery : IPayloadDelivery
+    private readonly IConfiguration _config = null;
+
+    /// <summary>
+    /// Constructor of PayloadDelivery
+    /// </summary>
+    /// <param name="blobStorageHelper"></param>
+    /// <param name="config"></param>
+    public PayloadDelivery(IBlobStorageHelper blobStorageHelper, IConfiguration config)
     {
-        /// <summary>
-        /// The blob storage helper
-        /// </summary>
-        private readonly IBlobStorageHelper _blobStorageHelper = null;
+        _blobStorageHelper = blobStorageHelper;
+        _config = config;
+    }
 
-        /// <summary>
-        /// Configuration
-        /// </summary>
-        private readonly IConfiguration _config = null;
+    /// <summary>
+    /// Sends the Approval Request Expression converting it into Brokered Message
+    /// </summary>
+    /// <param name="approvalRequestExpression"></param>
+    /// <param name="payloadDestinationInfo"></param>
+    /// <param name="payloadId"></param>
+    /// <returns></returns>
+    public async Task<bool> SendPayload(ApprovalRequestExpression approvalRequestExpression, Model.PayloadDestinationInfo payloadDestinationInfo, Guid payloadId)
+    {
+        string brokeredMessageId = payloadId.ToString();
+        ServiceBusSender messageSender = EstablishServiceBusChannel(payloadDestinationInfo);
+        var brokeredMessage = await BuildServiceBusMessage(approvalRequestExpression, brokeredMessageId);
+        await messageSender.SendMessageAsync(brokeredMessage);
+        return true;
+    }
 
-        /// <summary>
-        /// Constructor of PayloadDelivery
-        /// </summary>
-        /// <param name="blobStorageHelper"></param>
-        /// <param name="config"></param>
-        public PayloadDelivery(IBlobStorageHelper blobStorageHelper, IConfiguration config)
-        {
-            _blobStorageHelper = blobStorageHelper;
-            _config = config;
-        }
+    /// <summary>
+    /// Service Bus Channel establishes delivery channel to Service Bus INstance
+    /// </summary>
+    /// <param name="payloadDestinationInfo"></param>
+    /// <returns></returns>
+    public ServiceBusSender EstablishServiceBusChannel(Model.PayloadDestinationInfo payloadDestinationInfo)
+    {
+        var endpoint = payloadDestinationInfo.Namespace + ".servicebus.windows.net";
+        ServiceBusClient client = new ServiceBusClient(endpoint, new DefaultAzureCredential());
+        return client.CreateSender(payloadDestinationInfo.Entity);
+    }
 
-        /// <summary>
-        /// Sends the Approval Request Expression converting it into Brokered Message
-        /// </summary>
-        /// <param name="approvalRequestExpression"></param>
-        /// <param name="payloadDestinationInfo"></param>
-        /// <param name="payloadId"></param>
-        /// <returns></returns>
-        public async Task<bool> SendPayload(ApprovalRequestExpression approvalRequestExpression, Model.PayloadDestinationInfo payloadDestinationInfo, Guid payloadId)
-        {
-            string brokeredMessageId = payloadId.ToString();
-            MessageSender messageSender = EstablishServiceBusChannel(payloadDestinationInfo);
-            var brokeredMessage = await BuildServiceBusMessage(approvalRequestExpression, brokeredMessageId);
-            await messageSender.SendAsync(brokeredMessage);
-            return true;
-        }
+    /// <summary>
+    /// Builds a service bus message using Approval Request Expression and assigns the service bus message id provided
+    /// </summary>
+    /// <param name="approvalRequestExpression"></param>
+    /// <param name="messageId"></param>
+    /// <returns></returns>
+    public async Task<ServiceBusMessage> BuildServiceBusMessage(ApprovalRequestExpression approvalRequestExpression, string messageId)
+    {
+        if (approvalRequestExpression == null)
+            throw new ArgumentNullException("approvalRequestExpression", "Approval Request Expression cannot be null");
 
-        /// <summary>
-        /// Service Bus Channel establishes delivery channel to Service Bus INstance
-        /// </summary>
-        /// <param name="payloadDestinationInfo"></param>
-        /// <returns></returns>
-        public MessageSender EstablishServiceBusChannel(Model.PayloadDestinationInfo payloadDestinationInfo)
-        {
-            var serviceBusConnectionString = "Endpoint=sb://" + payloadDestinationInfo.Namespace + ".servicebus.windows.net/;SharedAccessKeyName=" + payloadDestinationInfo.AcsIdentity + ";SharedAccessKey=" + payloadDestinationInfo.SecretKey;
-            MessageSender messageSender = new MessageSender(serviceBusConnectionString, payloadDestinationInfo.Entity);
+        string messageBody = string.Format("{0}|{1}|{2}", approvalRequestExpression.DocumentTypeId, approvalRequestExpression.ApprovalIdentifier.DisplayDocumentNumber, approvalRequestExpression.Operation.ToString());
 
-            return messageSender;
-        }
+        byte[] messageToUpload = ConvertToByteArray(approvalRequestExpression);
 
-        /// <summary>
-        /// Builds a service bus message using Approval Request Expression and assigns the service bus message id provided
-        /// </summary>
-        /// <param name="approvalRequestExpression"></param>
-        /// <param name="messageId"></param>
-        /// <returns></returns>
-        public async Task<Message> BuildServiceBusMessage(ApprovalRequestExpression approvalRequestExpression, string messageId)
-        {
-            if (approvalRequestExpression == null)
-                throw new ArgumentNullException("approvalRequestExpression", "Approval Request Expression cannot be null");
+        await _blobStorageHelper.UploadByteArray(messageToUpload, Constants.PrimaryMessageContainer, messageBody);
+        await _blobStorageHelper.UploadByteArray(messageToUpload, Constants.AuditAgentMessageContainer, messageBody);
 
-            string messageBody = string.Format("{0}|{1}|{2}", approvalRequestExpression.DocumentTypeId, approvalRequestExpression.ApprovalIdentifier.DisplayDocumentNumber, approvalRequestExpression.Operation.ToString());
+        // Create a BrokeredMessage of the customized class,
+        // with ApplicationId property set to DocumentTypeId, and the same CorrelationID as the orginal BrokeredMessage
+        ServiceBusMessage message = new ServiceBusMessage(messageBody);
+        message.MessageId = messageId;
+        message.CorrelationId = Guid.NewGuid().ToString();
 
-            byte[] messageToUpload = ConvertToByteArray(approvalRequestExpression);
-            if (await _blobStorageHelper.DoesExist(Constants.PrimaryMessageContainer, messageBody))
-            {
-                await _blobStorageHelper.DeleteBlob(Constants.PrimaryMessageContainer, messageBody);
-            }
-            await _blobStorageHelper.UploadByteArray(messageToUpload, Constants.PrimaryMessageContainer, messageBody);
+        // Adding properties to the Message
+        message.ApplicationProperties["ApplicationId"] = approvalRequestExpression.DocumentTypeId.ToString();
+        message.ApplicationProperties["ApprovalRequestVersion"] = _config[ConfigurationKey.ApprovalRequestVersion.ToString()].ToString();
+        message.ApplicationProperties["CreatedDate"] = DateTime.UtcNow;
+        message.ApplicationProperties["ContentType"] = "ApprovalRequestExpression";
+        message.ContentType = "application/json";
+        message.Body = BinaryData.FromString(messageBody);
 
-            if (await _blobStorageHelper.DoesExist(Constants.AuditAgentMessageContainer, messageBody))
-            {
-                await _blobStorageHelper.DeleteBlob(Constants.AuditAgentMessageContainer, messageBody);
-            }
-            await _blobStorageHelper.UploadByteArray(messageToUpload, Constants.AuditAgentMessageContainer, messageBody);
+        return message;
+    }
 
-            // Create a BrokeredMessage of the customized class,
-            // with ApplicationId property set to DocumentTypeId, and the same CorrelationID as the orginal BrokeredMessage
-            Message message = new Message();
-            message.MessageId = messageId;
-            message.CorrelationId = Guid.NewGuid().ToString();
-
-            // Adding properties to the Message
-            message.UserProperties["ApplicationId"] = approvalRequestExpression.DocumentTypeId.ToString();
-            message.UserProperties["ApprovalRequestVersion"] = _config[ConfigurationKey.ApprovalRequestVersion.ToString()].ToString();
-            message.UserProperties["CreatedDate"] = DateTime.UtcNow;
-            message.UserProperties["ContentType"] = "ApprovalRequestExpression";
-            message.ContentType = "application/json";
-            message.Body = System.Text.Encoding.UTF8.GetBytes(messageBody);
-
-            return message;
-        }
-
-        /// <summary>
-        /// Convert to byte array
-        /// </summary>
-        /// <param name="ard"></param>
-        /// <returns></returns>
-        private byte[] ConvertToByteArray(object ard)
-        {
-            return System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(ard);
-        }        
+    /// <summary>
+    /// Convert to byte array
+    /// </summary>
+    /// <param name="ard"></param>
+    /// <returns></returns>
+    private byte[] ConvertToByteArray(object ard)
+    {
+        return System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(ard);
     }
 }

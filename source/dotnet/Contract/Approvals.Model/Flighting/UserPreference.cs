@@ -1,13 +1,11 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.Model.Flighting
+namespace Microsoft.CFS.Approvals.Model.Flighting;
+
+public class UserPreference: BaseTableEntity
 {
-    using Microsoft.Azure.Cosmos.Table;
-    public class UserPreference: TableEntity
-    {
-        public int Id { get; set; }
-        public string Alias { get; set; }
-        public int RingPreference { get; set; }
-    }
+    public int Id { get; set; }
+    public string Alias { get; set; }
+    public int RingPreference { get; set; }
 }

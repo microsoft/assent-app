@@ -1,22 +1,21 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.DevTools.Model.Models
+namespace Microsoft.CFS.Approvals.DevTools.Model.Models;
+
+using Microsoft.CFS.Approvals.Model;
+
+/// <summary>
+/// Schema Entity class
+/// </summary>
+public class SchemaEntity : BaseTableEntity
 {
-    using Microsoft.Azure.Cosmos.Table;
-
     /// <summary>
-    /// Schema Entity class
+    /// Constructor of SchemaEntity
     /// </summary>
-    public class SchemaEntity : TableEntity
+    public SchemaEntity()
     {
-        /// <summary>
-        /// Constructor of SchemaEntity
-        /// </summary>
-        public SchemaEntity()
-        {
 
-        }
-        public string Schema { get; set; }
     }
+    public string Schema { get; set; }
 }

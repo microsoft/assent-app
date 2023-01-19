@@ -1,12 +1,10 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.SupportServices.Helper.Interface
+namespace Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
+using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
+public interface IAIHelper
 {
-    using System.Collections.Generic;
-    using Newtonsoft.Json.Linq;
-    public interface IAIHelper
-    {
-        JObject GetAIData(string customQueryParam, List<JToken> aiScopes);
-    }
+    JObject GetAIData(string customQueryParam, List<JToken> aiScopes);
 }

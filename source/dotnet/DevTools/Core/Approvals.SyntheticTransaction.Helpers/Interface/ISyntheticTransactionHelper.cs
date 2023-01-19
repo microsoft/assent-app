@@ -1,28 +1,26 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.SyntheticTransaction.API.Services
+namespace Microsoft.CFS.Approvals.SyntheticTransaction.API.Services;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Microsoft.CFS.Approvals.Model;
+
+public interface ISyntheticTransactionHelper
 {
-    using System.Collections.Generic;
-    using System.Threading.Tasks;
-    using Microsoft.CFS.Approvals.Model;
+    Dictionary<string, object> GetPlaceholderDetails(string strJson, string tcv);
 
-    public interface ISyntheticTransactionHelper
-    {
-        Dictionary<string, object> GetPlaceholderDetails(string strJson);
+    Task<string> GetSchemaFile(string blobName, string tcv);
 
-        Task<string> GetSchemaFile(string blobName);
+    Task<string> GetUISchemaFile(string blobName, string tcv);
 
-        Task<string> GetUISchemaFile(string blobName);
+    void UploadDataToBlob(string content, string tcv);
 
-        void UploadDataToBlob(string content);
+    Task<string> GenerateSchemaFromSamplePayload(string payload, string tcv);
 
-        Task<string> GenerateSchemaFromSamplePayload(string payload);
+    string UpdatePayloadValue(string payload, ApprovalTenantInfo tenantEntity, string approver, string tcv);
 
-        string UpdatePayloadValue(string payload, ApprovalTenantInfo tenantEntity, string Approver);
+    void GetEnvironmentName(ref List<string> envNames);
 
-        void GetEnvironmentName(ref List<string> envNames);
-
-        bool InsertSyntheticDetail(string payload, ApprovalTenantInfo tenant, string approver);
-    }
+    Task<bool> InsertSyntheticDetail(string payload, ApprovalTenantInfo tenant, string approver, string tcv);
 }

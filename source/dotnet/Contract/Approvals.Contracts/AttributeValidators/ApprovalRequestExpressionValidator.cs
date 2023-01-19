@@ -51,7 +51,7 @@ namespace Microsoft.CFS.Approvals.Contracts.AttributeValidators
                 {
                     results.Add(new ValidationResult(Constants.DeleteForNullMessage, new List<string> { "ApprovalRequestExpression.DeleteFor" }));
                 }
-            
+
                 if (arx.ActionDetail == null)
                 {
                     results.Add(new ValidationResult(Constants.ActionDetailNullMessage, new List<string> { "ApprovalRequestExpression.ActionDetail" }));
@@ -64,13 +64,13 @@ namespace Microsoft.CFS.Approvals.Contracts.AttributeValidators
                 {
                     results.Add(new ValidationResult(Constants.ARXApproversNullMessage, new List<string> { "ApprovalRequestExpression.Approvers" }));
                 }
-            
+
                 if (arx.SummaryData == null)
                 {
                     results.Add(new ValidationResult(Constants.SummaryJsonNullMessage, new List<string> { "ApprovalRequestExpression.SummaryData" }));
                 }
             }
-            
+
             if (arx.ApprovalIdentifier != null)
                 results.AddRange(new ApprovalIdentifierValidator().Validator(arx.ApprovalIdentifier));
             if (arx.Approvers != null)
