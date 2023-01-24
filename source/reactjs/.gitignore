@@ -70,6 +70,7 @@ bin/
 dist/
 bundles/
 public/ocv
+index.html
 
 # editor specific
 .IDEA/
