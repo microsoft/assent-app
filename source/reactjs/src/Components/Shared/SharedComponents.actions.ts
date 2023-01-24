@@ -73,6 +73,7 @@ import {
     IRequestDownloadHistory,
     IReceiveDownloadHistory,
     IToggleProfilePanel,
+    IToggleAccessibilityPanel,
 } from './SharedComponents.action-types';
 import {
     IActionResponseObject,
@@ -650,6 +651,13 @@ export function updateSuccessfulPullTenantRequests(
 export function toggleProfilePanel(isOpen: boolean): IToggleProfilePanel {
     return {
         type: SharedComponentsActionType.TOGGLE_PROFILE_PANEL,
+        isOpen,
+    };
+}
+
+export function toggleAccessibilityPanel(isOpen: boolean): IToggleAccessibilityPanel {
+    return {
+        type: SharedComponentsActionType.TOGGLE_ACCESSIBILITY_PANEL,
         isOpen,
     };
 }

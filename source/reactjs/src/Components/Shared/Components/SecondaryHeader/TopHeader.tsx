@@ -9,7 +9,7 @@ import { sharedComponentsSagas } from '../../SharedComponents.sagas';
 import { Reducer } from 'redux';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { IconButton, PersonaSize, Text } from '@fluentui/react';
-import { toggleProfilePanel, toggleSettingsPanel } from '../../SharedComponents.actions';
+import { toggleAccessibilityPanel, toggleProfilePanel, toggleSettingsPanel } from '../../SharedComponents.actions';
 import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
 import { getIsNotficationsPanelOpen } from '../../../NotificationsPanel/NotificationsPanel.selectors';
 import { toggleNotificationPanel } from '../../../NotificationsPanel/NotificationsPanel.actions';
@@ -17,7 +17,7 @@ import { updateHelpPanelState } from '../../../HelpPanel/HelpPanel.actions';
 import { getIsHelpPanelOpen } from '../../../HelpPanel/HelpPanel.selectors';
 import { Persona } from '../Persona';
 import { CommandBarButton } from '@fluentui/react/lib/Button';
-import { getIsProfilePanelOpen } from '../../SharedComponents.selectors';
+import { getIsAccessibilityPanelOpen, getIsProfilePanelOpen } from '../../SharedComponents.selectors';
 import { CoherenceColors } from '../../SharedColors';
 
 export function TopHeader(props: { upn: string; displayName: string }): React.ReactElement {
@@ -26,6 +26,7 @@ export function TopHeader(props: { upn: string; displayName: string }): React.Re
 
     const isHelpPanelOpen = useSelector(getIsHelpPanelOpen);
     const isProfilePanelOpen = useSelector(getIsProfilePanelOpen);
+    const isAccessibilityPanelOpen = useSelector(getIsAccessibilityPanelOpen);
 
     const handleSettingsClick = (): void => {
         dispatch(toggleSettingsPanel(true));
@@ -41,6 +42,10 @@ export function TopHeader(props: { upn: string; displayName: string }): React.Re
 
     const handleHelpClick = (): void => {
         dispatch(updateHelpPanelState(!isHelpPanelOpen));
+    };
+
+    const handleAccessibilityClick = (): void => {
+        dispatch(toggleAccessibilityPanel(!isAccessibilityPanelOpen));
     };
 
     const interactiveStyles = {
@@ -59,6 +64,12 @@ export function TopHeader(props: { upn: string; displayName: string }): React.Re
                 </Stack.Item>
                 <Stack.Item align="center" styles={{ root: { paddingRight: '0.5%' } }}>
                     <Stack horizontal tokens={{ childrenGap: 'm' }}>
+                        <IconButton
+                            iconProps={{ iconName: 'Accessibility' }}
+                            styles={{ icon: { color: 'white' }, ...interactiveStyles }}
+                            onClick={handleAccessibilityClick}
+                            title="Accessibility"
+                        />
                         <IconButton
                             iconProps={{ iconName: 'Settings' }}
                             styles={{ icon: { color: 'white' }, ...interactiveStyles }}
@@ -79,6 +90,7 @@ export function TopHeader(props: { upn: string; displayName: string }): React.Re
                         />
                         <CommandBarButton
                             onClick={handleProfileClick}
+                            title= "Profile"
                             styles={{
                                 root: { backgroundColor: CoherenceColors.bluePrimary },
                                 ...interactiveStyles,

@@ -83,6 +83,14 @@ export const ErrorResultIcon = styled.div`
     margin: 0 50px;
 `;
 
+export const AccessibilityIcon = styled.div`
+    width: 16px;
+    height: 16px;
+    background-image: url('/icons/accessibility-white.png');
+    background-size: 16px 16px;
+    font-size: 16;
+`;
+
 export const ErrorText = styled.p`
     color: #d73b02;
 `;
