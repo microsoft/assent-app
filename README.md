@@ -1,11 +1,12 @@
 # Microsoft Assent
 ## Assent <sub>**A***pproval* **S***olution* **S***implified for* **ENT***erprise*<sub>
 Microsoft Assent (*a.k.a Approvals*) as a platform provides the "one stop shop" solution for approvers via a model that brings together disparate different approval requests in a consistent and ultra-modern model. Approvals delivers a unified approvals experience for any approval on multiple form factors - Website, Outlook Actionable email, Teams. It consolidates approvals across organization's line of business applications, building on modern technology and powered by Microsoft Azure. It serves as a showcase for solving modern IT scenarios using the latest technologies.
-- Payload API - Accepts payload from tenant system.
-- Audit Agent Processor - Logs the payload data into Cosmos db.
-- Primary Processor - Processes the payload pushed by payload API to service bus.
-- Notification Processor - Sends email notifications to Approvers/ Submitters.
-- Core API - Set of Web APIs to support the Approvals UI.
+- Payload Receiver Service API - Accepts payload from tenant system.
+- Audit Processor - Azure Function that logs the payload data into Azure Cosmos DB.
+- Primary Processor - Azure Function that processes the payload pushed by payload receiver service API to service bus.
+- Notification Processor - Azure Function that sends email notifications to Approvers/ Submitters as per configurations.
+- WatchdogProcessor - as per configurations from tenant sends reminder email notifications to Approvers for pending approvals as per configurations from tenant.
+- Core Services API - Set of Web APIs to support the Approvals UI.
 
 ## Getting Started
 
@@ -197,14 +198,65 @@ Select the 'Label' under which the configurations needs to be added (e.g., DEV) 
     i.e. Enter the value in this format: @Microsoft.KeyVault(SecretUri=<keyvault Secret Identifier url for AzureAppConfigurationConnectionString>)
     ```
 #### Setup Authentication/Access Permission
-* For all the System assinged Managed Identity created earlier assign the following roles to the Azure Storage Account
-  > Storage Blob Data Contributor
 
 * Setup Authentication for APIs and Function Apps
   * Update the Reply Urls section of the AzureAD App created earlier with the URLs of the App Services and FunctionApps (HttpTriggered) URLs suffixed with '/auth/login/aad/callback'
   * In the 'Authentication' section of the AppServices / FunctionApps (HttpTriggered),
     * Add or update the Authentication values (ClientId/Secret/Issuer/Audience)
     * Select 'Login with Azure Active Directory' for the option 'Action to take when the request is not authenticated'
+
+* Permissions needed needed for System assigned Managed Identity of below Azure Components
+    * Payload Receiver Service API:
+        * App Configuration Data Reader
+        * Azure Service Bus Data Sender
+        * Cosmos DB Built-in Data Contributor
+        * Key Vault Secrets User
+        * Storage Blob Data Contributor
+        * Storage Table Data Contributor
+
+    * Audit Processor:
+        * App Configuration Data Reader
+        * Azure Service Bus Data Owner
+        * Cosmos DB Built-in Data Contributor
+        * Key Vault Secrets User
+        * Storage Blob Data Contributor
+        * Storage Table Data Contributor
+
+    * Primary Processor:
+        * App Configuration Data Reader
+        * Azure Service Bus Data Owner
+        * Cosmos DB Built-in Data Contributor
+        * Key Vault Secrets User
+        * Storage Blob Data Contributor
+        * Storage Table Data Contributor
+
+    * Notification Processor:
+        * App Configuration Data Reader
+        * Azure Service Bus Data Owner
+        * Cosmos DB Built-in Data Contributor
+        * Key Vault Secrets User
+        * Storage Blob Data Contributor
+        * Storage Table Data Contributor
+
+    * Watchdog Processor:
+        * App Configuration Data Reader
+        * Cosmos DB Built-in Data Contributor
+        * Key Vault Secrets User
+        * Storage Blob Data Contributor
+        * Storage Table Data Contributor
+
+    * Core Services API:
+        * App Configuration Data Reader
+        * Cosmos DB Built-in Data Contributor
+        * Key Vault Secrets User
+        * Storage Blob Data Contributor
+        * Storage Table Data Contributor
+        
+    *Note: As of today only way to assign Cosmos DB Built-in Data Contributor is via the PowerShell or az cli below is the command fot the same:*
+    ```
+        az cosmosdb sql role assignment create --account-name "Cosmosdb account name" --resource-group "Name of resource group where cosmosdb exists" --scope "/" --principal-id "System assigned identity to to which this Role Assignment is being granted" --role-definition-id "00000000-0000-0000-0000-000000000002"
+    ```
+    For more information please read: [Configure role-based access control for your Azure Cosmos DB account with Azure AD | Microsoft Learn](https://learn.microsoft.com/en-us/azure/cosmos-db/how-to-setup-rbac)
 
 ## Deploy
 Deploy the code in these new components using Azure DevOps (Build and Release pipelines)
