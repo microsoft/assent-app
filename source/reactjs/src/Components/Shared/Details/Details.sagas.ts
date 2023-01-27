@@ -487,8 +487,8 @@ function* postAction(action: IPostAction): IterableIterator<SimpleEffect<{}, {}>
         const originalApprover = selectedTenantDelegation
             ? selectedTenantDelegation.alias
             : action.userAlias
-                ? action.userAlias
-                : loggedInAlias;
+            ? action.userAlias
+            : loggedInAlias;
         if (!action.isBulkAction) {
             const formattedBusinessProcessName = formatBusinessProcessName(action.businessProcessName, [
                 'ApprovalAction',
@@ -547,8 +547,9 @@ function* postAction(action: IPostAction): IterableIterator<SimpleEffect<{}, {}>
             // bulk approvals
             yield put(updatePanelState(false));
             const tvcNum = action.documentTypeId;
-            url = `${__API_BASE_URL__}${__API_URL_ROOT__}/documentaction/${action.tenantId
-                }?sessionId=${telemetryClient.getCorrelationId()}`;
+            url = `${__API_BASE_URL__}${__API_URL_ROOT__}/documentaction/${
+                action.tenantId
+            }?sessionId=${telemetryClient.getCorrelationId()}`;
             if (!action.isPullModelEnabled) {
                 const documentKeys = [...(selectedApproval as any)];
                 approvalRequest = {
@@ -631,7 +632,7 @@ function* postAction(action: IPostAction): IterableIterator<SimpleEffect<{}, {}>
                 approvalRequest.ActionDetails.ReasonText = action.reasonText;
             }
 
-            //for next level approver
+            //for adding next level approver in hierarchy
             if (action.nextApprover && action.nextApprover != '') {
                 approvalRequest.ActionDetails.NextApprover = action.nextApprover;
                 approvalRequest.ActionDetails.SequenceID = 'AddApprover';

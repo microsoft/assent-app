@@ -761,3 +761,10 @@ export const getIsProfilePanelOpen = (state: IComponentsAppState): boolean => {
         sharedComponentsInitialState.isProfilePanelOpen
     );
 };
+
+export const getIsAccessibilityPanelOpen = (state: IComponentsAppState): boolean => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.isAccessibilityPanelOpen ||
+        sharedComponentsInitialState.isAccessibilityPanelOpen
+    )
+};

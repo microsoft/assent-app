@@ -8,8 +8,8 @@ export const SharedComponentsPersistentInitialState: ISharedComponentsPersistent
     userName: '',
     userAlias: '',
     teachingBubbleVisibility: false,
-    teachingBubbleStep: teachingSteps[initialTeachingStep]
-}
+    teachingBubbleStep: teachingSteps[initialTeachingStep],
+};
 
 export function sharedComponentsPersistentReducer(
     prev: ISharedComponentsPersistentState = SharedComponentsPersistentInitialState,
@@ -20,19 +20,19 @@ export function sharedComponentsPersistentReducer(
             return {
                 ...prev,
                 userAlias: action.userAlias,
-                userName: action.userName
-            }
+                userName: action.userName,
+            };
         case SharedComponentsActionType.TOGGLE_TEACHING_BUBBLE_VISIBILITY:
             return {
                 ...prev,
                 teachingBubbleVisibility: !prev.teachingBubbleVisibility,
-                teachingBubbleStep: teachingSteps[initialTeachingStep]
-            }
+                teachingBubbleStep: teachingSteps[initialTeachingStep],
+            };
         case SharedComponentsActionType.UPDATE_TEACHING_STEP:
             return {
                 ...prev,
-                teachingBubbleStep: action.newStep
-            }
+                teachingBubbleStep: action.newStep,
+            };
         default:
             return prev;
     }

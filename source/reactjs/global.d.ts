@@ -12,6 +12,7 @@ declare global {
     const __API_URL_ROOT__: string;
     const __RESOURCE_URL__: string;
     const __GRAPH_BASE_URL__: string;
+    const __UPN_SUFFIX__: string;
     const __GRAPH_RESOURCE_URL__: string;
     const __AUTHORITY__:string;
     const __API_BASE_MATTER_URL__: string;

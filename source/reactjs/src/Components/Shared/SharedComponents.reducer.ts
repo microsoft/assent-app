@@ -102,6 +102,7 @@ export const sharedComponentsInitialState: ISharedComponentsState = {
     successfulPullTenantCount: 0,
     successfulPullTenantCountDict: {},
     isProfilePanelOpen: false,
+    isAccessibilityPanelOpen: false,
 };
 
 export function sharedComponentsReducer(
@@ -595,6 +596,11 @@ export function sharedComponentsReducer(
             return {
                 ...prev,
                 isProfilePanelOpen: action.isOpen,
+            };
+        case SharedComponentsActionType.TOGGLE_ACCESSIBILITY_PANEL:
+            return {
+                ...prev,
+                isAccessibilityPanelOpen: action.isOpen,
             };
         default:
             return prev;

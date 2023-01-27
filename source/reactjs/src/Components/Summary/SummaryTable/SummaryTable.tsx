@@ -10,7 +10,14 @@ import { detailsReducer, detailsReducerName } from '../../Shared/Details/Details
 import { detailsSagas } from '../../Shared/Details/Details.sagas';
 import SummaryTableColumns from './SummaryTableColumns';
 import * as SummaryStyled from '../SummaryStyling';
-import { Dropdown, IconButton, IContextualMenuItem, IContextualMenuProps, IDropdownOption } from '@fluentui/react';
+import {
+    Dropdown,
+    IconButton,
+    IContextualMenuItem,
+    IContextualMenuProps,
+    IDropdownOption,
+    Toggle,
+} from '@fluentui/react';
 import { tableColumns } from './PullTenantColumns';
 import { forEach } from 'lodash';
 import { FilterPanel } from '../../Shared/Components/FilterPanel';

@@ -238,7 +238,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
             runSaga(detailsSagas);
         }
 
-        const { dispatchRequestMyDetails, dispatchRequestHeader } = this.props;
+        const { dispatchRequestMyDetails, dispatchRequestHeader, selectedPage } = this.props;
         const {
             tenantId,
             displayDocumentNumber,
@@ -254,7 +254,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
             dispatchRequestHeader(
                 tenantId,
                 displayDocumentNumber,
-                this.props.userAlias,
+                selectedPage === 'history' ? '' : this.props.userAlias,
                 isPullModelEnabled,
                 summaryJSON,
                 summaryDataMapping
@@ -333,7 +333,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
             this.props.dispatchRequestHeader(
                 this.props.tenantId,
                 this.props.displayDocumentNumber,
-                this.props.userAlias,
+                this.props.selectedPage === 'history' ? '' : this.props.userAlias,
                 this.props.isPullModelEnabled,
                 this.props.summaryJSON,
                 this.props.summaryDataMapping
@@ -962,7 +962,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                                             this.props.tenantId,
                                             this.props.documentNumber,
                                             this.props.displayDocumentNumber,
-                                            this.props.userAlias,
+                                            '',
                                             this.props.detailsComponentType === DetailsType.AdaptiveCard,
                                             this.props.isPullModelEnabled
                                         )

@@ -103,6 +103,7 @@ export interface ISharedComponentsState {
     successfulPullTenantCount: number;
     successfulPullTenantCountDict: IPullTenantSuccessfulCountDict;
     isProfilePanelOpen: boolean;
+    isAccessibilityPanelOpen: boolean;
 }
 
 export interface ISharedComponentsPersistentState {

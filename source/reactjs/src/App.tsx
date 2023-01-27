@@ -47,13 +47,22 @@ import { UserSettingsPanel } from './Components/UserSettingsPanel/UserSettingsPa
 import { helpPanelReducer, helpPanelReducerName } from './Components/HelpPanel/HelpPanel.reducer';
 import { helpPanelSagas } from './Components/HelpPanel/HelpPanel.sagas';
 import { ProfilePanel } from './Components/ProfilePanel';
+import { registerIcons } from '@fluentui/react/lib/Styling';
+import { AccessibilityPanel } from './Components/AccessibilityPanel/AccessibilityPanel';
+import { accessibilityReducer, accessibilityReducerName } from './Components/AccessibilityPanel/Accessibility.reducer';
 
 export function App(): React.ReactElement {
     useLoginOnStartup(true, { scopes: ['https://graph.microsoft.com/.default'] });
     initializeIcons();
+    registerIcons({
+        icons: {
+            Accessibility: <SharedStyled.AccessibilityIcon />,
+        },
+    });
     useDynamicReducer(sharedComponentsReducerName, sharedComponentsReducer as Reducer, [sharedComponentsSagas], false);
     useDynamicReducer(helpPanelReducerName, helpPanelReducer as Reducer, [helpPanelSagas], false);
     usePersistentReducer(sharedComponentsPersistentReducerName, sharedComponentsPersistentReducer);
+    usePersistentReducer(accessibilityReducerName, accessibilityReducer);
     getNotifications(); // to get notification on initial load
     const { useSelector, dispatch } = React.useContext(Context as React.Context<IEmployeeExperienceContext>);
     const teachingBubbleVisibility = useSelector(getTeachingBubbleVisibility);
@@ -185,6 +194,7 @@ export function App(): React.ReactElement {
 
     return (
         <div>
+            <AccessibilityPanel />
             <HelpPanel />
             <UserSettingsPanel />
             <NotificationPanelCustom />
