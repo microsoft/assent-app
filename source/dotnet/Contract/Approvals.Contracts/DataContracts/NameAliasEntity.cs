@@ -19,15 +19,15 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
         /// </summary>
         [DataMember]
         public string Alias
-        { 
+        {
             get { return alias; }
-            set 
+            set
             {
                 if (value == null)
                     alias = null;
                 else
                     alias = value.ToLower();
-            } 
+            }
         }
 
         /// <summary>

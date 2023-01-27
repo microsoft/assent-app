@@ -5,6 +5,7 @@ using System;
 using System.Net.Http;
 using Azure.Identity;
 using Azure.Storage.Blobs;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.CFS.Approvals.Common.BL;
 using Microsoft.CFS.Approvals.Common.BL.Helper;
@@ -39,20 +40,20 @@ using Polly.Extensions.Http;
 
 [assembly: FunctionsStartup(typeof(NotificationStartup))]
 
-namespace NotificationAzFunction
-{
-    public class NotificationStartup : FunctionsStartup
-    {
-        public static IConfigurationRefresher refresher;
+namespace NotificationAzFunction;
 
-        public override void Configure(IFunctionsHostBuilder builder)
-        {
-            // Create the new ConfigurationBuilder
-            var configurationBuilder = new ConfigurationBuilder();
+public class NotificationStartup : FunctionsStartup
+{
+    public static IConfigurationRefresher refresher;
+
+    public override void Configure(IFunctionsHostBuilder builder)
+    {
+        // Create the new ConfigurationBuilder
+        var configurationBuilder = new ConfigurationBuilder();
 
             configurationBuilder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(Environment.GetEnvironmentVariable(Constants.AzureAppConfiguration))
+                options.Connect(new Uri(Environment.GetEnvironmentVariable(Constants.AzureAppConfigurationUrl)), new DefaultAzureCredential())
                     // Load configuration values with no label
                     .Select(KeyFilter.Any, Environment.GetEnvironmentVariable(Constants.AppConfigurationLabel))
                     .ConfigureKeyVault(kv =>
@@ -67,22 +68,24 @@ namespace NotificationAzFunction
                     });
             });
 
-            // Build the config in order to access the appsettings for getting the Azure App Configuration connection settings
-            var config = configurationBuilder.Build();
-            config = configurationBuilder.AddEnvironmentVariables().Build();
+        // Build the config in order to access the appsettings for getting the Azure App Configuration connection settings
+        var config = configurationBuilder.Build();
+        config = configurationBuilder.AddEnvironmentVariables().Build();
 
-            // Replace the existing config with the new one
-            builder.Services.Replace(ServiceDescriptor.Singleton(typeof(IConfiguration), config));
-            IConfiguration configuration = builder.Services.BuildServiceProvider().GetService<IConfiguration>();
+        // Replace the existing config with the new one
+        builder.Services.Replace(ServiceDescriptor.Singleton(typeof(IConfiguration), config));
+        IConfiguration configuration = builder.Services.BuildServiceProvider().GetService<IConfiguration>();
 
-            builder.Services.AddLogging(configure =>
-            {
-                configure.AddApplicationInsights(Environment.GetEnvironmentVariable(Constants.AppinsightsInstrumentationkey));
-            });
+        builder.Services.AddLogging(configure =>
+        {
+            configure.AddApplicationInsights(Environment.GetEnvironmentVariable(Constants.AppinsightsInstrumentationkey));
+        });
 
             var client = new BlobServiceClient(
                             new Uri($"https://" + config?[Constants.StorageAccountName] + ".blob.core.windows.net/"),
                             new DefaultAzureCredential());
+            var cosmosdbClient = new CosmosClient(config?[ConfigurationKey.CosmosDbEndPoint.ToString()],
+                new DefaultAzureCredential(), new CosmosClientOptions() { AllowBulkExecution = true });
 
             //Add Services
             builder.Services.AddSingleton<IPerformanceLogger, PerformanceLogger>();
@@ -95,14 +98,14 @@ namespace NotificationAzFunction
             builder.Services.AddScoped<INotificationProcessor, NotificationProcessor>();
             builder.Services.AddScoped<IApprovalSummaryProvider, ApprovalSummaryProvider>();
             builder.Services.AddScoped<IEmailHelper, EmailHelper>();
-            builder.Services.AddSingleton<ITableHelper, TableHelper>((provider) => { return new TableHelper(config?[Constants.StorageAccountName], config?[ConfigurationKey.StorageAccountKey.ToString()]); });
+            builder.Services.AddSingleton<ITableHelper, TableHelper>((provider) => { return new TableHelper(config?[Constants.StorageAccountName], new DefaultAzureCredential()); });
             builder.Services.AddScoped<IApprovalDetailProvider, ApprovalDetailProvider>();
             builder.Services.AddScoped<IApprovalTenantInfoProvider, ApprovalTenantInfoProvider>();
             builder.Services.AddScoped<IApprovalBlobDataProvider, ApprovalBlobDataProvider>();
             builder.Services.AddScoped<INameResolutionHelper, NameResolutionHelper>();
             builder.Services.AddScoped<IEmailTemplateHelper, EmailTemplateHelper>();
             builder.Services.AddScoped<IApprovalHistoryProvider, ApprovalHistoryProvider>();
-            builder.Services.AddSingleton((Func<IServiceProvider, ICosmosDbHelper>)(c => new CosmosDbHelper(config?[ConfigurationKey.CosmosDbEndPoint.ToString()], config?[ConfigurationKey.CosmosDbAuthKey.ToString()])));
+            builder.Services.AddSingleton<ICosmosDbHelper, CosmosDbHelper>(x => new CosmosDbHelper(cosmosdbClient));
             builder.Services.AddSingleton<IHistoryStorageFactory, HistoryStorageFactory>();
             builder.Services.AddScoped<IDetailsHelper, DetailsHelper>();
             builder.Services.AddSingleton<IBlobStorageHelper, BlobStorageHelper>(x => new BlobStorageHelper(client));
@@ -125,13 +128,12 @@ namespace NotificationAzFunction
                 .AddPolicyHandler(GetRetryPolicy());
         }
 
-        private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
-        {
-            return HttpPolicyExtensions
-                .HandleTransientHttpError()
-                .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-                .WaitAndRetryAsync(6, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2,
-                    retryAttempt)));
-        }
+    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+    {
+        return HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            .WaitAndRetryAsync(6, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2,
+                retryAttempt)));
     }
 }

@@ -1,28 +1,27 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.Model
+namespace Microsoft.CFS.Approvals.Model;
+
+using System;
+
+[Serializable]
+public class CustomException : Exception
 {
-    using System;
+    public string _errorMessage;
+    public int _errorNumber;
 
-    [Serializable]
-    public class CustomException : Exception
+    public CustomException()
+    { }
+
+    public CustomException(string errorMessage)
     {
-        public string _errorMessage;
-        public int _errorNumber;
+        _errorMessage = errorMessage;
+    }
 
-        public CustomException()
-        { }
-
-        public CustomException(string errorMessage)
-        {
-            _errorMessage = errorMessage;
-        }
-
-        public CustomException(string errorMessage, int errorNumber)
-        {
-            _errorMessage = errorMessage;
-            _errorNumber = errorNumber;
-        }
+    public CustomException(string errorMessage, int errorNumber)
+    {
+        _errorMessage = errorMessage;
+        _errorNumber = errorNumber;
     }
 }

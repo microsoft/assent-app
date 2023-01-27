@@ -1,14 +1,13 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.DevTools.Model.Models
-{
-    using Microsoft.Azure.Cosmos.Table;
+namespace Microsoft.CFS.Approvals.DevTools.Model.Models;
 
-    /// <summary>
-    /// Pending Tenant Approval Entity class
-    /// </summary>
-    public class PendingTenantApprovalEntity : TableEntity
-    {
-    }
+using Microsoft.CFS.Approvals.Model;
+
+/// <summary>
+/// Pending Tenant Approval Entity class
+/// </summary>
+public class PendingTenantApprovalEntity : BaseTableEntity
+{
 }

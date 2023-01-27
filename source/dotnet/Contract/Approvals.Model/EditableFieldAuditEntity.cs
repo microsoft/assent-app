@@ -1,43 +1,41 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.Model
+using System;
+
+namespace Microsoft.CFS.Approvals.Model;
+
+public class EditableFieldAuditEntity : BaseTableEntity
 {
-    using Microsoft.Azure.Cosmos.Table;
+    public string ClientType { get; set; }
 
-    public class EditableFieldAuditEntity : TableEntity
+    public string EditorAlias { get; set; }
+
+    public string EditableFieldJSON { get; set; }
+
+    public string LoggedInUser { get; set; }
+
+    public string DocumentNumber
     {
-        public string ClientType { get; set; }
-
-        public string EditorAlias { get; set; }
-
-        public string EditableFieldJSON { get; set; }
-
-        public string LoggedInUser { get; set; }
-
-        public string DocumentNumber
+        get
         {
-            get
-            {
-                return base.PartitionKey;
-            }
-        }
-
-        public string Id
-        {
-            get
-            {
-                return base.RowKey;
-            }
-        }
-
-        public string EditedDateTime
-        {
-            get
-            {
-                return base.Timestamp.ToUniversalTime().ToString();
-            }
+            return base.PartitionKey;
         }
     }
 
+    public string Id
+    {
+        get
+        {
+            return base.RowKey;
+        }
+    }
+
+    public string EditedDateTime
+    {
+        get
+        {
+            return DateTime.Parse(base.Timestamp.ToString()).ToUniversalTime().ToString();
+        }
+    }
 }

@@ -3,7 +3,7 @@
 
 namespace Microsoft.CFS.Approvals.Contracts.DataContracts
 {
-    public sealed class ApprovalRequestExpressionV1: ApprovalRequestExpression
+    public sealed class ApprovalRequestExpressionV1 : ApprovalRequestExpression
     {
     }
 }

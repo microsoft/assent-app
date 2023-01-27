@@ -22,7 +22,7 @@ namespace Microsoft.CFS.Approvals.Contracts.AttributeValidators
             var results = new List<ValidationResult>();
 
             System.ComponentModel.DataAnnotations.Validator.TryValidateObject(approvalIdentifier, new ValidationContext(approvalIdentifier), results);
-            return results;            
+            return results;
         }
     }
 }

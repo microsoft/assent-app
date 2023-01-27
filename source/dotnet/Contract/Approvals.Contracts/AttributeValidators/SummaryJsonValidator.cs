@@ -24,7 +24,7 @@ namespace Microsoft.CFS.Approvals.Contracts.AttributeValidators
             var results = new List<ValidationResult>();
 
             System.ComponentModel.DataAnnotations.Validator.TryValidateObject(summaryJson, new ValidationContext(summaryJson), results);
-            
+
             if (!String.IsNullOrEmpty(summaryJson.DocumentTypeId))
             {
                 if (!summaryJson.DocumentTypeId.Equals(documentTypeId.ToString(), StringComparison.InvariantCultureIgnoreCase))

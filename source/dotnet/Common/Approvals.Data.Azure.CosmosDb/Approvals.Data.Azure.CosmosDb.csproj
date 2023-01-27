@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Version>1.0</Version>
     <Authors></Authors>
@@ -18,10 +18,9 @@
     <AssemblyName>Microsoft.CFS.Approvals.Data.Azure.CosmosDb</AssemblyName>
     <RootNamespace>Microsoft.CFS.Approvals.Data.Azure.CosmosDb</RootNamespace>
   </PropertyGroup>
-
   <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.6.0" />
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.19.0" />
-    <PackageReference Include="Microsoft.Azure.CosmosDB.BulkExecutor" Version="2.5.1-preview" />
-    <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="2.17.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
 </Project>

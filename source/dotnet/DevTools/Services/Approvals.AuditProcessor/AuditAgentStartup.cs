@@ -6,6 +6,7 @@ using System.Net.Http;
 using AuditAgentAzFunction;
 using Azure.Identity;
 using Azure.Storage.Blobs;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.CFS.Approvals.AuditProcessor.BL;
 using Microsoft.CFS.Approvals.AuditProcessor.BL.Interface;
@@ -18,6 +19,8 @@ using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Core.BL.Factory;
 using Microsoft.CFS.Approvals.Core.BL.Helpers;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
+using Microsoft.CFS.Approvals.Data.Azure.CosmosDb.Helpers;
+using Microsoft.CFS.Approvals.Data.Azure.CosmosDb.Interface;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Helpers;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
 using Microsoft.CFS.Approvals.LogManager;
@@ -47,7 +50,7 @@ namespace AuditAgentAzFunction
 
             configurationBuilder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(Environment.GetEnvironmentVariable(Constants.AzureAppConfiguration))
+                options.Connect(new Uri(Environment.GetEnvironmentVariable(Constants.AzureAppConfigurationUrl)), new DefaultAzureCredential())
                     // Load configuration values with no label
                     .Select(KeyFilter.Any, Environment.GetEnvironmentVariable(Constants.AppConfigurationLabel))
                     .ConfigureKeyVault(kv =>
@@ -77,6 +80,8 @@ namespace AuditAgentAzFunction
             var client = new BlobServiceClient(
                             new Uri($"https://" + config?[Constants.StorageAccountName] + ".blob.core.windows.net/"),
                             new DefaultAzureCredential());
+            var cosmosdbClient = new CosmosClient(config?[ConfigurationKey.CosmosDbEndPoint.ToString()],
+                new DefaultAzureCredential(), new CosmosClientOptions() { AllowBulkExecution = true });
 
             builder.Services.AddSingleton<IPerformanceLogger, PerformanceLogger>();
             builder.Services.AddScoped<IARConverterFactory, ARConverterFactory>();
@@ -84,10 +89,11 @@ namespace AuditAgentAzFunction
             builder.Services.AddSingleton<ILogProvider, LogProvider>();
             builder.Services.AddScoped<INameResolutionHelper, NameResolutionHelper>();
             builder.Services.AddSingleton<IBlobStorageHelper, BlobStorageHelper>(x => new BlobStorageHelper(client));
+            builder.Services.AddSingleton<ICosmosDbHelper, CosmosDbHelper>(x => new CosmosDbHelper(cosmosdbClient));
             builder.Services.AddScoped<IAuditAgentLoggingHelper, AuditAgentLoggingHelper>();
             builder.Services.AddScoped<IAuditAgentHelper, AuditAgentHelper>();
             builder.Services.AddScoped<IAuditAgentDataProvider, AuditAgentDataProvider>();
-            builder.Services.AddSingleton<ITableHelper, TableHelper>((provider) => { return new TableHelper(config[Constants.StorageAccountName], config[ConfigurationKey.StorageAccountKey.ToString()]); });
+            builder.Services.AddSingleton<ITableHelper, TableHelper>((provider) => { return new TableHelper(config[Constants.StorageAccountName], new DefaultAzureCredential()); });
             builder.Services.AddScoped<IApprovalBlobDataProvider, ApprovalBlobDataProvider>();
             builder.Services.AddScoped<IApprovalTenantInfoProvider, ApprovalTenantInfoProvider>();
             builder.Services.AddScoped<IApprovalTenantInfoHelper, ApprovalTenantInfoHelper>();

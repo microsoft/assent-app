@@ -1,65 +1,64 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.Common.DL
+namespace Microsoft.CFS.Approvals.Common.DL;
+
+using Microsoft.CFS.Approvals.Common.DL.Interface;
+using Microsoft.CFS.Approvals.Data.Azure.CosmosDb.Interface;
+using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.Model;
+
+public class HistoryStorageFactory : IHistoryStorageFactory
 {
-    using Microsoft.CFS.Approvals.Common.DL.Interface;
-    using Microsoft.CFS.Approvals.Data.Azure.CosmosDb.Interface;
-    using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
-    using Microsoft.CFS.Approvals.Model;
+    /// <summary>
+    /// The table helper
+    /// </summary>
+    private readonly ITableHelper _tableHelper;
 
-    public class HistoryStorageFactory : IHistoryStorageFactory
+    /// <summary>
+    /// The CosmosDb helper
+    /// </summary>
+    private readonly ICosmosDbHelper _cosmosDbHelper;
+
+    /// <summary>
+    /// Constructor of HistoryStorageFactory
+    /// </summary>
+    /// <param name="tableHelper"></param>
+    /// <param name="cosmosDbHelper"></param>
+    public HistoryStorageFactory(ITableHelper tableHelper, ICosmosDbHelper cosmosDbHelper)
     {
-        /// <summary>
-        /// The table helper
-        /// </summary>
-        private readonly ITableHelper _tableHelper;
+        _tableHelper = tableHelper;
+        _cosmosDbHelper = cosmosDbHelper;
+    }
 
-        /// <summary>
-        /// The CosmosDb helper
-        /// </summary>
-        private readonly ICosmosDbHelper _cosmosDbHelper;
-
-        /// <summary>
-        /// Constructor of HistoryStorageFactory
-        /// </summary>
-        /// <param name="tableHelper"></param>
-        /// <param name="cosmosDbHelper"></param>
-        public HistoryStorageFactory(ITableHelper tableHelper, ICosmosDbHelper cosmosDbHelper)
+    /// <summary>
+    /// Get storage provider
+    /// </summary>
+    /// <param name="tenantInfo"></param>
+    /// <returns></returns>
+    public IHistoryStorageProvider GetStorageProvider(ApprovalTenantInfo tenantInfo)
+    {
+        IHistoryStorageProvider historyStorageProvider;
+        if (tenantInfo != null && !tenantInfo.HistoryLogging)
         {
-            _tableHelper = tableHelper;
-            _cosmosDbHelper = cosmosDbHelper;
-        }
-
-        /// <summary>
-        /// Get storage provider
-        /// </summary>
-        /// <param name="tenantInfo"></param>
-        /// <returns></returns>
-        public IHistoryStorageProvider GetStorageProvider(ApprovalTenantInfo tenantInfo)
-        {
-            IHistoryStorageProvider historyStorageProvider;
-            if (tenantInfo != null && !tenantInfo.HistoryLogging)
-            {
-                historyStorageProvider = new HistoryTableStorageProvider(_tableHelper);
-            }
-            else
-            {
-                historyStorageProvider = new HistoryDocumentDbProvider(_cosmosDbHelper);
-            }
-
-            return historyStorageProvider;
-        }
-
-        /// <summary>
-        /// Get table storage provider
-        /// </summary>
-        /// <returns></returns>
-        public IHistoryStorageProvider GetTableStorageProvider()
-        {
-            IHistoryStorageProvider historyStorageProvider;
             historyStorageProvider = new HistoryTableStorageProvider(_tableHelper);
-            return historyStorageProvider;
         }
+        else
+        {
+            historyStorageProvider = new HistoryDocumentDbProvider(_cosmosDbHelper);
+        }
+
+        return historyStorageProvider;
+    }
+
+    /// <summary>
+    /// Get table storage provider
+    /// </summary>
+    /// <returns></returns>
+    public IHistoryStorageProvider GetTableStorageProvider()
+    {
+        IHistoryStorageProvider historyStorageProvider;
+        historyStorageProvider = new HistoryTableStorageProvider(_tableHelper);
+        return historyStorageProvider;
     }
 }

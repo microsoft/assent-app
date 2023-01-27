@@ -1,84 +1,86 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Mvc;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+namespace Microsoft.CFS.Approvals.Utilities.Helpers;
+
 using System;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Mvc;
 
-namespace Microsoft.CFS.Approvals.Utilities.Helpers
+public class HttpResponseMessageResult : IActionResult
 {
-    public class HttpResponseMessageResult : IActionResult
-    {
-        private readonly HttpResponseMessage _responseMessage;
+    private readonly HttpResponseMessage _responseMessage;
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="responseMessage"></param>
-        public HttpResponseMessageResult(HttpResponseMessage responseMessage)
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="responseMessage"></param>
+    public HttpResponseMessageResult(HttpResponseMessage responseMessage)
+    {
+        _responseMessage = responseMessage; // could add throw if null
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="context"></param>
+    /// <returns></returns>
+    public async Task ExecuteResultAsync(ActionContext context)
+    {
+        var response = context.HttpContext.Response;
+
+
+        if (_responseMessage == null)
         {
-            _responseMessage = responseMessage; // could add throw if null
+            var message = "Response message cannot be null";
+
+            throw new InvalidOperationException(message);
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="context"></param>
-        /// <returns></returns>
-        public async Task ExecuteResultAsync(ActionContext context)
+        using (_responseMessage)
         {
-            var response = context.HttpContext.Response;
+            response.StatusCode = (int)_responseMessage.StatusCode;
 
-
-            if (_responseMessage == null)
+            var responseFeature = context.HttpContext.Features.Get<IHttpResponseFeature>();
+            if (responseFeature != null)
             {
-                var message = "Response message cannot be null";
-
-                throw new InvalidOperationException(message);
+                responseFeature.ReasonPhrase = _responseMessage.ReasonPhrase;
             }
 
-            using (_responseMessage)
+            var responseHeaders = _responseMessage.Headers;
+
+            // Ignore the Transfer-Encoding header if it is just "chunked".
+            // We let the host decide about whether the response should be chunked or not.
+            if (responseHeaders.TransferEncodingChunked == true &&
+                responseHeaders.TransferEncoding.Count == 1)
             {
-                response.StatusCode = (int)_responseMessage.StatusCode;
+                responseHeaders.TransferEncoding.Clear();
+            }
 
-                var responseFeature = context.HttpContext.Features.Get<IHttpResponseFeature>();
-                if (responseFeature != null)
-                {
-                    responseFeature.ReasonPhrase = _responseMessage.ReasonPhrase;
-                }
+            foreach (var header in responseHeaders)
+            {
+                response.Headers.Append(header.Key, header.Value.ToArray());
+            }
 
-                var responseHeaders = _responseMessage.Headers;
+            if (_responseMessage.Content != null)
+            {
+                var contentHeaders = _responseMessage.Content.Headers;
 
-                // Ignore the Transfer-Encoding header if it is just "chunked".
-                // We let the host decide about whether the response should be chunked or not.
-                if (responseHeaders.TransferEncodingChunked == true &&
-                    responseHeaders.TransferEncoding.Count == 1)
-                {
-                    responseHeaders.TransferEncoding.Clear();
-                }
+                // Copy the response content headers only after ensuring they are complete.
+                // We ask for Content-Length first because HttpContent lazily computes this
+                // and only afterwards writes the value into the content headers.
+                var unused = contentHeaders.ContentLength;
 
-                foreach (var header in responseHeaders)
+                foreach (var header in contentHeaders)
                 {
                     response.Headers.Append(header.Key, header.Value.ToArray());
                 }
 
-                if (_responseMessage.Content != null)
-                {
-                    var contentHeaders = _responseMessage.Content.Headers;
-
-                    // Copy the response content headers only after ensuring they are complete.
-                    // We ask for Content-Length first because HttpContent lazily computes this
-                    // and only afterwards writes the value into the content headers.
-                    var unused = contentHeaders.ContentLength;
-
-                    foreach (var header in contentHeaders)
-                    {
-                        response.Headers.Append(header.Key, header.Value.ToArray());
-                    }
-
-                    await _responseMessage.Content.CopyToAsync(response.Body);
-                }
+                await _responseMessage.Content.CopyToAsync(response.Body);
             }
         }
     }

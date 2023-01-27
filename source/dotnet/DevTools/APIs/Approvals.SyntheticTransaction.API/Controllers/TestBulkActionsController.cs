@@ -1,61 +1,95 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.SyntheticTransaction.API.Controllers
+namespace Microsoft.CFS.Approvals.SyntheticTransaction.API.Controllers;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.Model.Constant;
+using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
+using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Models;
+using Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.ExtensionMethods;
+using Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Helpers;
+
+/// <summary>
+/// The Bulk Action Controller
+/// </summary>
+[Route("{env}/api/TestBulkActions")]
+[ApiController]
+public class TestBulkActionsController : ControllerBase
 {
-    using System;
-    using System.Linq;
-    using System.Threading.Tasks;
-    using Microsoft.AspNetCore.Mvc;
-    using Microsoft.AspNetCore.Mvc.Infrastructure;
-    using Microsoft.Azure.Cosmos.Table;
-    using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
-    using Microsoft.CFS.Approvals.Model;
-    using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Models;
-    using Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.ExtensionMethods;
-    using Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Helpers;
+    /// <summary>
+    /// The azure storage helper
+    /// </summary>
+    private readonly ITableHelper _azureStorageHelper;
 
     /// <summary>
-    /// The Bulk Action Controller
+    /// The log provider
     /// </summary>
-    [Route("{env}/api/TestBulkActions")]
-    [ApiController]
-    public class TestBulkActionsController : ControllerBase
+    private readonly ILogProvider _logProvider;
+
+    private readonly string _environment;
+
+    /// <summary>
+    /// Constructor of TestBulkActionsController
+    /// </summary>
+    /// <param name="azureStorageHelper"></param>
+    /// <param name="actionContextAccessor"></param>
+    /// <param name="configurationSetting"></param>
+    /// <param name="logProvider"></param>
+    public TestBulkActionsController(Func<string, string, ITableHelper> azureStorageHelper,
+        IActionContextAccessor actionContextAccessor,
+        ConfigurationSetting configurationSetting,
+        ILogProvider logProvider)
     {
-        /// <summary>
-        /// The azure storage helper
-        /// </summary>
-        private readonly ITableHelper _azureStorageHelper;
+        _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
+        _azureStorageHelper = azureStorageHelper(
+            configurationSetting.appSettings[_environment].StorageAccountName,
+            configurationSetting.appSettings[_environment].StorageAccountKey);
+        _logProvider = logProvider;
+    }
 
-        private readonly string _environment;
+    /// <summary>
+    /// Generate approval response
+    /// </summary>
+    /// <param name="requests"></param>
+    /// <returns></returns>
+    [HttpPost]
+    public async Task<IActionResult> Post([FromBody] LOBRequest[] requests)
+    {
+        var tcv = Request.Headers["Tcv"];
+        Dictionary<LogDataKey, object> logData = new Dictionary<LogDataKey, object>();
+        logData.Add(LogDataKey.Xcv, String.Join(",", requests.Select(s => s.DocumentKeys.DisplayDocumentNumber)));
+        logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.Environment, _environment);
+        logData.Add(LogDataKey.Operation, "Test Bulk Actions - Controller");
 
-        /// <summary>
-        /// Constructor of TestBulkActionsController
-        /// </summary>
-        /// <param name="azureStorageHelper"></param>
-        /// <param name="actionContextAccessor"></param>
-        /// <param name="configurationSetting"></param>
-        public TestBulkActionsController(Func<string, string, ITableHelper> azureStorageHelper,
-            IActionContextAccessor actionContextAccessor,
-            ConfigurationSetting configurationSetting)
+        ApprovalResponse approvalResponse;
+        var error = new ApprovalResponseErrorInfo();
+        var tenantEntity = _azureStorageHelper.GetTableEntityByfield<TenantEntity>("ApprovalTenantInfo", "DocTypeId", requests[0].DocumentTypeID);
+
+        try
         {
-            _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
-            _azureStorageHelper = azureStorageHelper(
-                configurationSetting.appSettings[_environment].StorageAccountName,
-                configurationSetting.appSettings[_environment].StorageAccountKey);
+            approvalResponse = ApprovalResponseHelper.GenerateApprovalResponse(tenantEntity.AppName, requests[0].DocumentTypeID, error, TenantActionMessage.MsgActionSuccess.StringValue<TenantActionMessage>());
+
+            logData.Add(LogDataKey.TenantName, tenantEntity.AppName);
+            _logProvider.LogInformation(TrackingEvent.BulkActionSuccessful, logData);
+            return Ok(approvalResponse);
         }
-
-        /// <summary>
-        /// Generate approval response
-        /// </summary>
-        /// <param name="requests"></param>
-        /// <returns></returns>
-        [HttpPost]
-        public async Task<IActionResult> Post([FromBody] LOBRequest[] requests)
+        catch (Exception ex)
         {
-            var errors = new ApprovalResponseErrorInfo();
-            var tenantEntity = (_azureStorageHelper.GetTableEntity<ApprovalTenantInfo>("ApprovalTenantInfo")).Where(x => x.DocTypeId == requests[0].DocumentTypeID).FirstOrDefault();
-            var approvalResponse = ApprovalResponseHelper.GenerateApprovalResponse(tenantEntity?.AppName, requests[0].DocumentTypeID, errors, TenantActionMessage.MsgActionSuccess.StringValue<TenantActionMessage>());
+            logData.Add(LogDataKey.EventName, "ActionFailure");
+            logData.Add(LogDataKey.TenantName, tenantEntity.AppName);
+            _logProvider.LogError(TrackingEvent.ActionFailure, ex, logData);
+
+            error.ErrorMessages = new List<string> { TenantActionMessage.MsgActionFailure.StringValue<TenantActionMessage>() };
+            error.ErrorType = ApprovalResponseErrorType.UnintendedError;
+            approvalResponse = ApprovalResponseHelper.GenerateApprovalResponse(tenantEntity.AppName, requests[0].DocumentTypeID, error, TenantActionMessage.MsgActionSuccess.StringValue<TenantActionMessage>());
             return Ok(approvalResponse);
         }
     }

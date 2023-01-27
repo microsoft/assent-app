@@ -1,95 +1,73 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper
+namespace Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using global::Azure.Data.AppConfiguration;
+using global::Azure.Identity;
+using global::Azure.Security.KeyVault.Secrets;
+using Microsoft.CFS.Approvals.Contracts;
+using Microsoft.Extensions.Configuration;
+
+/// <summary>
+/// The Application Settings Helper class
+/// </summary>
+[ExcludeFromCodeCoverage]
+public class ApplicationSettingsHelper
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics.CodeAnalysis;
-    using System.Linq;
-    using Microsoft.Azure.KeyVault;
-    using Microsoft.Azure.KeyVault.Models;
-    using Microsoft.CFS.Approvals.Contracts;
-    using Microsoft.CFS.Approvals.DevTools.Model.Models;
-    using Microsoft.Extensions.Configuration;
-    using Microsoft.IdentityModel.Clients.ActiveDirectory;
-    using Newtonsoft.Json;
-    using Newtonsoft.Json.Linq;
+    /// <summary>
+    /// The configuration helper
+    /// </summary>
+    private readonly IConfiguration _configuration;
 
     /// <summary>
-    /// The Application Settings Helper class
+    /// Constructor of ApplicationSettingsHelper
     /// </summary>
-    [ExcludeFromCodeCoverage]
-    public class ApplicationSettingsHelper
+    /// <param name="configuration"></param>
+    public ApplicationSettingsHelper(IConfiguration configuration)
     {
-        /// <summary>
-        /// The configuration helper
-        /// </summary>
-        private readonly IConfiguration _configuration;
+        _configuration = configuration;
+    }
 
-        /// <summary>
-        /// Constructor of ApplicationSettingsHelper
-        /// </summary>
-        /// <param name="configuration"></param>
-        public ApplicationSettingsHelper(IConfiguration configuration)
-        {
-            _configuration = configuration;
-        }
+    /// <summary>
+    /// Get settings
+    /// </summary>
+    /// <returns></returns>
+    public Dictionary<string, IConfiguration> GetSettings()
+    {
+        #region Fetch Azure App Configuration Store
 
-        /// <summary>
-        /// Get settings
-        /// </summary>
-        /// <returns></returns>
-        public Dictionary<string, AppSettings> GetSettings()
+        ConfigurationClient _client = new ConfigurationClient(new Uri(_configuration[Constants.AzureAppConfigurationUrl]), new DefaultAzureCredential());
+        var settingsSelector = new SettingSelector() { KeyFilter = "*" };
+        var settings = _client.GetConfigurationSettings(settingsSelector);
+        var labels = settings.GroupBy(s => s.Label);
+        Dictionary<string, IConfiguration> configurations = new Dictionary<string, IConfiguration>();
+        foreach (var label in labels)
         {
-            Dictionary<string, AppSettings> appSettings = new Dictionary<string, AppSettings>();
-            var kvc = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(
-                  async (string authority, string resource, string scope) =>
-                  {
-                      var authContext = new AuthenticationContext(string.Format("{0}{1}", _configuration["AADInstance"], _configuration["TenantID"]));
-                      var credential = new ClientCredential(_configuration["KeyVaultClientId"], _configuration["KeyVaultClientSecret"]);
-                      AuthenticationResult result = await authContext.AcquireTokenAsync(resource, credential);
-                      if (result == null)
-                      {
-                          throw new InvalidOperationException("Failed to retrieve JWT token");
-                      }
-                      return result.AccessToken;
-                  }));
-            var environments = _configuration["Environmentlist"].Split(',').ToList();
-            foreach (var environment in environments)
+            var setingsByLabel = settings.Where(s => s.Label == label.Key);
+            IConfiguration Config = new ConfigurationBuilder().Build();
+            Config = new ConfigurationBuilder().AddEnvironmentVariables().Build();
+            foreach (var setting in setingsByLabel)
             {
-                SecretBundle secretBundle = new SecretBundle();
-                secretBundle = kvc.GetSecretAsync(_configuration["KeyVaultSecretUri"], string.Format("{0}-{1}", environment, "SupportPortalConfiguration")).Result;
-
-                var config = JsonConvert.DeserializeObject<JObject>(secretBundle.Value);
-                if (!appSettings.ContainsKey(environment))
+                if (setting is SecretReferenceConfigurationSetting secretReference)
                 {
-                    appSettings[environment] = new AppSettings
-                    {
-                        StorageAccountKey = config?["StorageAccountKey"].ToString(),
-                        StorageAccountName = config?["StorageAccountName"].ToString(),
-                        ServiceBusConnection = config?["ServiceBusConnection"].ToString(),
-                        ServiceBusTopics = config?["ServiceBusTopics"].ToString(),
-                        AIBaseURL = config?["AIBaseURL"].ToString(),
-                        GraphAPIAuthenticationURL = config["GraphAPIAuthenticationURL"].ToString(),
-                        GraphAPIAuthString = config["GraphAPIAuthString"].ToString(),
-                        GraphAPIClientId = config["GraphAPIClientId"].ToString(),
-                        GraphAPIClientSecret = config["GraphAPIClientSecret"].ToString(),
-                        GraphAPIResource = config["GraphAPIResource"].ToString(),
-                        AIScope = config["AIScope"].ToString(),
-                        FunctionAppConfiguration = config["FunctionAppConfiguration"].ToString(),
-                        TestTenantConfiguration = config["TestTenantConfiguration"].ToString(),
-                        StorageConnection = config["StorageConnection"].ToString(),
-                        TenantIconBlobUrl = config["TenantIconBlobUrl"].ToString(),
-                        SamplePayloadBlobContainer = config["SamplePayloadBlobContainer"].ToString(),
-                        TenantIconBlob = config["TenantIconBlob"].ToString(),
-                        PayloadProcessingFunctionURL = config["PayloadProcessingFunctionURL"].ToString(),
-                        ApprovalSummaryTable = _configuration["ApprovalSummaryTable"]
-                    };
+                    var identifier = new KeyVaultSecretIdentifier(secretReference.SecretId);
+                    var secretClient = new SecretClient(identifier.VaultUri, new DefaultAzureCredential());
+                    var secret = secretClient.GetSecretAsync(identifier.Name, identifier.Version).Result;
+                    Config[setting.Key] = secret.Value.Value;
                 }
-            }
+                else
+                {
+                    Config[setting.Key] = setting.Value;
+                }
 
-            return appSettings;
+            }
+            configurations.Add(label.Key, Config);
         }
+        return configurations;
+        #endregion
     }
 }

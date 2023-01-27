@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <AssemblyName>Microsoft.CFS.Approvals.Domain.BL</AssemblyName>
     <RootNamespace>Microsoft.CFS.Approvals.Domain.BL</RootNamespace>
   </PropertyGroup>
@@ -11,6 +11,10 @@
     <ProjectReference Include="..\..\Common\Approvals.Utilities\Approvals.Utilities.csproj" />
     <ProjectReference Include="..\..\Contract\Approvals.Model\Approvals.Model.csproj" />
     <ProjectReference Include="..\..\Core\Approvals.Common.BL\Approvals.Common.BL.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Tenants\Model\" />
   </ItemGroup>
 
 </Project>

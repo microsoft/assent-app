@@ -1,18 +1,16 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.Model.Flighting
+namespace Microsoft.CFS.Approvals.Model.Flighting;
+
+using System;
+
+public partial class Flighting : BaseTableEntity
 {
-    using System;
-    using Microsoft.Azure.Cosmos.Table;
+    public int Id { get; set; }
+    public string Alias { get; set; }
+    public int FeatureID { get; set; }
+    public Nullable<System.DateTime> FlightingStartDate { get; set; }
 
-    public partial class Flighting : TableEntity
-    {
-        public int Id { get; set; }
-        public string Alias { get; set; }
-        public int FeatureID { get; set; }
-        public Nullable<System.DateTime> FlightingStartDate { get; set; }
-
-        public virtual FlightingFeature FlightingFeature { get; set; }
-    }
+    public virtual FlightingFeature FlightingFeature { get; set; }
 }

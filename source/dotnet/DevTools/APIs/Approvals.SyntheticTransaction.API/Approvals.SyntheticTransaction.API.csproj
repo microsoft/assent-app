@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <UserSecretsId>e5463d49-cfdc-43a2-88c6-f139aa5d04ea</UserSecretsId>
     <AssemblyName>Microsoft.CFS.Approvals.SyntheticTransaction.API</AssemblyName>
     <RootNamespace>Microsoft.CFS.Approvals.SyntheticTransaction.API</RootNamespace>
@@ -20,8 +20,10 @@
 
   <ItemGroup>
     <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="7.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="3.1.10" />
-    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="3.1.23" />
+    <PackageReference Include="Azure.Identity" Version="1.6.0" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.13.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="6.0.7" />
     <PackageReference Include="NJsonSchema" Version="10.3.1" />
     <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.3.0" />
   </ItemGroup>

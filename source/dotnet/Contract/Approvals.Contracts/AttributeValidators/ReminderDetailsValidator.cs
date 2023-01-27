@@ -21,12 +21,12 @@ namespace Microsoft.CFS.Approvals.Contracts.AttributeValidators
         public List<ValidationResult> Validator(ReminderDetail reminderDetails)
         {
             var results = new List<ValidationResult>();
-            
+
             System.ComponentModel.DataAnnotations.Validator.TryValidateObject(reminderDetails, new ValidationContext(reminderDetails), results);
 
-            if(reminderDetails.ReminderDates == null || reminderDetails.ReminderDates.Count == 0)
+            if (reminderDetails.ReminderDates == null || reminderDetails.ReminderDates.Count == 0)
             {
-                if(reminderDetails.Frequency <= 0 || reminderDetails.Expiration <= DateTime.Now)
+                if (reminderDetails.Frequency <= 0 || reminderDetails.Expiration <= DateTime.Now)
                     results.Add(new ValidationResult(Constants.ReminderDetailFrequencyMessage, new List<string> { "ApprovalRequestExpression.NotificationDetail.ReminderDetail.Frequency", "ApprovalRequestExpression.NotificationDetail.ReminderDetail.Expiration" }));
             }
 

@@ -1,12 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>Microsoft.CFS.Approvals.SyntheticTransaction.Helpers</RootNamespace>
     <AssemblyName>Microsoft.CFS.Approvals.SyntheticTransaction.Helpers</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.6.0" />
+    <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.4.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.2.5" />
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="2.17.0" />
     <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.5" />
@@ -21,6 +23,7 @@
     <ProjectReference Include="..\..\..\Contract\Approvals.Contracts\Approvals.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Contract\Approvals.Model\Approvals.Model.csproj" />
     <ProjectReference Include="..\..\Common\Approvals.SyntheticTransaction.Common\Approvals.SyntheticTransaction.Common.csproj" />
+    <ProjectReference Include="..\..\Contract\Approvals.DevTools.Model\Approvals.DevTools.Model.csproj" />
   </ItemGroup>
 
 </Project>

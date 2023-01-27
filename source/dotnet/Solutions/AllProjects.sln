@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31313.79
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{A0541991-6256-4036-B448-5A78FA43EA4A}"
 EndProject
@@ -110,6 +110,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Approvals.CoreServices.BL", "..\Core\Approvals.CoreServices.BL\Approvals.CoreServices.BL.csproj", "{D79EBB5E-8DB4-4C1E-9E46-D16059A8249D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Approvals.Data.Azure.CosmosDb", "..\Common\Approvals.Data.Azure.CosmosDb\Approvals.Data.Azure.CosmosDb.csproj", "{5DDF1FC9-8065-4D11-8A8E-F5CAAA69AA76}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Approvals.PayloadReprocessing", "..\DevTools\Services\Approvals.PayloadReprocessing\Approvals.PayloadReprocessing.csproj", "{48E82662-0428-4935-B99D-16293E7F8BB1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -233,6 +235,10 @@ Global
 		{5DDF1FC9-8065-4D11-8A8E-F5CAAA69AA76}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5DDF1FC9-8065-4D11-8A8E-F5CAAA69AA76}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5DDF1FC9-8065-4D11-8A8E-F5CAAA69AA76}.Release|Any CPU.Build.0 = Release|Any CPU
+		{48E82662-0428-4935-B99D-16293E7F8BB1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{48E82662-0428-4935-B99D-16293E7F8BB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{48E82662-0428-4935-B99D-16293E7F8BB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{48E82662-0428-4935-B99D-16293E7F8BB1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -272,6 +278,7 @@ Global
 		{D5ACB295-2C19-405C-8FED-588AAB21E35D} = {A0541991-6256-4036-B448-5A78FA43EA4A}
 		{D79EBB5E-8DB4-4C1E-9E46-D16059A8249D} = {A0541991-6256-4036-B448-5A78FA43EA4A}
 		{5DDF1FC9-8065-4D11-8A8E-F5CAAA69AA76} = {065E3963-AC62-4D3D-BACB-C7A1D11F1D3F}
+		{48E82662-0428-4935-B99D-16293E7F8BB1} = {A877F62F-EBC7-4F1D-856A-69D0D54D05FF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BD0C76BF-430F-423A-BE2F-A837D1FAB9C0}
