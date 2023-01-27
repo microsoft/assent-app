@@ -43,6 +43,7 @@ import { TopHeader } from './Components/Shared/Components/SecondaryHeader/TopHea
 import CoherenceTheme from './Helpers/Theme';
 import { SideNav } from './Components/Shared/Components/SideNav';
 import { initializeIcons } from '@fluentui/font-icons-mdl2';
+import { initializeFileTypeIcons } from '@fluentui/react-file-type-icons';
 import { UserSettingsPanel } from './Components/UserSettingsPanel/UserSettingsPanel';
 import { helpPanelReducer, helpPanelReducerName } from './Components/HelpPanel/HelpPanel.reducer';
 import { helpPanelSagas } from './Components/HelpPanel/HelpPanel.sagas';
@@ -54,6 +55,8 @@ import { accessibilityReducer, accessibilityReducerName } from './Components/Acc
 export function App(): React.ReactElement {
     useLoginOnStartup(true, { scopes: ['https://graph.microsoft.com/.default'] });
     initializeIcons();
+    // See: https://developer.microsoft.com/en-us/fluentui#/styles/web/file-type-icons
+    initializeFileTypeIcons();
     registerIcons({
         icons: {
             Accessibility: <SharedStyled.AccessibilityIcon />,

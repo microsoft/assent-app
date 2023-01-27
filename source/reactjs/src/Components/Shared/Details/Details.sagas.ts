@@ -14,6 +14,7 @@ import {
     IMarkRequestAsReadAction,
     IRequestHeaderAction,
     IPostEditableDetailsAction,
+    IUploadFileAction,
 } from './Details.action-types';
 import {
     receiveUserImage,
@@ -34,6 +35,9 @@ import {
     receiveAreDetailsEditable,
     failedEditDetails,
     requestDocumentEnd,
+    failedFileUpload,
+    successFileUpload,
+    requestMyDetails,
 } from './Details.actions';
 import {
     updateBulkStatus,
@@ -76,6 +80,7 @@ import {
 } from '../../../Helpers/sharedHelpers';
 import { getDisplayDocumentNumber, getSummaryJSON, getTcv, getIsProcessingAction } from './Details.selectors';
 import { IDelegationObj } from '../SharedComponents.types';
+import { IFileUploadResponse } from './Details.types';
 
 function* fetchUserImage(action: IRequestUserImageAction): IterableIterator<SimpleEffect<{}, {}>> {
     const telemetryClient: ITelemetryClient = yield getContext('telemetryClient');
@@ -795,6 +800,10 @@ function* fetchDocument(action: IRequestDocumentAction): IterableIterator<Simple
         ) {
             selectedURL = `${__API_BASE_URL__}${__API_URL_ROOT__}/documentdownload/${action.tenantId}/${action.documentNumber}/?displayDocumentNumber=${action.displayDocumentNumber}&attachmentId=${action.attachmentId}`;
         }
+
+        if (selectedURL.indexOf('${IsPreAttached}') > -1) {
+            selectedURL = selectedURL.replace('${IsPreAttached}', 'true');
+        }
         const { data: fileBytes }: IHttpClientRequest = yield call([httpClient, httpClient.request], {
             url: selectedURL,
             resource: __RESOURCE_URL__,
@@ -846,8 +855,9 @@ function* fetchDocumentPreview(action: IRequestDocumentPreviewAction): IterableI
     const tcv = yield select(getTcv);
     try {
         const httpClient: IHttpClient = yield getContext('httpClient');
+        action.isPreAttached = action.isPreAttached ?? true;
         const { data: fileBytes }: IHttpClientRequest = yield call([httpClient, httpClient.request], {
-            url: `${__API_BASE_URL__}${__API_URL_ROOT__}/documentpreview/${action.tenantId}/${action.documentNumber}/?displayDocumentNumber=${action.displayDocumentNumber}&attachmentId=${action.attachmentId}`,
+            url: `${__API_BASE_URL__}${__API_URL_ROOT__}/documentpreview/${action.tenantId}/${action.documentNumber}/?displayDocumentNumber=${action.displayDocumentNumber}&attachmentId=${action.attachmentId}&isPreAttached=${action.isPreAttached}`,
             resource: __RESOURCE_URL__,
             responseType: 'arraybuffer',
             headers: setHeader(action.userAlias, tcv, action.displayDocumentNumber),
@@ -991,6 +1001,87 @@ function* postEditableDetails(action: IPostEditableDetailsAction): IterableItera
     }
 }
 
+function* uploadFiles(action: IUploadFileAction): IterableIterator<SimpleEffect<{}, {}>> {
+    const telemetryClient: ITelemetryClient = yield getContext('telemetryClient');
+    const authClient: IAuthClient = yield getContext('authClient');
+    const stateCommonProperties = yield select(getStateCommonTelemetryProperties);
+    const newguid = guid();
+    try {
+        const httpClient: IHttpClient = yield getContext('httpClient');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const url = `${__API_BASE_URL__}${__API_URL_ROOT__}/AttachmentUpload/${action.tenantId}/${action.documentNumber}`;
+
+        const headerObject = {
+            ClientDevice: 'React',
+            Xcv: newguid,
+            Tcv: newguid,
+            TenantId: action.tenantId,
+            ...(action.userAlias && { UserAlias: `${action.userAlias ? action.userAlias : undefined}` }),
+        };
+        const actionRequest = {
+            url: url,
+            resource: __RESOURCE_URL__,
+            headers: headerObject,
+            data: action.files,
+        };
+        const { data: actionResponse }: IHttpClientRequest = yield call(
+            [httpClient, httpClient.post],
+            url,
+            actionRequest
+        );
+        const successCount = actionResponse.filter((x: IFileUploadResponse) => x.actionResult === true).length;
+        const failureCount = actionResponse.filter((x: IFileUploadResponse) => x.actionResult === false).length;
+        if (failureCount === 0) {
+            yield put(successFileUpload());
+            trackBusinessProcessEvent(
+                authClient,
+                telemetryClient,
+                'Attachment upload - Success',
+                'MSApprovals.FileAttachmentUpload.Success',
+                TrackingEventId.FileAttachmentUploadSuccess,
+                stateCommonProperties
+            );
+        } else {
+            const successCountMessage =
+                successCount > 0 ? '<strong>' + successCount + '</strong> file(s) uploaded. <br>' : '';
+            const failureCountMessage =
+                failureCount > 0
+                    ? '<strong>' + failureCount + '</strong> file(s) upload failed. <br>'
+                    : 'Unable to complete file upload at this time. If this issue persists, please contact support team <br>';
+            const errorMessageList: string[] = actionResponse
+                ?.filter((item: IFileUploadResponse) => item.e2EErrorInformation)
+                .map((item: IFileUploadResponse) => item.name + ' - ' + item.e2EErrorInformation.errorMessages);
+            const errorList = errorMessageList;
+            yield put(failedFileUpload(successCountMessage + failureCountMessage, errorList));
+        }
+
+        yield put(
+            requestMyDetails(
+                action.tenantId,
+                action.documentNumber,
+                action.displayDocumentNumber,
+                action.userAlias,
+                action.requiresTemplate,
+                action.isPullModelEnabled
+            )
+        );
+    } catch (errorResponse: any) {
+        const error = errorResponse.data ?? errorResponse;
+        yield put(failedFileUpload(error.message ? error.message : 'Unable to upload file attachments', null));
+        const exception = error.message ? new Error(error.message) : error;
+        trackException(
+            authClient,
+            telemetryClient,
+            'File attachment upload - Failure',
+            'MSApprovals.FileAttachmentUpload.Failure',
+            TrackingEventId.FileAttachmentUploadFailure,
+            stateCommonProperties,
+            exception,
+            { ...(action.userAlias && { UserAlias: `${action.userAlias ? action.userAlias : undefined}` }) }
+        );
+    }
+}
+
 export function* detailsSagas(): IterableIterator<{}> {
     yield all([
         takeLatest(DetailsActionType.REQUEST_USER_IMAGE, fetchUserImage),
@@ -1003,5 +1094,6 @@ export function* detailsSagas(): IterableIterator<{}> {
         takeLatest(DetailsActionType.REQUEST_ALL_DOCUMENTS, fetchAllDocuments),
         takeLatest(DetailsActionType.MARK_REQUEST_AS_READ, postRequestasRead),
         takeLatest(DetailsActionType.POST_EDITABLE_DETAILS, postEditableDetails),
+        takeLatest(DetailsActionType.UPLOAD_FILE, uploadFiles),
     ]);
 }

@@ -41,8 +41,14 @@ import {
     ISetBulkMessagebarHeight,
     ISetAliasMessagebarHeight,
     IRequestDocumentStart,
-    IRequestDocumentEnd
+    IRequestDocumentEnd,
+    IOpenFileUploadAction,
+    ICloseFileUploadAction,
+    IUploadFileAction,
+    IFailedUploadFilesAction,
+    ISuccessUploadFilesAction,
 } from './Details.action-types';
+import { IFileUpload } from './FileUpload/FileUpload';
 
 export function setFooterHeight(height: number): ISetFooterHeight {
     return {
@@ -114,6 +120,23 @@ export function failedUserImage(userImageErrorMessage: string): IFailedUserImage
     return {
         type: DetailsActionType.FAILED_USER_IMAGE,
         userImageErrorMessage
+    };
+}
+
+export function failedFileUpload(
+    uploadFilesErrorMessage: string,
+    uploadFilesErrorMessageList: string[]
+): IFailedUploadFilesAction {
+    return {
+        type: DetailsActionType.FAILED_UPLOAD_FILE,
+        uploadFilesErrorMessage,
+        uploadFilesErrorMessageList,
+    };
+}
+
+export function successFileUpload(): ISuccessUploadFilesAction {
+    return {
+        type: DetailsActionType.SUCCESS_UPLOAD_FILE,
     };
 }
 
@@ -256,6 +279,7 @@ export function requestDocumentPreview(
     documentNumber: string,
     displayDocumentNumber: string,
     attachmentId: string,
+    isPreAttached: boolean,
     userAlias: string,
     isModal: boolean
 ): IRequestDocumentPreviewAction {
@@ -265,8 +289,43 @@ export function requestDocumentPreview(
         documentNumber,
         displayDocumentNumber,
         attachmentId,
+        isPreAttached,
         userAlias,
         isModal
+    };
+}
+
+export function openFileUpload(isModal: boolean): IOpenFileUploadAction {
+    return {
+        type: DetailsActionType.OPEN_FILE_UPLOAD,
+        isModal,
+    };
+}
+
+export function closeFileUpload(): ICloseFileUploadAction {
+    return {
+        type: DetailsActionType.CLOSE_FILE_UPLOAD,
+    };
+}
+
+export function uploadFiles(
+    tenantId: string,
+    documentNumber: string,
+    displayDocumentNumber: string,
+    userAlias: string,
+    requiresTemplate: boolean,
+    isPullModelEnabled: boolean,
+    files: IFileUpload[]
+): IUploadFileAction {
+    return {
+        type: DetailsActionType.UPLOAD_FILE,
+        tenantId,
+        documentNumber,
+        displayDocumentNumber,
+        userAlias,
+        requiresTemplate,
+        isPullModelEnabled,
+        files,
     };
 }
 

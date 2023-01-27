@@ -40,6 +40,9 @@ export interface IDetailsState {
     isPreviewOpen: boolean;
     postActionHasError: boolean;
     postActionErrorMessage: string | null;
+    fileUploadHasError: boolean;
+    fileUploadErrorMessage: string | null;
+    uploadFilesErrorMessageList: string[] | null;
     documentTypeId: string | null;
     businessProcessName: string | null;
     isLoadingPreview: boolean;
@@ -96,6 +99,8 @@ export interface IDetailsState {
     templateName?: string;
     toggleDetailsScreen?: boolean;
     isExternalTenantActionDetails?: boolean;
+    isFileUploadOpen: boolean;
+    isModalFileUploadOpen: boolean;
 }
 
 export interface IControlValidation {
@@ -113,4 +118,19 @@ export interface IAddditionalInformation {
     Values: any;
     IsValueFromSummaryObject: boolean;
     IsMandatory: boolean;
+}
+
+export interface IFileUploadResponse {
+    url: string;
+    actionResult: boolean;
+    e2EErrorInformation: IFileUploadErrorInfo;
+    displayMessage: string;
+    id: number;
+    name: string;
+    fileSize: number;
+}
+
+export interface IFileUploadErrorInfo {
+    errorMessages: string[];
+    errorType: number;
 }

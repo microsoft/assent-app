@@ -1,7 +1,7 @@
 import * as React from 'react';
 import * as Styled from './DetailsMessageBarsStyling';
 import { Stack } from '@fluentui/react/lib/Stack';
-import { MessageBar, MessageBarType, Link } from '@fluentui/react';
+import { MessageBar, MessageBarType, Link, DefaultButton } from '@fluentui/react';
 import * as sanitizeHtml from 'sanitize-html';
 import { removeHTMLFromString } from '../../../../Helpers/sharedHelpers';
 
@@ -13,6 +13,7 @@ interface ErrorViewProps {
     linkHref?: string;
     linkText?: string;
     dismissHandler?: any;
+    isContentCollapsable?: boolean;
 }
 
 const ErrorView = ({
@@ -23,9 +24,11 @@ const ErrorView = ({
     linkText = null,
     dismissHandler = null,
     errorMessages = null,
+    isContentCollapsable = false,
 }: ErrorViewProps): JSX.Element => {
     const [errorViewRef, setErrorViewRef] = React.useState(null);
     const [dismissed, setDismissed] = React.useState(false);
+    const [showMore, setShowMore] = React.useState(true);
 
     React.useEffect(() => {
         if (errorViewRef) {
@@ -35,7 +38,7 @@ const ErrorView = ({
 
     const cleanErrorMessage = errorMessage
         ? sanitizeHtml(errorMessage, {
-              allowedTags: ['a', 'strong'],
+              allowedTags: ['a', 'strong', 'br'],
               allowedAttributes: {
                   a: ['href', 'target'],
               },
@@ -77,7 +80,17 @@ const ErrorView = ({
                         <div dangerouslySetInnerHTML={{ __html: cleanErrorMessage }} />
                     </Stack.Item>
                 )}
-                {errorMessages && (
+                {errorMessages && isContentCollapsable && showMore && (
+                    <Stack.Item>
+                        <DefaultButton
+                            text="Show more"
+                            title="Show more"
+                            onClick={() => setShowMore(false)}
+                            style={{ margin: '10px 0 0 0' }}
+                        />
+                    </Stack.Item>
+                )}
+                {errorMessages && (isContentCollapsable ? !showMore : true) && (
                     <Stack.Item>
                         <div
                             ref={(input) => {
@@ -97,6 +110,14 @@ const ErrorView = ({
                                 <Stack>{messageElements}</Stack>
                             </Styled.UnorderedList>
                         </div>
+                        {isContentCollapsable && (
+                            <DefaultButton
+                                text="Show less"
+                                title="Show less"
+                                onClick={() => setShowMore(true)}
+                                style={{ margin: '10px 0 0 0' }}
+                            />
+                        )}
                     </Stack.Item>
                 )}
                 <Stack.Item>{linkHref && <Link href={linkHref}>{linkText}</Link>}</Stack.Item>
