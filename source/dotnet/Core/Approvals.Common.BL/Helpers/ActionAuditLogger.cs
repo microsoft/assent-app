@@ -54,7 +54,7 @@ public class ActionAuditLogger : IActionAuditLogger
         _tableHelper = tableHelper;
         _config = config;
         _logProvider = logProvider;
-        _cosmosDbHelper.SetTarget(config[ConfigurationKey.CosmosDbNameActionAuditLog.ToString()], config[ConfigurationKey.CosmosDbCollectionActionAuditLog.ToString()], config[ConfigurationKey.CosmosDbPartitionKeyPath.ToString()]).Wait();
+        _cosmosDbHelper.SetTarget(config[ConfigurationKey.CosmosDbNameActionAuditLog.ToString()], config[ConfigurationKey.CosmosDbCollectionActionAuditLog.ToString()], config[ConfigurationKey.CosmosDbPartitionKeyPath.ToString()]);
     }
 
     /// <summary>

@@ -23,7 +23,7 @@ public interface ICosmosDbHelper
     /// <param name="databaseName">Name of the database.</param>
     /// <param name="collectionName">Name of the collection.</param>
     /// <param name="client">Document client</param>
-    Task SetTarget(string databaseName, string collectionName, string partitionKeyPath, CosmosClient client = null);
+    void SetTarget(string databaseName, string collectionName, string partitionKeyPath, CosmosClient client = null);
 
     /// <summary>
     /// Inserts documents in batch

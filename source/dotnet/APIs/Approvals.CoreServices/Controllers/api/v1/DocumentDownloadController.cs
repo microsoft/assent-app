@@ -41,6 +41,7 @@ public class DocumentDownloadController : BaseApiController
     /// <param name="fiscalYear">Fiscal Year of Request number (if any)</param>
     /// <param name="page"></param>
     /// <param name="attachmentId">The unique attachmentId of the attachment to be downloaded from LOB system</param>
+    /// <param name="isPreAttached">Specifies the type of the attachment if the attachment is pre attached from tenant or post attached from ui.</param>
     /// <param name="sessionId">GUID SessionId. Unique for each user session</param>
     /// <param name="tcv">GUID Transaction Id. Unique for each transaction</param>
     /// <param name="xcv">GUID Cross Correlation Vector. Unique for each request across system boundaries</param>
@@ -70,6 +71,7 @@ public class DocumentDownloadController : BaseApiController
         string fiscalYear = "",
         int page = 1,
         string attachmentId = "",
+        bool isPreAttached = true,
         string sessionId = "",
         string tcv = "",
         string xcv = "")
@@ -87,6 +89,7 @@ public class DocumentDownloadController : BaseApiController
                    displayDocumentNumber,
                    fiscalYear,
                    attachmentId,
+                   isPreAttached,
                    sessionId,
                    tcv,
                    xcv,

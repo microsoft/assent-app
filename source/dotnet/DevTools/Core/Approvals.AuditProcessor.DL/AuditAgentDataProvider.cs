@@ -56,7 +56,7 @@ public class AuditAgentDataProvider : IAuditAgentDataProvider
         _cosmosDbHelper = cosmosDbHelper;
         docCollectionName = _config[ConfigurationKey.CosmosDbCollectionAuditAgent.ToString()];
         docDbName = _config[ConfigurationKey.CosmosDbNameAuditAgent.ToString()];
-        _cosmosDbHelper.SetTarget(docDbName, docCollectionName, _config[ConfigurationKey.CosmosDbPartitionKeyPathAuditAgent.ToString()]).Wait();
+        _cosmosDbHelper.SetTarget(docDbName, docCollectionName, _config[ConfigurationKey.CosmosDbPartitionKeyPathAuditAgent.ToString()]);
     }
 
     /// <summary>

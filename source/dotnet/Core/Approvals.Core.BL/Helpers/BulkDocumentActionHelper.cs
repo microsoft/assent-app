@@ -46,6 +46,7 @@ public class BulkDocumentActionHelper : DocumentActionHelper
     /// <param name="tableHelper">The storage helper.</param>
     /// <param name="approvalTenantInfoHelper">The approval tenant helper.</param>
     /// <param name="tenantFactory">The tenant factory.</param>
+    /// <param name="attachmentHelper"> The attachment helper.</param>
     public BulkDocumentActionHelper(
         IApprovalSummaryProvider approvalSummaryProvider,
         IConfiguration config,
@@ -57,7 +58,8 @@ public class BulkDocumentActionHelper : DocumentActionHelper
         IActionAuditLogHelper actionAuditLogHelper,
         ITableHelper tableHelper,
         IApprovalTenantInfoHelper approvalTenantInfoHelper,
-        ITenantFactory tenantFactory)
+        ITenantFactory tenantFactory,
+        IAttachmentHelper attachmentHelper)
         : base(
               approvalSummaryProvider,
               config,
@@ -69,7 +71,8 @@ public class BulkDocumentActionHelper : DocumentActionHelper
               actionAuditLogHelper,
               tableHelper,
               approvalTenantInfoHelper,
-              tenantFactory)
+              tenantFactory,
+              attachmentHelper)
     {
     }
 

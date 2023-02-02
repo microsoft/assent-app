@@ -14,6 +14,7 @@ using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.Extensions;
 using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.Model;
@@ -352,12 +353,23 @@ public class ApprovalDetailProvider : IApprovalDetailProvider
             logData.Add(LogDataKey.ClientDevice, clientDevice);
             logData.Add(LogDataKey.TenantId, tenantInfo.TenantId);
 
+            var attachmentProperties = tenantInfo.IsUploadAttachmentsEnabled ? tenantInfo?.AttachmentProperties?.FromJson<AttachmentProperties>() : null;
+
             foreach (var attachment in attachments)
             {
-                //Form the blob pointer
-                string blobNameFormat = "{0}|{1}|{2}"; //2(tenantId)|572015453(DocumentNumber)|45124525(attachmentId)
-                string blobName = string.Format(blobNameFormat, tenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber, attachment.ID?.ToString() ?? string.Empty);
-                await _approvalBlobDataProvider.DeleteBlobData(blobName, Constants.NotificationAttachmentsBlobName);
+                if (attachment.IsPreAttached == true)
+                {
+                    // IsPreattached is a flag to understand if the attachment is uploaded through the ms approvals ui.
+                    //Form the blob pointer
+                    string blobNameFormat = "{0}|{1}|{2}"; //2(tenantId)|572015453(DocumentNumber)|45124525(attachmentId)
+                    string blobName = string.Format(blobNameFormat, tenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber, attachment.ID?.ToString() ?? string.Empty);
+                    await _approvalBlobDataProvider.DeleteBlobData(blobName, Constants.NotificationAttachmentsBlobName);
+                }
+                else
+                {
+                    // If the attachment is uploaded from the MS approvals ui.
+                    await _approvalBlobDataProvider.DeleteBlobData($"{approvalIdentifier.DisplayDocumentNumber}/{attachment.Name}", attachmentProperties?.AttachmentContainerName);
+                }
             }
         }
         catch (Exception ex)

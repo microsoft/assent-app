@@ -15,29 +15,29 @@ public class CosmosDbHelper : ICosmosDbHelper
 
     #region Varibales
 
-/// <summary>
-/// The endpoint
-/// </summary>
-private readonly string _endpoint;
+    /// <summary>
+    /// The endpoint
+    /// </summary>
+    private readonly string _endpoint;
 
     /// <summary>
     /// The client
     /// </summary>
     private readonly CosmosClient _client;
 
-/// <summary>
-/// The database
-/// </summary>
-private Database _database;
+    /// <summary>
+    /// The database
+    /// </summary>
+    private Database _database;
 
     /// <summary>
     /// The collection
     /// </summary>
     private Container _collection;
 
-#endregion Varibales
+    #endregion Varibales
 
-#region Public Methods
+    #region Public Methods
 
     public CosmosDbHelper(CosmosClient client)
     {
@@ -54,15 +54,15 @@ private Database _database;
         return new CosmosClient(endpoint, new DefaultAzureCredential());
     }
 
-    public async Task SetTarget(string databaseName, string collectionName, string partitionKeyPath, CosmosClient client = null)
+    public void SetTarget(string databaseName, string collectionName, string partitionKeyPath, CosmosClient client = null)
     {
         if (client == null)
         {
             client = _client;
         }
 
-        _database = await GetDataBase(client, databaseName);
-        _collection = await GetCollection(client, databaseName, collectionName, partitionKeyPath);
+        _database = GetDataBase(client, databaseName);
+        _collection = GetCollection(client, databaseName, collectionName, partitionKeyPath);
     }
 
     #endregion
@@ -75,9 +75,9 @@ private Database _database;
     /// <param name="client">Document client</param>
     /// <param name="databaseName">Name of the database.</param>
     /// <returns>Database.</returns>
-    private async Task<Database> GetDataBase(CosmosClient client, string databaseName)
+    private Database GetDataBase(CosmosClient client, string databaseName)
     {
-        return (await client.CreateDatabaseIfNotExistsAsync(databaseName)).Database;
+        return client.GetDatabase(databaseName);
     }
 
     /// <summary>
@@ -87,16 +87,14 @@ private Database _database;
     /// <param name="databaseName">The database name.</param>
     /// <param name="collectionName">Name of the collection.</param>
     /// <returns>DocumentCollection.</returns>
-    private async Task<Container> GetCollection(CosmosClient client, string databaseName, string collectionName, string partitionKeyPath)
+    private Container GetCollection(CosmosClient client, string databaseName, string collectionName, string partitionKeyPath)
     {
-        var database = (await client.CreateDatabaseIfNotExistsAsync(databaseName)).Database;
+        var database = client.GetDatabase(databaseName);
         ContainerProperties containerProperties = new ContainerProperties();
         containerProperties.Id = collectionName;
         containerProperties.PartitionKeyPath = partitionKeyPath;
 
-        var containerResposne = await database.CreateContainerIfNotExistsAsync(containerProperties);
-        //return database.GetContainer(collectionName);
-        return containerResposne.Container;
+        return database.GetContainer(collectionName);
     }
 
     #endregion
@@ -109,7 +107,7 @@ private Database _database;
         var collection = _collection;
         if (!string.IsNullOrWhiteSpace(databaseName) && !string.IsNullOrWhiteSpace(collectionName))
         {
-            collection = await GetCollection(_client, databaseName, collectionName, partitionKeyPath);
+            collection = GetCollection(_client, databaseName, collectionName, partitionKeyPath);
         }
 
         List<Task<ItemResponse<T>>> concurrentTasks = new List<Task<ItemResponse<T>>>();
@@ -133,7 +131,7 @@ private Database _database;
         var collection = _collection;
         if (!string.IsNullOrWhiteSpace(databaseName) && !string.IsNullOrWhiteSpace(collectionName))
         {
-            collection = await GetCollection(_client, databaseName, collectionName, partitionKeyPath);
+            collection = GetCollection(_client, databaseName, collectionName, partitionKeyPath);
         }
         return await collection.CreateItemAsync(data);
     }
@@ -151,7 +149,7 @@ private Database _database;
         var collection = _collection;
         if (!string.IsNullOrWhiteSpace(databaseName) && !string.IsNullOrWhiteSpace(collectionName))
         {
-            collection = await GetCollection(_client, databaseName, collectionName, partitionKeyPath);
+            collection = GetCollection(_client, databaseName, collectionName, partitionKeyPath);
         }
         return await collection.CreateItemAsync(data, partitionKey);
     }
@@ -177,7 +175,7 @@ private Database _database;
         var collection = _collection;
         if (!string.IsNullOrWhiteSpace(databaseName) && !string.IsNullOrWhiteSpace(collectionName))
         {
-            collection = await GetCollection(client, databaseName, collectionName, partitionKeyPath);
+            collection = GetCollection(client, databaseName, collectionName, partitionKeyPath);
         }
 
         List<T> results = new List<T>();
@@ -221,7 +219,7 @@ private Database _database;
         var collection = _collection;
         if (!string.IsNullOrWhiteSpace(databaseName) && !string.IsNullOrWhiteSpace(collectionName))
         {
-            collection = await GetCollection(client, databaseName, collectionName, partitionKeyPath);
+            collection = GetCollection(client, databaseName, collectionName, partitionKeyPath);
         }
 
         List<T> results = new List<T>();

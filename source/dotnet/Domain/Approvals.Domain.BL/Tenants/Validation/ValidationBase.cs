@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Domain.BL.Interface;
+using Microsoft.CFS.Approvals.Domain.BL.Tenants.Model;
+using Microsoft.CFS.Approvals.Model;
 using Microsoft.CFS.Approvals.Utilities.Interface;
 using Microsoft.Extensions.Configuration;
 
@@ -72,5 +74,51 @@ public class ValidationBase : IValidation
     public virtual bool IsExternalUser(string alias)
     {
         return false;
+    }
+
+    /// <summary>
+    /// Validation for the file attachment.
+    /// </summary>
+    /// <param name="file">File uploaded.</param>
+    /// <param name="attachments">List of attachments.</param>
+    /// <param name="attachmentProperties">Attachment properties for the tenant.</param>
+    /// <param name="files">List of files uploaded.</param>
+    /// <returns>Returns the validation result object.</returns>
+    public virtual ValidationCheckResult ValidateAttachmentUpload(AttachmentUploadInfo file, List<Attachment> attachments, AttachmentProperties attachmentProperties, List<AttachmentUploadInfo> files)
+    {
+        var validationCheckResult = new ValidationCheckResult();
+        bool fileValid = true;
+        var errorMessage = new List<string>();
+
+        FileAttachmentOptions fileAttachmentOptions = attachmentProperties?.FileAttachmentOptions;
+
+        if (fileAttachmentOptions != null && !fileAttachmentOptions.AllowFileUpload)
+        {
+            fileValid = false;
+            errorMessage.Add("File upload feature is disabled");
+        }
+
+        if (fileAttachmentOptions != null && !fileAttachmentOptions.AllowedFileTypes.Split(',').Contains($".{file.Name.Split('.')[file.Name.Split('.').Length - 1]}"))
+        {
+            fileValid = false;
+            errorMessage.Add("File Type is not permitted.");
+        }
+
+        if (fileAttachmentOptions != null && fileAttachmentOptions.MaxAttachments != null && (attachments.Count + files.Count) > fileAttachmentOptions.MaxAttachments)
+        {
+            fileValid = false;
+            errorMessage.Add("Maximum file count exceeded.");
+        }
+
+        if (fileAttachmentOptions != null && file.FileSize > fileAttachmentOptions.MaxFileSizeInBytes)
+        {
+            fileValid = false;
+            errorMessage.Add("Maximum file size exceeded.");
+        }
+
+        validationCheckResult.ActionResult = fileValid;
+        validationCheckResult.ErrorMessages = errorMessage;
+
+        return validationCheckResult;
     }
 }

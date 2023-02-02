@@ -172,6 +172,17 @@ public class ApprovalTenantInfo : BaseTableEntity
     public string TenantActionDetails { get; set; }
 
     /// <summary>
+    /// Gets or sets the attachment properties for the tenant that gives the container name and metadata for the feature.
+    /// </summary>
+    public string AttachmentProperties { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether upload attachment feature is enabled for a tenant.
+    /// </summary>
+    /// <value><c>true</c> if upload attachments feature is enabled for tenant; otherwise, <c>false</c>.</value>
+    public bool IsUploadAttachmentsEnabled { get; set; }
+
+    /// <summary>
     /// Gets or sets a value indicating whether this instance is day zero activity running.
     /// </summary>
     /// <value><c>true</c> if this instance is day zero activity running; otherwise, <c>false</c>.</value>

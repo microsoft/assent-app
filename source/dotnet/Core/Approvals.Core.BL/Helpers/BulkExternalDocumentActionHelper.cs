@@ -53,6 +53,7 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
     /// <param name="approvalTenantInfoHelper">The approval tenant helper.</param>
     /// <param name="tenantFactory">The tenant factory</param>
     /// <param name="historyProvider">The history provider.</param>
+    /// <param name="attachmentHelper">The attachment helper.</param>
     public BulkExternalDocumentActionHelper(
         IApprovalSummaryProvider approvalSummaryProvider,
         IConfiguration config,
@@ -65,7 +66,8 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
         ITableHelper tableHelper,
         IApprovalTenantInfoHelper approvalTenantInfoHelper,
         ITenantFactory tenantFactory,
-        IApprovalHistoryProvider historyProvider)
+        IApprovalHistoryProvider historyProvider,
+        IAttachmentHelper attachmentHelper)
         : base(
               approvalSummaryProvider,
               config,
@@ -77,7 +79,8 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
               actionAuditLogHelper,
               tableHelper,
               approvalTenantInfoHelper,
-              tenantFactory)
+              tenantFactory,
+              attachmentHelper)
     {
         _historyProvider = historyProvider;
     }

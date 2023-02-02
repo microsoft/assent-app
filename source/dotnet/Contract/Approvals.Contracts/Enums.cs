@@ -287,9 +287,11 @@ namespace Microsoft.CFS.Approvals.Contracts
     public enum FlightingFeatureName : int
     {
         ManageOutOfSync = 14,
+        OutlookEmailApprovalMyOrder = 22,
         ActionableEmailWithMobileFriendlyAdaptiveCard = 26,
         ModernAdaptiveDetailsUI = 27,
-        MSTeamNotification = 28
+        MSTeamNotification = 28,
+        UploadAttachment = 29
     }
 
     public enum FlightingFeatureStatus : int

@@ -154,9 +154,18 @@ public class LogProvider : ILogProvider
         {
             if (dataDictionary == null) dataDictionary = new Dictionary<TLog, object>();
             dataDictionary = AddActionName(new StackFrame(2), dataDictionary);
-            dataDictionary[Enum.Parse<TLog>("_TrackingEvent")] = trackingEvent.ToString();
-            dataDictionary[Enum.Parse<TLog>("EventId")] = eventId.ToString();
-            dataDictionary[Enum.Parse<TLog>("EventName")] = trackingEvent.ToString();
+
+            if (!dataDictionary.ContainsKey(Enum.Parse<TLog>("EventId")))
+                dataDictionary[Enum.Parse<TLog>("EventId")] = Convert.ToInt32(trackingEvent);
+            if (!dataDictionary.ContainsKey(Enum.Parse<TLog>("EventName")))
+            {
+                dataDictionary[Enum.Parse<TLog>("EventName")] = trackingEvent.ToString();
+                dataDictionary[Enum.Parse<TLog>("_TrackingEvent")] = dataDictionary[Enum.Parse<TLog>("EventName")];
+            }
+            else
+            {
+                dataDictionary[Enum.Parse<TLog>("_TrackingEvent")] = dataDictionary[Enum.Parse<TLog>("EventName")];
+            }
 
             if (!dataDictionary.ContainsKey(Enum.Parse<TLog>("LoggingDateTimeUtc")))
             {

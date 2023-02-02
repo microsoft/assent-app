@@ -634,6 +634,13 @@ public enum TrackingEvent
     AdaptiveTemplateFetchSuccess = 834,
     AdaptiveTemplateFetchFailure = 835,
 
+    AttachmentUploadFailure = 836,
+    AttachmentDeleteFailure = 837,
+    AttachmentDeleteSuccess = 838,
+    AttachmentConsolidationForTenantNotificationSuccess = 839,
+    AttachmentConsolidationForTenantNotificationFailure = 840,
+    GetAvailableDetailsAndOperatioNamesFailure = 841,
+
     #endregion BL Tracking Events
 
     #region DAL Tracking Events
@@ -796,6 +803,7 @@ public enum TrackingEvent
 
     DownloadAndStoreAttachmentsSuccessOrSkipped = 905,
     AttachmentDeleteFailed = 907,
+    AttachmentUploadBegin = 908,
 
     // NOTE: Feature Usage Tracking EventIds (40000-49000)
 

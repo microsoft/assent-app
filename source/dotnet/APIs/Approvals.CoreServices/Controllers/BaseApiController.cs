@@ -82,13 +82,6 @@ public class BaseApiController : ControllerBase
         {
             alias = Request.Headers.FirstOrDefault(x => x.Key.ToLower().Equals(Constants.LoggedInUserAlias.ToLower())).Value.FirstOrDefault();
         }
-        else
-        {
-            if (Request.Headers.Keys.Contains("X-MS-CLIENT-PRINCIPAL-NAME"))
-            {
-                alias = new MailAddress(Request.Headers["X-MS-CLIENT-PRINCIPAL-NAME"].ToString()).User;
-            }
-        }
         return alias;
     }
 

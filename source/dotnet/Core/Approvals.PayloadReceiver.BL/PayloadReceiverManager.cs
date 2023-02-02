@@ -38,11 +38,6 @@ public class PayloadReceiverManager : IPayloadReceiverManager
     private readonly ILogProvider _logProvider = null;
 
     /// <summary>
-    /// The payload destination
-    /// </summary>
-    private readonly IPayloadDestination _payloadDestination = null;
-
-    /// <summary>
     /// The approval tenantinfo helper
     /// </summary>
     private readonly IApprovalTenantInfoHelper _approvalTenantInfoHelper = null;
@@ -62,20 +57,17 @@ public class PayloadReceiverManager : IPayloadReceiverManager
     /// </summary>
     /// <param name="payloadReceiver"></param>
     /// <param name="logProvider"></param>
-    /// <param name="payloadDestination"></param>
     /// <param name="approvalTenantInfoHelper"></param>
     /// <param name="approvalRequestExpressionHelper"></param>
     /// <param name="tenantFactory"></param>
     public PayloadReceiverManager(IPayloadReceiver payloadReceiver,
         ILogProvider logProvider,
-        IPayloadDestination payloadDestination,
         IApprovalTenantInfoHelper approvalTenantInfoHelper,
         IApprovalRequestExpressionHelper approvalRequestExpressionHelper,
         ITenantFactory tenantFactory)
     {
         _payloadReceiver = payloadReceiver;
         _logProvider = logProvider;
-        _payloadDestination = payloadDestination;
         _approvalTenantInfoHelper = approvalTenantInfoHelper;
         _approvalRequestExpressionHelper = approvalRequestExpressionHelper;
         _tenantFactory = tenantFactory;
@@ -155,25 +147,13 @@ public class PayloadReceiverManager : IPayloadReceiverManager
 
             #endregion Get latest ARX type
 
-            #region Get information to push payload into Service Bus Topic or Queue (later into Azure Queues)
-
-            PayloadDestinationInfo payloadDestinationInfo = _payloadDestination.GetPayloadDestinationAndConfigInfo(string.Empty);
-
-            if (payloadDestinationInfo != null && !payloadDestinationInfo.UsefulInfoAvailable)
-            {
-                // Return a response about payload processing issues
-                throw new InvalidOperationException("Information about how the payload should be processing within Approvals is not correctly configured. Payload cannot be processed. Please contact Approvals Service Engineering Team.");
-            }
-
-            #endregion Get information to push payload into Service Bus Topic or Queue (later into Azure Queues)
-
             #region Process Payload - Validate and Send
 
             if (!string.IsNullOrWhiteSpace(payload))
             {
                 string businessProcessName = string.Empty;
                 // Process payload
-                PayloadProcessingResult payloadProcessingResult = _payloadReceiver.ProcessPayload(activityId, payloadType, payload, payloadDestinationInfo, tenantInfo, out string xcv, out string tcv, out string approvalRequestOperationType, out businessProcessName, out Dictionary<string, string> tenantTelemetry);
+                PayloadProcessingResult payloadProcessingResult = _payloadReceiver.ProcessPayload(activityId, payloadType, payload, tenantInfo, out string xcv, out string tcv, out string approvalRequestOperationType, out businessProcessName, out Dictionary<string, string> tenantTelemetry);
 
                 if (payloadProcessingResult != null)
                 {

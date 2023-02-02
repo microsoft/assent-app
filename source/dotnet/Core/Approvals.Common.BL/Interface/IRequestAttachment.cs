@@ -9,6 +9,7 @@ public interface IRequestAttachment
     string ID { get; set; }
     string Url { get; set; }
     System.Net.Http.HttpContent Content { get; set; }
+    bool IsPreAttached { get; set; }
 }
 
 public class RequestAttachment : IRequestAttachment
@@ -17,4 +18,5 @@ public class RequestAttachment : IRequestAttachment
     public string ID { get; set; }
     public string Url { get; set; }
     public System.Net.Http.HttpContent Content { get; set; }
+    public bool IsPreAttached { get; set; } = true;
 }

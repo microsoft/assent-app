@@ -171,6 +171,7 @@ public interface IDetailsHelper
     /// <param name="displayDocumentNumber">Display Document Number of the request</param>
     /// <param name="fiscalYear">Fiscal year of the request</param>
     /// <param name="attachmentId">Attachment ID of the Document to be downloaded</param>
+    /// <param name="IsPreAttached">Specifies the type of the attachment if the attachment is pre attached from tenant or post attached from ui.</param>
     /// <param name="sessionId">GUID session id</param>
     /// <param name="tcv">GUID transaction correlation vector for telemetry and logging</param>
     /// <param name="xcv">Cross system correlation vector for telemetry and logging</param>
@@ -185,6 +186,7 @@ public interface IDetailsHelper
             string displayDocumentNumber,
             string fiscalYear,
             string attachmentId,
+            bool IsPreAttached,
             string sessionId,
             string tcv,
             string xcv,
@@ -243,6 +245,7 @@ public interface IDetailsHelper
     /// <param name="displayDocumentNumber">Display Document Number of the request</param>
     /// <param name="fiscalYear">Fiscal year of the request</param>
     /// <param name="attachmentId">Attachment ID of the Document to be downloaded</param>
+    /// <param name="IsPreAttached">Specifies the type of the attachment if the attachment is pre attached from tenant or post attached from ui.</param>
     /// <param name="sessionId">GUID session id</param>
     /// <param name="tcv">GUID transaction correlation vector for telemetry and logging</param>
     /// <param name="xcv">Cross system correlation vector for telemetry and logging</param>
@@ -251,7 +254,7 @@ public interface IDetailsHelper
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
     /// <param name="aadUserToken">The Azure AD user token</param>
     /// <returns>HttpResponseMessage with Stream data of the attachment</returns>
-    Task<byte[]> GetDocumentPreview(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, string attachmentId, string sessionId, string tcv, string xcv, string alias, string loggedInAlias, string v1, string v2);
+    Task<byte[]> GetDocumentPreview(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, string attachmentId, bool IsPreAttached, string sessionId, string tcv, string xcv, string alias, string loggedInAlias, string v1, string v2);
 
     /// <summary>
     /// This method will prepare base64 image of the alias
