@@ -26,6 +26,9 @@ import {
     requestFullyRendered,
     requestDocumentStart,
     requestDocumentEnd,
+    openFileUpload,
+    closeFileUpload,
+    uploadFiles,
 } from './Details.actions';
 import {
     requestMySummary,
@@ -66,6 +69,10 @@ import { ContinueMessage } from '../Components/ContinueMessage';
 import { CONTINUE_TIMEOUT } from '../SharedConstants';
 import { Modal } from '@fluentui/react/lib/Modal';
 import { ContextualMenu, IconButton } from '@fluentui/react';
+import { FileUpload, IFileUpload } from './FileUpload/FileUpload';
+import { createFileAttachmentArray, IFileUploadOptions, propsForFileUpload } from './FileUpload/fileUploadHelper';
+import { FileAttachmentOptions } from './FileUpload/FileAttachmentOptions';
+import { FileAttachment } from './FileUpload/FileAttachment';
 
 type DetailsAdaptiveState = {
     actionCompleted: boolean;
@@ -94,6 +101,7 @@ type DetailsAdaptiveState = {
     scrollHeight: number;
     showContinue: boolean;
     isModalExpanded: boolean;
+    fileAttachmentOptions: FileAttachmentOptions;
 };
 
 const WIP_MESSAGE = 'The details page for this application is currently in development.';
@@ -143,6 +151,7 @@ interface IDetailsAdaptiveDispatch {
         documentNumber: string,
         displayDocumentNumber: string,
         attachmentId: string,
+        isPreAttached: boolean,
         userAlias: string,
         isModal: boolean
     ): void;
@@ -166,6 +175,17 @@ interface IDetailsAdaptiveDispatch {
     dispatchUpdatePeoplePickerSelections(peoplePickerSelections: object[]): void;
     dispatchUpdatePeoplePickerHasError(peoplePickerHasError: boolean): void;
     dispatchRequestPullTenantSummary(tenantId: number, userAlias: string, filterCriteria: object): void;
+    dispatchOpenFileUpload(isModal: boolean): void;
+    dispatchCloseFileUpload(): void;
+    dispatchUploadFiles(
+        tenantId: string,
+        documentNumber: string,
+        displayDocumentNumber: string,
+        userAlias: string,
+        requiresTemplate: boolean,
+        isPullModelEnabled: boolean,
+        files: IFileUpload[]
+    ): void;
 }
 
 interface IDetailsAdaptiveProps extends IDetailsState, IDetailsAdaptiveDispatch {
@@ -503,6 +523,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
     handleAdaptiveCardSubmitAction = (id: string, data: any): void => {
         const {
             dispatchRequestDocumentPreview,
+            dispatchOpenFileUpload,
             dispatchRequestAllDocuments,
             dispatchOpenMicrofrontend,
             tenantId,
@@ -518,6 +539,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
         if (id.includes('preview')) {
             const attachmentID = data[0].ID;
             const attachmentName = data[0].Name;
+            const isPreAttached: boolean = data[0].IsPreAttached;
             this.setState({
                 attachmentsArray: data,
                 selectedAttachmentID: attachmentID,
@@ -528,6 +550,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                 documentNumber,
                 displayDocumentNumber,
                 attachmentID,
+                isPreAttached,
                 this.props.userAlias,
                 isModal
             );
@@ -551,6 +574,18 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
             );
         } else if (id.includes('viewMoreDetails')) {
             dispatchOpenMicrofrontend();
+        } else if (id.includes('fileUpload') && !id.includes('fileUploadDisabled')) {
+            // Data is passed from adaptive card.
+            // See Blob: Common/adaptiveAttachmentTemplateReact.json for fileUpload action:
+            //   "data": {
+            //     "currentAttachments": "${Attachments}",
+            //     "fileAttachmentOptions": "${FileAttachmentOptions}"
+            //   }
+            this.setState({
+                attachmentsArray: data.currentAttachments,
+                fileAttachmentOptions: new FileAttachmentOptions(data.fileAttachmentOptions),
+            });
+            dispatchOpenFileUpload(isModal);
         }
     };
 
@@ -583,6 +618,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
         } = this.props;
         const selectedID = selection.key as string;
         const selectedName = selection.text as string;
+        const isPreAttached: boolean = selection.data.IsPreAttached;
         this.setState({
             selectedAttachmentID: selectedID,
             selectedAttachmentName: selectedName,
@@ -593,9 +629,48 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
             documentNumber,
             displayDocumentNumber,
             selectedID,
+            isPreAttached,
             this.props.userAlias,
             isModal
         );
+    };
+
+    handleFileUploadFailure = (): JSX.Element => {
+        const {
+            fileUploadHasError,
+            fileUploadErrorMessage,
+            uploadFilesErrorMessageList,
+            componentContext,
+            stateCommonProperties,
+        } = this.props;
+        const { telemetryClient, authClient } = componentContext;
+        if (fileUploadHasError) {
+            let errorMessage;
+            try {
+                const errorResponseObject = JSON.parse(fileUploadErrorMessage);
+                errorMessage = errorResponseObject.ErrorMessage ?? fileUploadErrorMessage;
+            } catch (ex: any) {
+                errorMessage = fileUploadErrorMessage;
+                const exception = ex?.message ? new Error(ex.message) : ex;
+                trackException(
+                    authClient,
+                    telemetryClient,
+                    'Parse file attachment upload error - Failure',
+                    'MSApprovals.ParseFileAttachmentUpload.Failure',
+                    TrackingEventId.ParseFileAttachmentUploadFailure,
+                    stateCommonProperties,
+                    exception
+                );
+            }
+            return (
+                <ErrorView
+                    errorMessage={errorMessage}
+                    errorMessages={uploadFilesErrorMessageList}
+                    failureType={'File upload'}
+                    isContentCollapsable={true}
+                />
+            );
+        }
     };
 
     handleActionResponse = (): JSX.Element => {
@@ -683,7 +758,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
         } = this.props;
         const { attachmentsArray, selectedAttachmentID } = this.state;
         const attachmentOptions: IDropdownOption[] = attachmentsArray.map((attachment: any) => {
-            return { key: attachment.ID, text: attachment.Name };
+            return { key: attachment.ID, text: attachment.Name, data: attachment };
         });
         return (
             <Stack tokens={Styled.DetailsFilePreviewStackTokens}>
@@ -724,8 +799,11 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                     },
                 }}
             >
-                {(this.props.isPreviewOpen || this.props.isMicrofrontendOpen) && this.renderBackButton()}
-                {!(this.props.isPreviewOpen || this.props.isMicrofrontendOpen) && <div></div>}
+                {(this.props.isPreviewOpen || this.props.isFileUploadOpen || this.props.isMicrofrontendOpen) &&
+                    this.renderBackButton()}
+                {!(this.props.isPreviewOpen || this.props.isFileUploadOpen || this.props.isMicrofrontendOpen) && (
+                    <div></div>
+                )}
                 <Stack style={{ flexFlow: 'row' }}>
                     {this.props.documentDownload && this.props.detailsJSON && (
                         <Stack.Item>
@@ -753,7 +831,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                     <Stack.Item>
                         <MaximizeButton />
                     </Stack.Item>
-                    {!(this.props.isMicrofrontendOpen || this.props.isPreviewOpen) && (
+                    {!(this.props.isMicrofrontendOpen || this.props.isPreviewOpen || this.props.isFileUploadOpen) && (
                         <Stack.Item>
                             <RefreshButton />
                         </Stack.Item>
@@ -765,6 +843,20 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
             </Stack.Item>
         );
     };
+
+    private fileUploadSubmitButtonClicked(files: IFileUpload[]) {
+        this.props.dispatchUploadFiles(
+            this.props.tenantId,
+            this.props.documentNumber,
+            this.props.displayDocumentNumber,
+            this.props.userAlias,
+            this.props.detailsComponentType === DetailsType.AdaptiveCard,
+            this.props.isPullModelEnabled,
+            files
+        );
+
+        this.props.dispatchCloseFileUpload();
+    }
 
     public render(): React.ReactElement {
         const {
@@ -801,11 +893,13 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
             isMicrofrontendOpen,
             detailsComponentType,
             isModalPreviewOpen,
+            isModalFileUploadOpen,
+            isFileUploadOpen,
             windowWidth,
             windowHeight,
         } = this.props;
 
-        const stackTokens: IStackTokens = { childrenGap: isPreviewOpen ? 5 : 12 };
+        const stackTokens: IStackTokens = { childrenGap: isPreviewOpen || isFileUploadOpen ? 5 : 12 };
 
         const { showPreviousErrors, isModalExpanded } = this.state;
 
@@ -813,8 +907,16 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
 
         const modalDimensions = Styled.getModalDimensions(isModalExpanded, windowWidth, windowHeight);
 
+        // Prepare props for use with FileUpload component below.
+        const fileAttachments: FileAttachment[] = createFileAttachmentArray(this.state.attachmentsArray);
+        const fileUploadOptions: IFileUploadOptions = propsForFileUpload(
+            this.state.fileAttachmentOptions,
+            fileAttachments
+        );
+
         return (
             <div>
+                {/* Modal for document preview. */}
                 <Modal
                     titleAriaId={'documentPreviewModal'}
                     isOpen={isModalPreviewOpen}
@@ -865,6 +967,65 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                             )}
                     </Stack>
                 </Modal>
+
+                {/* Modal for file attachment upload. */}
+                <Modal
+                    titleAriaId={'fileUploadModal'}
+                    isOpen={isModalFileUploadOpen}
+                    isBlocking={false}
+                    dragOptions={{
+                        dragHandleSelector: '#fileModalDragHandle',
+                        moveMenuItemText: 'Move',
+                        closeMenuItemText: 'Close',
+                        menu: ContextualMenu,
+                    }}
+                    onDismiss={(): void => {
+                        this.props.dispatchCloseFileUpload();
+                    }}
+                    styles={{
+                        main: {
+                            minWidth: modalDimensions.width,
+                            minHeight: modalDimensions.height,
+                            width: modalDimensions.width,
+                            height: modalDimensions.height,
+                        },
+                        scrollableContent: { height: modalDimensions.height },
+                    }}
+                >
+                    <Stack verticalFill={true}>
+                        <Stack.Item id="fileModalDragHandle" style={{ cursor: 'move', width: '100%' }}>
+                            <Stack horizontal horizontalAlign={'end'}>
+                                <IconButton
+                                    iconProps={
+                                        isModalExpanded ? { iconName: 'BackToWindow' } : { iconName: 'FullScreen' }
+                                    }
+                                    ariaLabel={isModalExpanded ? 'Restore modal size' : 'Maximize modal'}
+                                    title={isModalExpanded ? 'Resize' : 'Maximize'}
+                                    onClick={(): void => {
+                                        this.setState({ isModalExpanded: !isModalExpanded });
+                                    }}
+                                    styles={{ icon: { fontSize: 18 } }}
+                                />
+                                <IconButton
+                                    iconProps={{ iconName: 'Cancel' }}
+                                    ariaLabel="Close file upload modal"
+                                    title="Close"
+                                    onClick={(): void => {
+                                        this.props.dispatchCloseFileUpload();
+                                    }}
+                                    styles={{ icon: { fontSize: 18 } }}
+                                />
+                            </Stack>
+                        </Stack.Item>
+                        <FileUpload
+                            fileUploadOptions={fileUploadOptions}
+                            submitButtonClicked={(files: IFileUpload[]): void => {
+                                this.fileUploadSubmitButtonClicked(files);
+                            }}
+                        />
+                    </Stack>
+                </Modal>
+
                 <Stack tokens={stackTokens}>
                     {!this.props.hideHeaderActionBar && this.detailCardHeaderActionBar()}
                     {(!tenantId || !documentNumber) && (
@@ -880,7 +1041,8 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                         !isProcessingAction &&
                         (postActionHasError || !this.state.actionCompleted) &&
                         !isMicrofrontendOpen &&
-                        !isPreviewOpen && (
+                        !isPreviewOpen &&
+                        !isFileUploadOpen && (
                             <Stack.Item>
                                 <WarningView
                                     warningTitle={'Reasons for previous action failures'}
@@ -890,6 +1052,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                                 />
                             </Stack.Item>
                         )}
+                    {!isLoadingDetails && this.handleFileUploadFailure()}
                     {this.state.actionCompleted &&
                         !isProcessingAction &&
                         !isLoadingDetails &&
@@ -913,7 +1076,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                         (postActionHasError || !this.state.actionCompleted) &&
                         !isMicrofrontendOpen && (
                             <>
-                                {!isPreviewOpen && (
+                                {!isPreviewOpen && !isFileUploadOpen && (
                                     <>
                                         <Stack.Item
                                             styles={
@@ -1001,7 +1164,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                         !isMicrofrontendOpen &&
                         (postActionHasError || !this.state.actionCompleted) && (
                             <>
-                                {!isPreviewOpen && (
+                                {!isPreviewOpen && !isFileUploadOpen && (
                                     <>
                                         <Stack.Item
                                             styles={
@@ -1040,6 +1203,15 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                                     </Stack.Item>
                                 )}
                                 {isPreviewOpen && !isLoadingPreview && this.renderFilePreview()}
+                                {/* File Upload for mobile view. */}
+                                {isFileUploadOpen && (
+                                    <FileUpload
+                                        fileUploadOptions={fileUploadOptions}
+                                        submitButtonClicked={(files: IFileUpload[]): void => {
+                                            this.fileUploadSubmitButtonClicked(files);
+                                        }}
+                                    />
+                                )}
                             </>
                         )}
                     {isMicrofrontendOpen && (postActionHasError || !this.state.actionCompleted) && (
@@ -1269,11 +1441,12 @@ const mapDispatchToProps = (dispatch: Dispatch): IDetailsAdaptiveDispatch => ({
         documentNumber: string,
         displayDocumentNumber: string,
         attachmentId: string,
+        isPreAttached: boolean,
         userAlias: string,
         isModal: boolean
     ): void => {
         dispatch(
-            requestDocumentPreview(tenantId, documentNumber, displayDocumentNumber, attachmentId, userAlias, isModal)
+            requestDocumentPreview(tenantId, documentNumber, displayDocumentNumber, attachmentId, isPreAttached, userAlias, isModal)
         );
     },
     dispatchRequestAllDocuments: (
@@ -1324,6 +1497,33 @@ const mapDispatchToProps = (dispatch: Dispatch): IDetailsAdaptiveDispatch => ({
     },
     dispatchRequestPullTenantSummary: (tenantId: number, userAlias: string, filterCriteria: object): void => {
         dispatch(requestPullTenantSummary(tenantId, userAlias, filterCriteria));
+    },
+    dispatchOpenFileUpload: (isModal: boolean): void => {
+        dispatch(openFileUpload(isModal));
+    },
+    dispatchCloseFileUpload: (): void => {
+        dispatch(closeFileUpload());
+    },
+    dispatchUploadFiles: (
+        tenantId: string,
+        documentNumber: string,
+        displayDocumentNumber: string,
+        userAlias: string,
+        requiresTemplate: boolean,
+        isPullModelEnabled: boolean,
+        files: IFileUpload[]
+    ): void => {
+        dispatch(
+            uploadFiles(
+                tenantId,
+                documentNumber,
+                displayDocumentNumber,
+                userAlias,
+                requiresTemplate,
+                isPullModelEnabled,
+                files
+            )
+        );
     },
 });
 

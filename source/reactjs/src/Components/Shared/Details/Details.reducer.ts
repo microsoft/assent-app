@@ -25,6 +25,8 @@ export const detailsInitialState: IDetailsState = {
     isPreviewOpen: false,
     postActionHasError: false,
     postActionErrorMessage: null,
+    fileUploadHasError: false,
+    fileUploadErrorMessage: null,
     documentTypeId: null,
     businessProcessName: null,
     isLoadingPreview: false,
@@ -76,7 +78,9 @@ export const detailsInitialState: IDetailsState = {
     summaryJSON: null,
     summaryDataMapping: null,
     isModalPreviewOpen: false,
-    isShowingSuccessStatus: false
+    isShowingSuccessStatus: false,
+    isFileUploadOpen: false,
+    isModalFileUploadOpen: false,
 };
 
 export function detailsReducer(prev: IDetailsState = detailsInitialState, action: DetailsAction): IDetailsState {
@@ -282,6 +286,37 @@ export function detailsReducer(prev: IDetailsState = detailsInitialState, action
                 documentDownloadErrorMessage: null,
                 allDocumentsDownloadHasError: false,
                 allDocumentsDownloadErrorMessage: null
+            };
+        case DetailsActionType.OPEN_FILE_UPLOAD:
+            return {
+                ...prev,
+                isFileUploadOpen: !action.isModal,
+                isModalFileUploadOpen: action.isModal,
+            };
+        case DetailsActionType.CLOSE_FILE_UPLOAD:
+            return {
+                ...prev,
+                isFileUploadOpen: false,
+                isModalFileUploadOpen: false,
+            };
+        case DetailsActionType.UPLOAD_FILE:
+            return {
+                ...prev,
+                fileUploadHasError: false,
+                fileUploadErrorMessage: null,
+            };
+        case DetailsActionType.FAILED_UPLOAD_FILE:
+            return {
+                ...prev,
+                fileUploadHasError: true,
+                fileUploadErrorMessage: action.uploadFilesErrorMessage,
+                uploadFilesErrorMessageList: action.uploadFilesErrorMessageList,
+            };
+        case DetailsActionType.SUCCESS_UPLOAD_FILE:
+            return {
+                ...prev,
+                fileUploadHasError: false,
+                fileUploadErrorMessage: null,
             };
         case DetailsActionType.RECEIVE_ACTION_RESPONSE:
             return {

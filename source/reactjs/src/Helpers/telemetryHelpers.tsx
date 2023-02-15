@@ -76,7 +76,10 @@ export enum TrackingEventId {
     TableView,
     DockedView,
     FlyOutView,
-    BulkApproval
+    BulkApproval,
+    FileAttachmentUploadFailure,
+    FileAttachmentUploadSuccess,
+    ParseFileAttachmentUploadFailure,
 }
 
 export const getContextCommonTelemetryProperties = (
