@@ -15,23 +15,15 @@ public interface IPayloadDelivery
     /// Sends payload to payload destination provided
     /// </summary>
     /// <param name="approvalRequestExpression"></param>
-    /// <param name="payloadDestinationInfo"></param>
     /// <param name="payloadId"></param>
     /// <returns></returns>
-    Task<bool> SendPayload(ApprovalRequestExpression approvalRequestExpression, PayloadDestinationInfo payloadDestinationInfo, Guid payloadId);
+    Task<bool> SendPayload(ApprovalRequestExpression approvalRequestExpression, Guid payloadId);
 
     /// <summary>
-    /// Establishes a service bus channel using payload destination info per tenant
-    /// </summary>
-    /// <param name="payloadDestinationInfo"></param>
-    /// <returns></returns>
-    ServiceBusSender EstablishServiceBusChannel(Model.PayloadDestinationInfo payloadDestinationInfo);
-
-    /// <summary>
-    /// Builds a service bus message using Approval Request Expression and assigns the service bus message id provided
+    /// Uploads the Approval Request Expression to Blob, so the background process can pick it up for further processing
     /// </summary>
     /// <param name="approvalRequestExpression"></param>
     /// <param name="messageId"></param>
     /// <returns></returns>
-    Task<ServiceBusMessage> BuildServiceBusMessage(ApprovalRequestExpression approvalRequestExpression, string messageId);
+    Task UploadMessageToBlob(ApprovalRequestExpression approvalRequestExpression, string messageId);
 }

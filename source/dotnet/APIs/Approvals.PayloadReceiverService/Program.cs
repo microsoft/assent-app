@@ -7,9 +7,12 @@ using System.IO;
 using System.Net.Http;
 using Azure.Storage.Blobs;
 using global::Azure.Identity;
+using global::Azure.Messaging.ServiceBus;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.Cosmos;
+using Microsoft.CFS.Approvals.Messaging.Azure.ServiceBus.Helpers;
+using Microsoft.CFS.Approvals.Messaging.Azure.ServiceBus.Interface;
 using Microsoft.CFS.Approvals.Common.BL.Interface;
 using Microsoft.CFS.Approvals.Common.BL;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
@@ -93,6 +96,9 @@ var client = new BlobServiceClient(
                             new DefaultAzureCredential());
 var cosmosdbClient = new CosmosClient(config?[ConfigurationKey.CosmosDbEndPoint.ToString()],
                 new DefaultAzureCredential(), new CosmosClientOptions() { AllowBulkExecution = true });
+var serviceBusClient = new ServiceBusClient(
+                            config?[ConfigurationKey.ServiceBusNamespace.ToString()] + ".servicebus.windows.net",
+                            new DefaultAzureCredential());
 builder.Services.AddSingleton<ApplicationInsightsTarget>();
 builder.Services.AddSingleton<ILogProvider, LogProvider>();
 builder.Services.AddSingleton<IPerformanceLogger, PerformanceLogger>();
@@ -104,6 +110,7 @@ builder.Services.AddSingleton<IBlobStorageHelper, BlobStorageHelper>(x => new Bl
 builder.Services.AddScoped<IFlightingDataProvider, FlightingDataProvider>();
 builder.Services.AddScoped<IAuthenticationHelper, AuthenticationHelper>();
 builder.Services.AddSingleton<ICosmosDbHelper, CosmosDbHelper>(x => new CosmosDbHelper(cosmosdbClient));
+builder.Services.AddSingleton<IServiceBusHelper, ServiceBusHelper>(x => new ServiceBusHelper(serviceBusClient.CreateSender(config[ConfigurationKey.TopicNameMain.ToString()])));
 builder.Services.AddSingleton<IHistoryStorageFactory, HistoryStorageFactory>();
 builder.Services.AddScoped<IApprovalHistoryProvider, ApprovalHistoryProvider>();
 builder.Services.AddScoped<ITenantFactory, TenantFactory>();
@@ -111,7 +118,6 @@ builder.Services.AddScoped<IApprovalTenantInfoHelper, ApprovalTenantInfoHelper>(
 builder.Services.AddScoped<IValidationFactory, ValidationFactory>();
 builder.Services.AddScoped<IPayloadDelivery, PayloadDelivery>();
 builder.Services.AddScoped<IPayloadReceiver, PayloadReceiver>();
-builder.Services.AddScoped<IPayloadDestination, PayloadDestination>();
 builder.Services.AddScoped<IPayloadValidator, PayloadValidator>();
 builder.Services.AddScoped<IApprovalRequestExpressionHelper, ApprovalRequestExpressionHelper>();
 builder.Services.AddScoped<IPayloadReceiverManager, PayloadReceiverManager>();

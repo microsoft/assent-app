@@ -320,33 +320,13 @@ public abstract class TenantBase : ITenant
                 var serviceRoot = new Uri(summaryUrl);
                 HttpRequestMessage requestMessage = await CreateRequestForTenantSummary(serviceRoot, approvalRequest.Telemetry.Xcv, approvalRequest.Telemetry.Tcv);
 
-                if (logData.ContainsKey(LogDataKey.EventId))
-                {
-                    logData.Remove(LogDataKey.EventId);
-                }
-
-                if (logData.ContainsKey(LogDataKey.EventName))
-                {
-                    logData.Remove(LogDataKey.EventName);
-                }
-
-                logData.Add(LogDataKey.EventId, GetEventId(OperationType.SummaryFetchInitiated));
-                logData.Add(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.SummaryFetchInitiated);
+                logData.Modify(LogDataKey.EventId, GetEventId(OperationType.SummaryFetchInitiated));
+                logData.Modify(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.SummaryFetchInitiated);
                 Logger.LogInformation(GetEventId(OperationType.SummaryFetchInitiated), logData);
                 response = await SendRequestAsync(requestMessage, logData, Constants.WorkerRole);
 
-                if (logData.ContainsKey(LogDataKey.EventId))
-                {
-                    logData.Remove(LogDataKey.EventId);
-                }
-
-                if (logData.ContainsKey(LogDataKey.EventName))
-                {
-                    logData.Remove(LogDataKey.EventName);
-                }
-
-                logData.Add(LogDataKey.EventId, GetEventId(OperationType.SummaryFetchComplete));
-                logData.Add(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.SummaryFetchComplete);
+                logData.Modify(LogDataKey.EventId, GetEventId(OperationType.SummaryFetchComplete));
+                logData.Modify(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.SummaryFetchComplete);
                 logData.Add(LogDataKey.ResponseStatusCode, response.StatusCode);
 
                 #region logging Xcv, Tcv from response headers
@@ -379,18 +359,8 @@ public abstract class TenantBase : ITenant
             }
             catch (Exception jsonValidationException)
             {
-                if (logData.ContainsKey(LogDataKey.EventId))
-                {
-                    logData.Remove(LogDataKey.EventId);
-                }
-
-                if (logData.ContainsKey(LogDataKey.EventName))
-                {
-                    logData.Remove(LogDataKey.EventName);
-                }
-
-                logData.Add(LogDataKey.EventId, GetEventId(OperationType.Summary));
-                logData.Add(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.Summary);
+                logData.Modify(LogDataKey.EventId, GetEventId(OperationType.Summary));
+                logData.Modify(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.Summary);
                 logData.Add(LogDataKey.ResponseContent, await response?.Content?.ReadAsStringAsync());
                 Logger.LogError(GetEventId(OperationType.Summary), new Exception("Failed to retrive summary from " + approvalTenantInfo.AppName, jsonValidationException), logData);
                 if (jsonValidationException != null && jsonValidationException.InnerException != null)
@@ -1543,19 +1513,11 @@ public abstract class TenantBase : ITenant
                 logData.Add(LogDataKey.EventId, GetEventId(OperationType.ActionInitiated));
                 logData.Add(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.ActionInitiated);
                 Logger.LogInformation(GetEventId(OperationType.ActionInitiated), logData);
+                
                 lobResponse = await SendRequestAsync(reqMessage, logData, clientDevice);
-                if (logData.ContainsKey(LogDataKey.EventId))
-                {
-                    logData.Remove(LogDataKey.EventId);
-                }
-
-                if (logData.ContainsKey(LogDataKey.EventName))
-                {
-                    logData.Remove(LogDataKey.EventName);
-                }
-
-                logData.Add(LogDataKey.EventId, GetEventId(OperationType.ActionComplete));
-                logData.Add(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.ActionComplete);
+                
+                logData.Modify(LogDataKey.EventId, GetEventId(OperationType.ActionComplete));
+                logData.Modify(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.ActionComplete);
                 logData.Add(LogDataKey.ResponseStatusCode, lobResponse.StatusCode);
                 Logger.LogInformation(GetEventId(OperationType.ActionComplete), logData);
             }
@@ -1564,18 +1526,9 @@ public abstract class TenantBase : ITenant
         }
         catch (Exception ex)
         {
-            if (logData.ContainsKey(LogDataKey.EventId))
-            {
-                logData.Remove(LogDataKey.EventId);
-            }
+            logData.Modify(LogDataKey.EventId, GetEventId(OperationType.Action));
+            logData.Modify(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.Action);
 
-            if (logData.ContainsKey(LogDataKey.EventName))
-            {
-                logData.Remove(LogDataKey.EventName);
-            }
-
-            logData.Add(LogDataKey.EventId, GetEventId(OperationType.Action));
-            logData.Add(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.Action);
             var responseContent = lobResponse?.Content != null ? await lobResponse?.Content?.ReadAsStringAsync() : string.Empty;
             logData.Add(LogDataKey.ResponseContent, responseContent);
             Logger.LogError(GetEventId(OperationType.Action), ex, logData);
@@ -1839,6 +1792,9 @@ public abstract class TenantBase : ITenant
             // This is done to support old tenants
             // Add DocumentKeys in user action for some old tenant
             actionObject.Add(Constants.DocumentKeys, (approvalRequest.ApprovalIdentifier.ToJson()).ToJObject());
+
+            // Addition of TelemetryContract (appInsightsContract) is currently used by MSExpense only
+            actionObject.Add(Constants.TelemetryContractName, JObject.FromObject(new { parmBusinessProcessName = approvalRequest.Telemetry.BusinessProcessName, parmDetails = "", parmTCV = approvalRequest.Telemetry.Tcv, parmXCV = approvalRequest.Telemetry.Xcv, Telemetry = new { parmTelemetryKey = "", parmTelemetryValue = "" } }));
 
             // Assign current approver here in approvalRequest
             if (actionObject[Constants.CurrentApprover] == null)
@@ -2433,6 +2389,36 @@ public abstract class TenantBase : ITenant
             else
             {
                 attachments = new List<Attachment>();
+            }
+        }
+
+        // Combine the list of attachments uploaded from the ui for the approval request.
+        // Get the approval transaction details for the given document id.
+        List<Attachment> attachmentsSummary = new List<Attachment>();
+        var approvalDetails = ApprovalDetailProvider.GetAllApprovalsDetails(approvalTenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber);
+
+        if (approvalDetails != null && approvalDetails.Any())
+        {
+            // Filter to get only the row which has TransactionalDetails 
+            var existingAttachmentsRecord = approvalDetails.FirstOrDefault(x => x.RowKey.Equals(Constants.AttachmentsOperationType, StringComparison.InvariantCultureIgnoreCase));
+
+            if (existingAttachmentsRecord != null)
+            {
+                attachmentsSummary = JsonConvert.DeserializeObject<List<Attachment>>(existingAttachmentsRecord?.JSONData);
+
+                if (attachmentsSummary.Any())
+                {
+                    foreach (var attachment in attachmentsSummary)
+                    {
+                        attachments.Add(new Attachment()
+                        {
+                            ID = attachment.ID,
+                            IsPreAttached = attachment.IsPreAttached,
+                            Name = attachment.Name,
+                            Url = attachment.Url
+                        });
+                    }
+                }
             }
         }
 

@@ -31,6 +31,7 @@
     <ProjectReference Include="..\..\Contract\Approvals.Contracts\Approvals.Contracts.csproj" />
     <ProjectReference Include="..\..\Core\Approvals.Common.BL\Approvals.Common.BL.csproj" />
     <ProjectReference Include="..\..\Core\Approvals.PayloadReceiver.BL\Approvals.PayloadReceiver.BL.csproj" />
+    <ProjectReference Include="..\..\Common\Approvals.Messaging.Azure.ServiceBus\Approvals.Messaging.Azure.ServiceBus.csproj" />
   </ItemGroup>
 
   <ItemGroup>

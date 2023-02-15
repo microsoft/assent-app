@@ -16,6 +16,7 @@ using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
+using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
 using Microsoft.CFS.Approvals.Domain.BL.Interface;
 using Microsoft.CFS.Approvals.Extensions;
 using Microsoft.CFS.Approvals.LogManager.Model;
@@ -104,6 +105,11 @@ public class DetailsHelper : IDetailsHelper
     private readonly IImageRetriever _imageRetriever;
 
     /// <summary>
+    /// Blob storage helper.
+    /// </summary>
+    private readonly IBlobStorageHelper _blobStorageHelper;
+
+    /// <summary>
     /// Constructor of DetailsHelper
     /// </summary>
     /// <param name="delegationHelper"></param>
@@ -135,7 +141,8 @@ public class DetailsHelper : IDetailsHelper
         ISummaryHelper summaryHelper,
         IApprovalHistoryProvider approvalHistoryProvider,
         ITenantFactory tenantFactory,
-        IImageRetriever imageRetriever)
+        IImageRetriever imageRetriever,
+        IBlobStorageHelper blobStorageHelper)
     {
         _delegationHelper = delegationHelper;
         _actionAuditLogHelper = actionAuditLogHelper;
@@ -151,6 +158,7 @@ public class DetailsHelper : IDetailsHelper
         _approvalHistoryProvider = approvalHistoryProvider;
         _tenantFactory = tenantFactory;
         _imageRetriever = imageRetriever;
+        _blobStorageHelper = blobStorageHelper;
     }
 
     #region Implemented Methods
@@ -393,6 +401,20 @@ public class DetailsHelper : IDetailsHelper
                             // TODO:: This code assumes Attachments property can be a part of both SummaryJson (as part of ARX) or in any of the tenant calls or sub-property
                             // This might undergo changes.
 
+                            if (part.Key.Equals("Attachments", StringComparison.InvariantCultureIgnoreCase) && !string.IsNullOrEmpty(responseObject.Property(part.Key).Value.ToString()))
+                            {
+                                var attachments = responseObject.Property(part.Key).Value.ToObject<List<Attachment>>();
+
+                                var tenantAttachments = part.Value.ToObject<List<Attachment>>();
+
+                                foreach (var attachment in tenantAttachments)
+                                {
+                                    attachments.Add(attachment);
+                                }
+
+                                responseObject.Property(part.Key).Value = attachments.ToJToken();
+                            }
+
                             if (responseObject.Property(part.Key) != null && string.IsNullOrEmpty(responseObject.Property(part.Key).Value.ToString()))
                             {
                                 responseObject.Property(part.Key).Value = part.Value;
@@ -549,6 +571,13 @@ public class DetailsHelper : IDetailsHelper
                     }
 
                     #endregion Add base64 UserImage string
+
+                    #region Check if Upload Attachment feature enabled
+                    var isUploadAttachmentEnabled = (tenantInfo.IsUploadAttachmentsEnabled ?
+                                                     _flightingDataProvider.IsFeatureEnabledForUser(alias, (int)FlightingFeatureName.UploadAttachment)
+                                                    : false);
+                    responseObject.Add("isUploadAttachmentEnabled", isUploadAttachmentEnabled);
+                    #endregion Check if Upload Attachment feature enabled
                 }
 
                 #endregion Add additional data if Summary or History exist
@@ -840,7 +869,9 @@ public class DetailsHelper : IDetailsHelper
                         {
                             byte[] response = null;
 
-                            response = await DownloadDocumentAsync(tenantAdaptor,
+                            if (attachment.IsPreAttached)
+                            {
+                                response = await DownloadDocumentAsync(tenantAdaptor,
                                                                               tenantId,
                                                                               tenantInfo,
                                                                               approvalIdentifier,
@@ -850,6 +881,12 @@ public class DetailsHelper : IDetailsHelper
                                                                               loggedInAlias,
                                                                               xcv,
                                                                               tcv);
+                            }
+                            else
+                            {
+                                response = await DownloadUserAttachedDocuments(approvalIdentifier.DocumentNumber, attachment.ID, tenantInfo, requestDetails);
+                            }
+
 
                             if (response != null)
                             {
@@ -1072,12 +1109,22 @@ public class DetailsHelper : IDetailsHelper
                         // Get the List of ApprovalSumamryRow
                         ApprovalSummaryRow documentSummary = null;
 
+                        var attachmentProperties = tenantInfo.IsUploadAttachmentsEnabled ? tenantInfo?.AttachmentProperties?.FromJson<AttachmentProperties>() : null;
+
                         var documentSummaries = requestDetails.FirstOrDefault(r => r.RowKey.Equals(Constants.SummaryOperationType, StringComparison.OrdinalIgnoreCase));
                         if (documentSummaries != null)
                         {
                             // Getting document summary for the pending request
                             var documentSummariesJson = documentSummaries.JSONData.FromJson<List<ApprovalSummaryRow>>();
                             documentSummary = documentSummariesJson.FirstOrDefault(x => x.PartitionKey.Equals(userAlias, StringComparison.OrdinalIgnoreCase));
+
+                            var userAttachmentsParameter = requestDetails.FirstOrDefault(r => r.RowKey.Equals(Constants.AttachmentsOperationType, StringComparison.OrdinalIgnoreCase));
+
+                            if (userAttachmentsParameter != null)
+                            {
+                                var userAttachments = JsonConvert.DeserializeObject<Attachment[]>(userAttachmentsParameter?.JSONData.ToString());
+                                ConsolidateAttachments(userAttachments, documentSummary);
+                            }
                         }
 
                         List<ApprovalSummaryRow> documentSummariesObj = new List<ApprovalSummaryRow>();
@@ -1199,6 +1246,16 @@ public class DetailsHelper : IDetailsHelper
                             responseJObject.Add("CurrentApprovers", string.Join(",", currentApproverInDbJson?.JSONData?.FromJson<List<Approver>>()?.Select(s => s.Name)));
                         }
 
+
+                        if (responseJObject.ContainsKey("FileAttachmentOptions"))
+                        {
+                            responseJObject["FileAttachmentOptions"] = attachmentProperties?.FileAttachmentOptions.ToJToken();
+                        }
+                        else
+                        {
+                            responseJObject.Add("FileAttachmentOptions", attachmentProperties?.FileAttachmentOptions.ToJToken());
+                        }
+
                         responseJObject["SessionId"] = Guid.NewGuid().ToString();
 
                         logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
@@ -1287,6 +1344,32 @@ public class DetailsHelper : IDetailsHelper
     }
 
     /// <summary>
+    /// Consolidate the pre attached files with the user attached documents.
+    /// </summary>
+    /// <param name="userAttachments">User attached documents.</param>
+    /// <param name="documentSummary">Document summary that have the list of attachments that is pre attached from tenant.</param>
+    private void ConsolidateAttachments(Attachment[] userAttachments, ApprovalSummaryRow documentSummary)
+    {
+        var summaryJson = documentSummary?.SummaryJson?.FromJson<SummaryJson>();
+        if (summaryJson != null && userAttachments != null)
+        {
+            foreach (var userAttachment in userAttachments)
+            {
+                if (summaryJson.Attachments == null)
+                {
+                    summaryJson.Attachments = new List<Attachment>();
+
+                }
+
+                summaryJson.Attachments.Add(new Attachment() { ID = userAttachment.ID, Name = userAttachment.Name, IsPreAttached = userAttachment.IsPreAttached });
+            }
+
+            documentSummary.SummaryJson = summaryJson.ToJson();
+        }
+
+    }
+
+    /// <summary>
     /// This method gets the Attachment content for preview
     /// </summary>
     /// <param name="tenantId">Tenant Id of the tenant (1/2/3..)</param>
@@ -1303,7 +1386,7 @@ public class DetailsHelper : IDetailsHelper
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
     /// <param name="aadUserToken">The Azure AD user token</param>
     /// <returns>HttpResponseMessage with Stream data of the attachment</returns>
-    public async Task<byte[]> GetDocumentPreview(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, string attachmentId, string sessionId, string tcv, string xcv, string userAlias, string loggedInAlias, string clientDevice, string aadUserToken)
+    public async Task<byte[]> GetDocumentPreview(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, string attachmentId, bool isPreAttached, string sessionId, string tcv, string xcv, string userAlias, string loggedInAlias, string clientDevice, string aadUserToken)
     {
         #region Logging Prep
 
@@ -1387,28 +1470,35 @@ public class DetailsHelper : IDetailsHelper
 
             byte[] response = null;
 
-            var approvalIdentifier = new ApprovalIdentifier() { DocumentNumber = documentNumber, DisplayDocumentNumber = displayDocumentNumber, FiscalYear = fiscalYear };
-            using (var docDownloadTracer = _performanceLogger.StartPerformanceLogger("PerfLog", Constants.WebClient, string.Format(Constants.PerfLogAction, tenantInfo.AppName, "Document Download"), logData))
+            if (isPreAttached == false)
             {
-                response = await PreviewDocumentAsync(tenantAdaptor,
-                                                            tenantId,
-                                                            tenantInfo,
-                                                            approvalIdentifier,
-                                                            userAlias,
-                                                            attachmentId,
-                                                            sessionId,
-                                                            loggedInAlias,
-                                                            xcv,
-                                                            tcv);
+                response = await DownloadUserAttachedDocuments(documentNumber, attachmentId, tenantInfo, requestDetails);
+            }
+            else
+            {
+                var approvalIdentifier = new ApprovalIdentifier() { DocumentNumber = documentNumber, DisplayDocumentNumber = displayDocumentNumber, FiscalYear = fiscalYear };
+                using (var docDownloadTracer = _performanceLogger.StartPerformanceLogger("PerfLog", Constants.WebClient, string.Format(Constants.PerfLogAction, tenantInfo.AppName, "Document Download"), logData))
+                {
+                    response = await PreviewDocumentAsync(tenantAdaptor,
+                                                             tenantId,
+                                                             tenantInfo,
+                                                             approvalIdentifier,
+                                                             userAlias,
+                                                             attachmentId,
+                                                             sessionId,
+                                                             loggedInAlias,
+                                                             xcv,
+                                                             tcv);
 
-                logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
-                if (response != null)
-                {
-                    _logProvider.LogInformation(TrackingEvent.WebApiDetailPreviewDocumentSuccess, logData);
-                }
-                else
-                {
-                    _logProvider.LogError(TrackingEvent.WebApiDetailPreviewDocumentFail, new Exception(Constants.AttachmentDownloadGenericFailedMessage), logData);
+                    logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
+                    if (response != null)
+                    {
+                        _logProvider.LogInformation(TrackingEvent.WebApiDetailPreviewDocumentSuccess, logData);
+                    }
+                    else
+                    {
+                        _logProvider.LogError(TrackingEvent.WebApiDetailPreviewDocumentFail, new Exception(Constants.AttachmentDownloadGenericFailedMessage), logData);
+                    }
                 }
             }
 
@@ -1428,6 +1518,40 @@ public class DetailsHelper : IDetailsHelper
     }
 
     /// <summary>
+    /// Download the user attached douments from the blob storage per tenant.
+    /// </summary>
+    /// <param name="documentNumber">Document number of the approval request.</param>
+    /// <param name="attachmentId">Attachment Id for the document.</param>
+    /// <param name="tenantInfo">Tenant information.</param>
+    /// <param name="requestDetails">request details for the approval request.</param>
+    /// <returns>File in byte array.</returns>
+    private async Task<byte[]> DownloadUserAttachedDocuments(string documentNumber, string attachmentId, ApprovalTenantInfo tenantInfo, List<ApprovalDetailsEntity> requestDetails)
+    {
+        List<Attachment> attachmentsSummary = new List<Attachment>();
+        if (requestDetails != null && requestDetails.Any())
+        {
+            // Filter to get only the row which has TransactionalDetails 
+            var existingAttachmentsRecord = requestDetails.FirstOrDefault(x => x.RowKey.Equals(Constants.AttachmentsOperationType, StringComparison.InvariantCultureIgnoreCase));
+
+            if (existingAttachmentsRecord != null)
+            {
+                attachmentsSummary = JsonConvert.DeserializeObject<List<Attachment>>(existingAttachmentsRecord?.JSONData);
+            }
+
+            var attachmentFileName = attachmentsSummary.Where(x => x.ID.Equals(attachmentId, StringComparison.InvariantCultureIgnoreCase))?.FirstOrDefault()?.Name;
+            var attachmentProperties = tenantInfo.IsUploadAttachmentsEnabled ? tenantInfo?.AttachmentProperties?.FromJson<AttachmentProperties>() : null;
+
+            if (!string.IsNullOrEmpty(documentNumber) && !string.IsNullOrEmpty(attachmentFileName))
+            {
+                var response = await _blobStorageHelper.DownloadStreamData(attachmentProperties?.AttachmentContainerName, $"{documentNumber}/{attachmentFileName}");
+                return response?.ToArray();
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// This method gets the Attachment content
     /// </summary>
     /// <param name="tenantId">Tenant Id of the tenant (1/2/3..)</param>
@@ -1443,7 +1567,7 @@ public class DetailsHelper : IDetailsHelper
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
     /// <param name="aadUserToken">The Azure AD user token</param>
     /// <returns>HttpResponseMessage with Stream data of the attachment</returns>
-    public async Task<byte[]> GetDocuments(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, string attachmentId, string sessionId, string tcv, string xcv, string userAlias, string loggedInAlias, string clientDevice, string aadUserToken)
+    public async Task<byte[]> GetDocuments(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, string attachmentId, bool IsPreAttached, string sessionId, string tcv, string xcv, string userAlias, string loggedInAlias, string clientDevice, string aadUserToken)
     {
         #region Logging Prep
 
@@ -1526,28 +1650,35 @@ public class DetailsHelper : IDetailsHelper
 
             byte[] response = null;
 
-            var approvalIdentifier = new ApprovalIdentifier() { DocumentNumber = documentNumber, DisplayDocumentNumber = displayDocumentNumber, FiscalYear = fiscalYear };
-            using (var docDownloadTracer = _performanceLogger.StartPerformanceLogger("PerfLog", string.IsNullOrWhiteSpace(clientDevice) ? Constants.WebClient : clientDevice, string.Format(Constants.PerfLogAction, tenantInfo.AppName, "Document Download"), logData))
+            if (IsPreAttached == false)
             {
-                response = await DownloadDocumentAsync(tenantAdaptor,
-                                                            tenantId,
-                                                            tenantInfo,
-                                                            approvalIdentifier,
-                                                            userAlias,
-                                                            attachmentId,
-                                                            sessionId,
-                                                            loggedInAlias,
-                                                            xcv,
-                                                            tcv);
+                response = await DownloadUserAttachedDocuments(documentNumber, attachmentId, tenantInfo, requestDetails); ;
+            }
+            else
+            {
+                var approvalIdentifier = new ApprovalIdentifier() { DocumentNumber = documentNumber, DisplayDocumentNumber = displayDocumentNumber, FiscalYear = fiscalYear };
+                using (var docDownloadTracer = _performanceLogger.StartPerformanceLogger("PerfLog", string.IsNullOrWhiteSpace(clientDevice) ? Constants.WebClient : clientDevice, string.Format(Constants.PerfLogAction, tenantInfo.AppName, "Document Download"), logData))
+                {
+                    response = await DownloadDocumentAsync(tenantAdaptor,
+                                                              tenantId,
+                                                              tenantInfo,
+                                                              approvalIdentifier,
+                                                              userAlias,
+                                                              attachmentId,
+                                                              sessionId,
+                                                              loggedInAlias,
+                                                              xcv,
+                                                              tcv);
 
-                logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
-                if (response != null)
-                {
-                    _logProvider.LogInformation(TrackingEvent.WebApiDetailDocumentDownloadSuccess, logData);
-                }
-                else
-                {
-                    _logProvider.LogError(TrackingEvent.WebApiDetailDocumentDownloadFail, new Exception(Constants.AttachmentDownloadGenericFailedMessage), logData);
+                    logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
+                    if (response != null)
+                    {
+                        _logProvider.LogInformation(TrackingEvent.WebApiDetailDocumentDownloadSuccess, logData);
+                    }
+                    else
+                    {
+                        _logProvider.LogError(TrackingEvent.WebApiDetailDocumentDownloadFail, new Exception(Constants.AttachmentDownloadGenericFailedMessage), logData);
+                    }
                 }
             }
 
@@ -1692,10 +1823,11 @@ public class DetailsHelper : IDetailsHelper
                             detailsAvailable.Add(tenantOperationDetails.Name, detail);
                         }
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
-                        // TODO:: Add logging here
-                        // Do nothing
+                        logData.Modify(LogDataKey.EventId, TrackingEvent.GetAvailableDetailsAndOperatioNamesFailure + tenantInfo.TenantId);
+                        logData.Modify(LogDataKey.EventName, TrackingEvent.GetAvailableDetailsAndOperatioNamesFailure.ToString());
+                        _logProvider.LogError(TrackingEvent.GetAvailableDetailsAndOperatioNamesFailure, ex, logData);
                     }
                 }
             }

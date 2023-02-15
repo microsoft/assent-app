@@ -27,6 +27,8 @@ using Microsoft.CFS.Approvals.Data.Azure.CosmosDb.Helpers;
 using Microsoft.CFS.Approvals.Data.Azure.CosmosDb.Interface;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Helpers;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.Domain.BL.Interface;
+using Microsoft.CFS.Approvals.Domain.BL.Tenants.Validations;
 using Microsoft.CFS.Approvals.LogManager;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.Utilities.Helpers;
@@ -144,6 +146,7 @@ builder.Services.AddScoped<IActionAuditLogHelper, ActionAuditLogHelper>();
 builder.Services.AddScoped<IUserDelegationProvider, UserDelegationProvider>();
 builder.Services.AddScoped<IDelegationHelper, DelegationHelper>();
 builder.Services.AddScoped<IDetailsHelper, DetailsHelper>();
+builder.Services.AddScoped<IAttachmentHelper, AttachmentHelper>();
 builder.Services.AddScoped<IApprovalHistoryHelper, ApprovalHistoryHelper>();
 builder.Services.AddScoped<IDocumentActionHelper, DocumentActionHelper>();
 builder.Services.AddScoped<IClientActionHelper, ClientActionHelper>();
@@ -156,6 +159,7 @@ builder.Services.AddScoped<IAuthenticationHelper, AuthenticationHelper>();
 builder.Services.AddScoped<DocumentActionHelper>();
 builder.Services.AddScoped<BulkDocumentActionHelper>();
 builder.Services.AddScoped<BulkExternalDocumentActionHelper>();
+builder.Services.AddScoped<IValidation, ValidationBase>();
 
 builder.Services.AddScoped<Func<string, IDocumentActionHelper>>(serviceProvider => key =>
 {

@@ -125,6 +125,7 @@ Step 2: Add/update the values for the following keys in the JSON
 | SupportEmailId | e.g., mailto:help@contoso.com | No |
 | SyntheticTransactionsApproverAliasList | [Optional] (;) separated list of aliases which would be the allowed approvers for creating synthetic transaction requests | No |
 | UrlPlaceholderTenants | [Optional] Int32 identifiers for simulating LoB apps in self-server portal | No |
+| WhitelistDomains | Domains which will be allowed to access Assent | No |
 
 ```
 Step 3: Go to the App Configuration service on Azure Portal and select the resource

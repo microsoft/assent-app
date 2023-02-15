@@ -27,7 +27,7 @@ public class HistoryDocumentDbProvider : IHistoryStorageProvider
     public HistoryDocumentDbProvider(ICosmosDbHelper cosmosDbHelper)
     {
         _cosmosDbHelper = cosmosDbHelper;
-        _cosmosDbHelper.SetTarget("history", "transactionhistory", "/DocumentNumber").Wait();
+        _cosmosDbHelper.SetTarget("history", "transactionhistory", "/DocumentNumber");
     }
 
     /// <summary>

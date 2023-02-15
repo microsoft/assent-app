@@ -91,5 +91,6 @@
   "UserPreferenceAzureTableName": "UserPreferenceSetting",
   "ValidateAliasUsingPayloadValidator": "TRUE",
   "WatchDogBatchSize": "50",
-  "WatchDogMaxFailureCount": "100"
+  "WatchDogMaxFailureCount": "100",
+  "WhitelistedDomains":  "@contoso.com"
 }

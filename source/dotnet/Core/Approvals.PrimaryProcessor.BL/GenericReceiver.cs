@@ -157,18 +157,8 @@ public class GenericReceiver : IApprovalsTopicReceiver
                     logData.Add(LogDataKey.ReceivedTcv, requestExpressions.FirstOrDefault().Telemetry.Tcv);
                     logData.Add(LogDataKey.TenantTelemetryData, requestExpressions.FirstOrDefault().Telemetry.TenantTelemetry);
                     logData.Add(LogDataKey.BusinessProcessName, string.Format(TenantInfo.BusinessProcessName, Constants.BusinessProcessNameSendPayload, requestExpressions.FirstOrDefault().Operation));
-                    if (logData.ContainsKey(LogDataKey.EventId))
-                    {
-                        logData.Remove(LogDataKey.EventId);
-                    }
-
-                    if (logData.ContainsKey(LogDataKey.EventName))
-                    {
-                        logData.Remove(LogDataKey.EventName);
-                    }
-
-                    logData.Add(LogDataKey.EventId, TrackingEvent.NewMessageRecievedInRetryTopic + TenantInfo.TenantId);
-                    logData.Add(LogDataKey.EventName, TrackingEvent.NewMessageRecievedInRetryTopic.ToString());
+                    logData.Modify(LogDataKey.EventId, TrackingEvent.NewMessageRecievedInRetryTopic + TenantInfo.TenantId);
+                    logData.Modify(LogDataKey.EventName, TrackingEvent.NewMessageRecievedInRetryTopic.ToString());
                     LogMessageProgress(requestExpressions, TrackingEvent.ARXReceivedSuccessfullyByServiceBusInRetryTopic, message, null, CriticalityLevel.Yes);
 
                     _approvalPresenter.TenantInfo = TenantInfo;
@@ -178,35 +168,15 @@ public class GenericReceiver : IApprovalsTopicReceiver
                         throw new InvalidOperationException("Request failed while processing in retry topic. Identifier: " + failedRequest.FirstOrDefault().ApprovalIdentifier.ToJson());
                     }
 
-                    if (logData.ContainsKey(LogDataKey.EventId))
-                    {
-                        logData.Remove(LogDataKey.EventId);
-                    }
-
-                    if (logData.ContainsKey(LogDataKey.EventName))
-                    {
-                        logData.Remove(LogDataKey.EventName);
-                    }
-
-                    logData.Add(LogDataKey.EventId, TrackingEvent.MessageCompleteSuccessFromRetryTopic + TenantInfo.TenantId);
-                    logData.Add(LogDataKey.EventName, TrackingEvent.MessageCompleteSuccessFromRetryTopic.ToString());
+                    logData.Modify(LogDataKey.EventId, TrackingEvent.MessageCompleteSuccessFromRetryTopic + TenantInfo.TenantId);
+                    logData.Modify(LogDataKey.EventName, TrackingEvent.MessageCompleteSuccessFromRetryTopic.ToString());
                     LogMessageProgress(requestExpressions, TrackingEvent.ARXProcessedSuccessfullyInRetryTopic, message, null, CriticalityLevel.Yes);
                 }
             }
             catch (Exception ex)
             {
-                if (logData.ContainsKey(LogDataKey.EventId))
-                {
-                    logData.Remove(LogDataKey.EventId);
-                }
-
-                if (logData.ContainsKey(LogDataKey.EventName))
-                {
-                    logData.Remove(LogDataKey.EventName);
-                }
-
-                logData.Add(LogDataKey.EventId, TrackingEvent.MoveMessageToDeadletterFromRetryTopic + TenantInfo.TenantId);
-                logData.Add(LogDataKey.EventName, TrackingEvent.MoveMessageToDeadletterFromRetryTopic.ToString());
+                logData.Modify(LogDataKey.EventId, TrackingEvent.MoveMessageToDeadletterFromRetryTopic + TenantInfo.TenantId);
+                logData.Modify(LogDataKey.EventName, TrackingEvent.MoveMessageToDeadletterFromRetryTopic.ToString());
                 _logProvider.LogError((int)TrackingEvent.MoveMessageToDeadletterFromRetryTopic + TenantInfo.TenantId, ex, logData);
             }
         }

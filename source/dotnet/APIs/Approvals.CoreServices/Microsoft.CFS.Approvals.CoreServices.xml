@@ -151,6 +151,34 @@
             downloads all the Attachment for the request and return that to the client device as a HttpResponse in a zip
             </returns>
         </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController">
+            <summary>
+            Class AttachmentUploadController,
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController.attachmentHelper">
+            <summary>
+            Attachment helper.
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IAttachmentHelper)">
+            <summary>
+            AttachmentUploadController.
+            </summary>
+            <param name="attachmentHelper"></param>       
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController.Post(System.Collections.Generic.List{Microsoft.CFS.Approvals.Model.AttachmentUploadInfo},System.Int32,System.String,System.String,System.String,System.String)">
+            <summary>
+            Post method for uploading the attachments.
+            </summary>
+            <param name="files"> List of files to be uploaded into the blob storage.</param>
+            <param name="tenantId">Tenant id.</param>
+            <param name="documentNumber">Document number.</param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <param name="tcv">GUID Transaction Id. Unique for each transaction</param>
+            <param name="xcv">GUID Cross Correlation Vector. Unique for each request across system boundaries</param>
+            <returns></returns>
+        </member>
         <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AutoRefreshController">
             <summary>
             Class AutoRefreshController.
@@ -333,7 +361,7 @@
             </summary>
             <param name="detailsHelper"></param>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentDownloadController.Get(System.Int32,System.String,System.String,System.String,System.Int32,System.String,System.String,System.String,System.String)">
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentDownloadController.Get(System.Int32,System.String,System.String,System.String,System.Int32,System.String,System.Boolean,System.String,System.String,System.String)">
             <summary>
             Retrieves attachment file for download on the details page from the tenant LOB system that the approval belongs to.
             </summary>
@@ -343,6 +371,7 @@
             <param name="fiscalYear">Fiscal Year of Request number (if any)</param>
             <param name="page"></param>
             <param name="attachmentId">The unique attachmentId of the attachment to be downloaded from LOB system</param>
+            <param name="isPreAttached">Specifies the type of the attachment if the attachment is pre attached from tenant or post attached from ui.</param>
             <param name="sessionId">GUID SessionId. Unique for each user session</param>
             <param name="tcv">GUID Transaction Id. Unique for each transaction</param>
             <param name="xcv">GUID Cross Correlation Vector. Unique for each request across system boundaries</param>
@@ -398,7 +427,7 @@
             <param name="detailsHelper"></param>
             <param name="officeDocumentCreator"></param>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentPreviewController.Get(System.Int32,System.String,System.String,System.String,System.Int32,System.String,System.String,System.String,System.String,System.String)">
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentPreviewController.Get(System.Int32,System.String,System.String,System.String,System.Int32,System.String,System.Boolean,System.String,System.String,System.String,System.String)">
             <summary>
             Retrieves attachment file for preview on the details page from the tenant LOB system that the approval belongs to.
             </summary>
@@ -408,6 +437,7 @@
             <param name="fiscalYear">Fiscal Year of Request number (if any)</param>
             <param name="page"></param>
             <param name="attachmentId">The unique attachmentId of the attachment to be previewed from LOB system</param>
+            <param name="isPreAttached">Specifies the type of the attachment if the attachment is pre attached from tenant or post attached from ui.</param>
             <param name="attachmentName">The attachmentName of the attachment to be previewed from LOB system</param>
             <param name="sessionId">GUID SessionId. Unique for each user session</param>
             <param name="tcv">GUID Transaction Id. Unique for each transaction</param>
@@ -1115,7 +1145,7 @@
             Custom Authorization Middleware class which takes care of additional security checks
             </summary>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Utils.AuthorizationMiddleware.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalTenantInfoHelper,Microsoft.CFS.Approvals.Core.BL.Interface.IDelegationHelper)">
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Utils.AuthorizationMiddleware.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalTenantInfoHelper,Microsoft.CFS.Approvals.Core.BL.Interface.IDelegationHelper,Microsoft.Extensions.Configuration.IConfiguration)">
             <summary>
             Constructor
             </summary>

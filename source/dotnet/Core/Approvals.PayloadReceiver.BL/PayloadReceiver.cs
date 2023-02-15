@@ -56,7 +56,6 @@ public class PayloadReceiver : IPayloadReceiver
     /// <param name="payloadId"></param>
     /// <param name="payloadType"></param>
     /// <param name="payload"></param>
-    /// <param name="payloadDestinationInfo"></param>
     /// <param name="tenant"></param>
     /// <param name="xcv"></param>
     /// <param name="tcv"></param>
@@ -69,7 +68,6 @@ public class PayloadReceiver : IPayloadReceiver
         Guid payloadId,
         Type payloadType,
         string payload,
-        PayloadDestinationInfo payloadDestinationInfo,
         ApprovalTenantInfo tenant,
         out string xcv,
         out string tcv,
@@ -203,7 +201,7 @@ public class PayloadReceiver : IPayloadReceiver
                         _performanceLogger.StartPerformanceLogger("PerfLog", Constants.PayloadReceiver, string.Format(Constants.PerfLogAction, "GenerateAndSendBrokeredMsg", tenant.AppName), new Dictionary<LogDataKey, object>())
                         )
                 {
-                    if (!(_payloadDelivery.SendPayload(approvalRequestExpression, payloadDestinationInfo, payloadId)).Result)
+                    if (!(_payloadDelivery.SendPayload(approvalRequestExpression, payloadId)).Result)
                     {
                         throw new WebException("Payload could not be sent", WebExceptionStatus.SendFailure);
                     }

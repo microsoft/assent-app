@@ -90,6 +90,11 @@ public class DocumentActionHelper : IDocumentActionHelper
     /// </summary>
     protected readonly ITenantFactory _tenantFactory;
 
+    /// <summary>
+    /// Attachment helper.
+    /// </summary>
+    protected readonly IAttachmentHelper _attachmentHelper;
+
     #endregion Variables
 
     #region Constructor
@@ -108,6 +113,7 @@ public class DocumentActionHelper : IDocumentActionHelper
     /// <param name="tableHelper">The table helper.</param>
     /// <param name="approvalTenantInfoHelper"> The approval tenantinfo helper.</param>
     /// <param name="tenantFactory">The tenant factory.</param>
+    /// <param name="attachmentHelper">Attachment helper.</param>
     public DocumentActionHelper(
         IApprovalSummaryProvider approvalSummaryProvider,
         IConfiguration config,
@@ -119,7 +125,8 @@ public class DocumentActionHelper : IDocumentActionHelper
         IActionAuditLogHelper actionAuditLogHelper,
         ITableHelper tableHelper,
         IApprovalTenantInfoHelper approvalTenantInfoHelper,
-        ITenantFactory tenantFactory)
+        ITenantFactory tenantFactory,
+        IAttachmentHelper attachmentHelper)
     {
         _approvalSummaryProvider = approvalSummaryProvider;
         _config = config;
@@ -132,6 +139,7 @@ public class DocumentActionHelper : IDocumentActionHelper
         _tableHelper = tableHelper;
         _approvalTenantInfoHelper = approvalTenantInfoHelper;
         _tenantFactory = tenantFactory;
+        _attachmentHelper = attachmentHelper;
     }
 
     #endregion Constructor
@@ -1247,6 +1255,10 @@ public class DocumentActionHelper : IDocumentActionHelper
                 }
             }
 
+            // Add the blob urls for the user document as an additional data for tenants to consume.
+            if (tenantInfo.IsUploadAttachmentsEnabled)
+                AddUserDocumentsInfo(approvalSummaryRow, tenantId, approvalRequest);
+
             // Making a call into the async method which in turn will call tenant service to post user action and wait for result
             var approvalRequests = new List<ApprovalRequest>() { approvalRequest };
             actionResponse = await tenantAdapter.ExecuteActionAsync(approvalRequests, loggedInAlias, sessionId, clientDevice, xcv, tcv, approvalSummaryRow);
@@ -1271,6 +1283,9 @@ public class DocumentActionHelper : IDocumentActionHelper
         {
             bTenantCallSuccess = false;
             bIsHandledException = true;
+
+            logData.Modify(LogDataKey.EventId, (int)TrackingEvent.DocumentActionFailure);
+            logData.Modify(LogDataKey.EventName, TrackingEvent.DocumentActionFailure.ToString());
             _logger.LogError(TrackingEvent.DocumentActionFailure, unauthorizedException, logData);
             LogMessageProgress(TrackingEvent.ApprovalActionFailed, new FailureData() { Message = unauthorizedException.Message }, CriticalityLevel.Yes, logData);
             approvalResponses.FirstOrDefault().E2EErrorInformation = new ApprovalResponseErrorInfo { ErrorMessages = new List<string>() { unauthorizedException.InnerException != null ? unauthorizedException.InnerException.Message : unauthorizedException.Message } };
@@ -1287,8 +1302,9 @@ public class DocumentActionHelper : IDocumentActionHelper
             bTenantCallSuccess = false;
             bIsHandledException = true;
 
+            logData.Modify(LogDataKey.EventId, (int)TrackingEvent.DocumentActionFailure);
+            logData.Modify(LogDataKey.EventName, TrackingEvent.DocumentActionFailure.ToString());
             _logger.LogError(TrackingEvent.DocumentActionFailure, invalidDataException, logData);
-
             LogMessageProgress(TrackingEvent.ApprovalActionFailed, new FailureData() { Message = invalidDataException.Message }, CriticalityLevel.Yes, logData);
 
             approvalResponses.FirstOrDefault().E2EErrorInformation = new ApprovalResponseErrorInfo { ErrorMessages = new List<string>() { invalidDataException.InnerException != null ? invalidDataException.InnerException.Message : invalidDataException.Message } };
@@ -1304,8 +1320,10 @@ public class DocumentActionHelper : IDocumentActionHelper
             // This is to handle the tenant service call related exception
             bTenantCallSuccess = false;
             bIsHandledException = false;
-            _logger.LogError(TrackingEvent.DocumentActionFailure, ex, logData);
 
+            logData.Modify(LogDataKey.EventId, (int)TrackingEvent.DocumentActionFailure);
+            logData.Modify(LogDataKey.EventName, TrackingEvent.DocumentActionFailure.ToString());
+            _logger.LogError(TrackingEvent.DocumentActionFailure, ex, logData);
             LogMessageProgress(TrackingEvent.ApprovalActionFailed, new FailureData() { Message = ex.Message }, CriticalityLevel.Yes, logData);
 
             approvalResponses.FirstOrDefault().E2EErrorInformation = new ApprovalResponseErrorInfo { ErrorMessages = new List<string>() { ex.InnerException != null ? ex.InnerException.Message : ex.Message } };
@@ -1340,6 +1358,32 @@ public class DocumentActionHelper : IDocumentActionHelper
             });
         }
         return actionResponseContentObject;
+    }
+
+    /// <summary>
+    /// Add user document details based on the type of the document.
+    /// </summary>
+    /// <param name="approvalSummaryRow">Approval summary.</param>
+    /// <param name="tenantId">Tenant Id.</param>
+    /// <param name="approvalRequest">Approval Request.</param>
+    private void AddUserDocumentsInfo(ApprovalSummaryRow approvalSummaryRow, int tenantId, ApprovalRequest approvalRequest)
+    {
+        if (approvalSummaryRow != null)
+        {
+            var userDocuments = _attachmentHelper.GetAttachmentDetailsForTenantNotification(tenantId, approvalSummaryRow.DocumentNumber);
+            if (approvalRequest?.AdditionalData == null)
+            {
+                if (userDocuments != null)
+                {
+                    approvalRequest.AdditionalData = new Dictionary<string, string>();
+                    approvalRequest.AdditionalData.Add(Constants.UserAttachments, userDocuments.ToJToken().ToString());
+                }
+            }
+            else if (userDocuments != null)
+            {
+                approvalRequest.AdditionalData.Modify(Constants.UserAttachments, userDocuments.ToJToken().ToString());
+            }
+        }
     }
 
     /// <summary>

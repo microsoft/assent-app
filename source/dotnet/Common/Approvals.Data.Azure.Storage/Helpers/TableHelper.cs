@@ -36,7 +36,6 @@ public class TableHelper : ITableHelper
         var tableClient = new TableClient(new Uri($"https://" + _azureStorageAccountName + ".table.core.windows.net/"),
                                             tableName,
                                             _tokenCredential);
-        tableClient.CreateIfNotExists();
         return tableClient;
     }
 

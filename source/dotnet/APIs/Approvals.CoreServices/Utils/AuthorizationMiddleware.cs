@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -23,16 +24,18 @@ public class AuthorizationMiddleware : IMiddleware
 {
     private readonly IDelegationHelper _delegationHelper;
     private readonly IApprovalTenantInfoHelper _approvalTenantInfoHelper;
+    private readonly IConfiguration _configuration;
     private static readonly string XMsClientPrincipalIdp = "X-MS-CLIENT-PRINCIPAL-IDP";
     private static readonly string XMsClientPrincipal = "X-MS-CLIENT-PRINCIPAL";
 
     /// <summary>
     /// Constructor
     /// </summary>
-    public AuthorizationMiddleware(IApprovalTenantInfoHelper approvalTenantInfoHelper, IDelegationHelper delegationHelper)
+    public AuthorizationMiddleware(IApprovalTenantInfoHelper approvalTenantInfoHelper, IDelegationHelper delegationHelper, IConfiguration configuration)
     {
         _delegationHelper = delegationHelper;
         _approvalTenantInfoHelper = approvalTenantInfoHelper;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -49,7 +52,15 @@ public class AuthorizationMiddleware : IMiddleware
         // Get UserPrincipalName /alias from Header
         if (context.Request.Headers.Keys.Contains("X-MS-CLIENT-PRINCIPAL-NAME"))
         {
-            userAlias = new MailAddress(context.Request.Headers["X-MS-CLIENT-PRINCIPAL-NAME"].ToString()).User;
+            userAlias = context.Request.Headers["X-MS-CLIENT-PRINCIPAL-NAME"].ToString();
+            var whitelistedDomains = _configuration[Constants.WhitelistedDomains]?.Split(";").ToList();
+            whitelistedDomains.ForEach(domain =>
+            {
+                if (userAlias.EndsWith(domain, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    userAlias = new MailAddress(userAlias).User;
+                }
+            });
         }
 
         // Authorize after the user has been authenticated by App Service Authentication Service

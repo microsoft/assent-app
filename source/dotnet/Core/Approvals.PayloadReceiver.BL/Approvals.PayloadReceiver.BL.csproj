@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Common\Approvals.Messaging.Azure.ServiceBus\Approvals.Messaging.Azure.ServiceBus.csproj" />
     <ProjectReference Include="..\Approvals.Common.BL\Approvals.Common.BL.csproj" />
     <ProjectReference Include="..\..\Common\Approvals.Extensions\Approvals.Extensions.csproj" />
     <ProjectReference Include="..\..\Common\Approvals.Utilities\Approvals.Utilities.csproj" />

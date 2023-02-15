@@ -23,7 +23,7 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
         _cosmosDbHelper = cosmosDbHelper;
         cosmosDbHelper.SetTarget(this._configuration[ConfigurationKey.CosmosDbNameAuditAgent.ToString()],
             this._configuration[ConfigurationKey.CosmosDbCollectionAuditAgent.ToString()],
-            this._configuration[ConfigurationKey.CosmosDbPartitionKeyPathAuditAgent.ToString()]).Wait();
+            this._configuration[ConfigurationKey.CosmosDbPartitionKeyPathAuditAgent.ToString()]);
     }
     /// <summary>
     /// Get Documents
@@ -78,8 +78,7 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
         }
         else
         {
-            _cosmosDbHelper.SetTarget(this._configuration[ConfigurationKey.CosmosDbNameAuditAgent.ToString()],
-                collectionName, this._configuration[ConfigurationKey.CosmosDbPartitionKeyPathAuditAgent.ToString()]).Wait();
+            _cosmosDbHelper.SetTarget(this._configuration[ConfigurationKey.CosmosDbNameAuditAgent.ToString()], collectionName, this._configuration[ConfigurationKey.CosmosDbPartitionKeyPathAuditAgent.ToString()]);
             return _cosmosDbHelper.GetAllDocumentsAsync<dynamic>(query, partitionKeyValue).Result.ToList();
         }
 
@@ -140,8 +139,7 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
             }
             else
             {
-                _cosmosDbHelper.SetTarget(this._configuration[ConfigurationKey.CosmosDbNameAuditAgent.ToString()],
-                collectionName, this._configuration[ConfigurationKey.CosmosDbPartitionKeyPathAuditAgent.ToString()]).Wait();
+                _cosmosDbHelper.SetTarget(this._configuration[ConfigurationKey.CosmosDbNameAuditAgent.ToString()], collectionName, this._configuration[ConfigurationKey.CosmosDbPartitionKeyPathAuditAgent.ToString()]);
                 return _cosmosDbHelper.GetAllDocumentsAsync<dynamic>(query, partitionKeyValue).Result.ToList();
             }
         }
@@ -202,8 +200,8 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
             }
             else
             {
-                _cosmosDbHelper.SetTarget(this._configuration[ConfigurationKey.CosmosDbNameAuditAgent.ToString()],
-                    collectionName, this._configuration[ConfigurationKey.CosmosDbPartitionKeyPathAuditAgent.ToString()]).Wait();
+                _cosmosDbHelper.SetTarget(this._configuration[ConfigurationKey.CosmosDbNameAuditAgent.ToString()], 
+                    collectionName, this._configuration[ConfigurationKey.CosmosDbPartitionKeyPathAuditAgent.ToString()]);
                 return _cosmosDbHelper.GetAllDocumentsAsync<dynamic>(query, partitionKeyValue).Result.ToList();
 
             }

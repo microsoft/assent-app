@@ -5,8 +5,7 @@ namespace Microsoft.CFS.Approvals.PayloadReceiver.BL;
 
 using System;
 using System.Threading.Tasks;
-using global::Azure.Identity;
-using global::Azure.Messaging.ServiceBus;
+using Microsoft.CFS.Approvals.Messaging.Azure.ServiceBus.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
@@ -24,6 +23,11 @@ public class PayloadDelivery : IPayloadDelivery
     private readonly IBlobStorageHelper _blobStorageHelper = null;
 
     /// <summary>
+    /// The service bus helper
+    /// </summary>
+    private readonly IServiceBusHelper _serviceBusHelper = null;
+
+    /// <summary>
     /// Configuration
     /// </summary>
     private readonly IConfiguration _config = null;
@@ -32,48 +36,35 @@ public class PayloadDelivery : IPayloadDelivery
     /// Constructor of PayloadDelivery
     /// </summary>
     /// <param name="blobStorageHelper"></param>
+    /// <param name="serviceBusHelper"></param>
     /// <param name="config"></param>
-    public PayloadDelivery(IBlobStorageHelper blobStorageHelper, IConfiguration config)
+    public PayloadDelivery(IBlobStorageHelper blobStorageHelper, IServiceBusHelper serviceBusHelper, IConfiguration config)
     {
         _blobStorageHelper = blobStorageHelper;
+        _serviceBusHelper = serviceBusHelper;
         _config = config;
     }
 
     /// <summary>
-    /// Sends the Approval Request Expression converting it into Brokered Message
+    /// Sends the Approval Request Expression to Service Bus
     /// </summary>
     /// <param name="approvalRequestExpression"></param>
-    /// <param name="payloadDestinationInfo"></param>
     /// <param name="payloadId"></param>
     /// <returns></returns>
-    public async Task<bool> SendPayload(ApprovalRequestExpression approvalRequestExpression, Model.PayloadDestinationInfo payloadDestinationInfo, Guid payloadId)
+    public async Task<bool> SendPayload(ApprovalRequestExpression approvalRequestExpression, Guid payloadId)
     {
-        string brokeredMessageId = payloadId.ToString();
-        ServiceBusSender messageSender = EstablishServiceBusChannel(payloadDestinationInfo);
-        var brokeredMessage = await BuildServiceBusMessage(approvalRequestExpression, brokeredMessageId);
-        await messageSender.SendMessageAsync(brokeredMessage);
-        return true;
+        var approvalRequestVersion = _config[ConfigurationKey.ApprovalRequestVersion.ToString()].ToString();
+        await UploadMessageToBlob(approvalRequestExpression, payloadId.ToString());
+        return await _serviceBusHelper.SendMessage(approvalRequestExpression, payloadId.ToString(), approvalRequestVersion);
     }
 
     /// <summary>
-    /// Service Bus Channel establishes delivery channel to Service Bus INstance
-    /// </summary>
-    /// <param name="payloadDestinationInfo"></param>
-    /// <returns></returns>
-    public ServiceBusSender EstablishServiceBusChannel(Model.PayloadDestinationInfo payloadDestinationInfo)
-    {
-        var endpoint = payloadDestinationInfo.Namespace + ".servicebus.windows.net";
-        ServiceBusClient client = new ServiceBusClient(endpoint, new DefaultAzureCredential());
-        return client.CreateSender(payloadDestinationInfo.Entity);
-    }
-
-    /// <summary>
-    /// Builds a service bus message using Approval Request Expression and assigns the service bus message id provided
+    /// Uploads the Approval Request Expression to Blob, so the background process can pick it up for further processing
     /// </summary>
     /// <param name="approvalRequestExpression"></param>
     /// <param name="messageId"></param>
     /// <returns></returns>
-    public async Task<ServiceBusMessage> BuildServiceBusMessage(ApprovalRequestExpression approvalRequestExpression, string messageId)
+    public async Task UploadMessageToBlob(ApprovalRequestExpression approvalRequestExpression, string messageId)
     {
         if (approvalRequestExpression == null)
             throw new ArgumentNullException("approvalRequestExpression", "Approval Request Expression cannot be null");
@@ -84,22 +75,6 @@ public class PayloadDelivery : IPayloadDelivery
 
         await _blobStorageHelper.UploadByteArray(messageToUpload, Constants.PrimaryMessageContainer, messageBody);
         await _blobStorageHelper.UploadByteArray(messageToUpload, Constants.AuditAgentMessageContainer, messageBody);
-
-        // Create a BrokeredMessage of the customized class,
-        // with ApplicationId property set to DocumentTypeId, and the same CorrelationID as the orginal BrokeredMessage
-        ServiceBusMessage message = new ServiceBusMessage(messageBody);
-        message.MessageId = messageId;
-        message.CorrelationId = Guid.NewGuid().ToString();
-
-        // Adding properties to the Message
-        message.ApplicationProperties["ApplicationId"] = approvalRequestExpression.DocumentTypeId.ToString();
-        message.ApplicationProperties["ApprovalRequestVersion"] = _config[ConfigurationKey.ApprovalRequestVersion.ToString()].ToString();
-        message.ApplicationProperties["CreatedDate"] = DateTime.UtcNow;
-        message.ApplicationProperties["ContentType"] = "ApprovalRequestExpression";
-        message.ContentType = "application/json";
-        message.Body = BinaryData.FromString(messageBody);
-
-        return message;
     }
 
     /// <summary>

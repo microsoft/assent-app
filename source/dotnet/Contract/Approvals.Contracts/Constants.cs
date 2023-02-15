@@ -164,6 +164,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string CurrentApprover = "CurrentApprover";
         public const string AdaptiveDTL = "AdaptiveDTL";
         public const string FailureEmailNotificationTemplateKey = "EmailNotificationForDetailsFail";
+        public const string UserAttachments = "UserAttachments";
 
         public const string TenantTypeProduction = "Prod";
 
@@ -292,6 +293,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string DocumentDownloadAction = "DOC1";
         public const string DocumentPreviewAction = "DOCUMENTPREVIEW";
         public const string BulkDocumentDownloadAction = "BULKDOC";
+        public const string WhitelistedDomains = "WhitelistedDomains";
 
         public const string SingleDownloadAction = "Download";
 
@@ -300,6 +302,8 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string ProcurementDetailAction = "DTL";
         public const string HeaderOperationType = "HDR";
         public const string SummaryOperationType = "SUM";
+        public const string AttachmentsOperationType = "ATTACH";
+        public const string AttachmentUpload = "Attachment Upload";
         public const string EditedDetailsOperationType = "EditedDetails";
         public const string TransactionDetailsOperationType = "TransactionDetails";
         public const string AdditionalDetails = "ADDNDTL";
@@ -370,6 +374,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string BusinessProcessNameGetSummary = "GetSummary";
         public const string BusinessProcessNameGetSummaryFromTenant = "GetSummaryFromTenant";
         public const string BusinessProcessNameAddSummaryCopy = "AddSummaryCopy";
+        public const string BusinessProcessNameAddAttachments = "AddAttachments";
         public const string BusinessProcessNameSaveEditedDetails = "SaveEditedDetails";
         public const string BusinessProcessNameSumamryFromARX = "FromARX";
         public const string BusinessProcessNameSumamryFromBackChannel = "BackChannel";
