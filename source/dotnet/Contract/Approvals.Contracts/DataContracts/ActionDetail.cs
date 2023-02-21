@@ -75,7 +75,7 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
         /// </summary>        
         public Dictionary<string, string> AdditionalData
         { get; set; }
-        
+
         /// <summary>
         /// Display exact reason of action failure
         /// It may be from Approvals side or Tenant side

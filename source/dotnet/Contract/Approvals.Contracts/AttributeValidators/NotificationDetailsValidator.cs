@@ -18,9 +18,9 @@ namespace Microsoft.CFS.Approvals.Contracts.AttributeValidators
         /// <param name="notificationDetails"></param>
         /// <returns>List of validation results</returns>
         public List<ValidationResult> Validator(NotificationDetail notificationDetails)
-        { 
+        {
             var results = new List<ValidationResult>();
-            
+
             System.ComponentModel.DataAnnotations.Validator.TryValidateObject(notificationDetails, new ValidationContext(notificationDetails), results);
 
             if (notificationDetails.Reminder != null)

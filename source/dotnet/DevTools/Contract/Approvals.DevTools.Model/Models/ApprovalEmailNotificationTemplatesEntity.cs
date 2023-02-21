@@ -1,22 +1,20 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.DevTools.Model.Models
+namespace Microsoft.CFS.Approvals.DevTools.Model.Models;
+using Microsoft.CFS.Approvals.Model;
+
+/// <summary>
+/// Approval Email Notification Templates Entity class
+/// </summary>
+public class ApprovalEmailNotificationTemplatesEntity : BaseTableEntity
 {
-    using Microsoft.Azure.Cosmos.Table;
-
     /// <summary>
-    /// Approval Email Notification Templates Entity class
+    /// Constructor of ApprovalEmailNotificationTemplatesEntity
     /// </summary>
-    public class ApprovalEmailNotificationTemplatesEntity: TableEntity
+    public ApprovalEmailNotificationTemplatesEntity()
     {
-        /// <summary>
-        /// Constructor of ApprovalEmailNotificationTemplatesEntity
-        /// </summary>
-        public ApprovalEmailNotificationTemplatesEntity()
-        {
 
-        }
-        public string TemplateContent { get; set; }
     }
+    public string TemplateContent { get; set; }
 }

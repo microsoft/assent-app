@@ -637,7 +637,7 @@ function* postAction(action: IPostAction): IterableIterator<SimpleEffect<{}, {}>
                 approvalRequest.ActionDetails.ReasonText = action.reasonText;
             }
 
-            //for OneAsk-EDDA next level approver
+            //for adding next level approver in hierarchy
             if (action.nextApprover && action.nextApprover != '') {
                 approvalRequest.ActionDetails.NextApprover = action.nextApprover;
                 approvalRequest.ActionDetails.SequenceID = 'AddApprover';

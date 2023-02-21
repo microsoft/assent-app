@@ -1,24 +1,23 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.SyntheticTransaction.Common.Models
+namespace Microsoft.CFS.Approvals.SyntheticTransaction.Common.Models;
+
+using Microsoft.CFS.Approvals.Model;
+
+/// <summary>
+/// Synthetic Transaction Entity class
+/// </summary>
+public class SyntheticTransactionEntity : BaseTableEntity
 {
-    using Microsoft.Azure.Cosmos.Table;
-
     /// <summary>
-    /// Synthetic Transaction Entity class
+    /// Constructor of SyntheticTransactionEntity
     /// </summary>
-    public class SyntheticTransactionEntity : TableEntity
+    public SyntheticTransactionEntity()
     {
-        /// <summary>
-        /// Constructor of SyntheticTransactionEntity
-        /// </summary>
-        public SyntheticTransactionEntity()
-        {
-        }
-
-        public string JsonData { get; set; }
-        public string Approver { get; set; }
-        public string AppName { get; set; }
     }
+
+    public string JsonData { get; set; }
+    public string Approver { get; set; }
+    public string AppName { get; set; }
 }

@@ -157,12 +157,14 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string ServiceTreeAppId = "0685ecb0-8dfa-4ff5-9485-31d4ba8e867f";
 
         public const string AzureAppConfiguration = "AzureAppConfiguration";
+        public const string AzureAppConfigurationUrl = "AzureAppConfigurationUrl";
         public const string AppConfigurationLabel = "AppConfigurationLabel";
         public const string MustUpdateConfig = "MustUpdateConfig";
 
         public const string CurrentApprover = "CurrentApprover";
         public const string AdaptiveDTL = "AdaptiveDTL";
         public const string FailureEmailNotificationTemplateKey = "EmailNotificationForDetailsFail";
+        public const string UserAttachments = "UserAttachments";
 
         public const string TenantTypeProduction = "Prod";
 
@@ -228,9 +230,13 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string NotificationFrameworkProvider = "NotificationFrameworkProvider";
 
         public const string RoutingIdColumnName = "RoutingId";
+        public const string CosmicApproverDetailsIdKey = "ApproverDetailId";
+
         public const string AzureTableRowKeyStandardPrefix = "{0}" + Constants.FieldsSeparator;
         public const string FieldsSeparator = "|";
         public const string ApprovalDetailsAzureTableName = "ApprovalDetails";
+        public const string ApprovalSummaryAzureTableName = "ApprovalSummary";
+        public const string ApprovalEmailNotificationTemplatesAzureTableName = "ApprovalEmailNotificationTemplates";
         public const string TransactionHistoryTableName = "TransactionHistory";
         public const string ApprovalAzureBlobContainerName = "approvalblobdata";
         public const string TenantImagesBlobContainerName = "tenanticons";
@@ -277,6 +283,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string CookieHeader = "Cookie";
         public const string UserAlias = "UserAlias";
         public const string LoggedInUserAlias = "LoggedInUserAlias";
+        public const string DelegatedUserAlias = "DelegatedUserAlias";
         public const string DetailOpsList = "DetailOpsList";
         public const string OperationType = "operationtype";
         public const string ServiceParameter = "ServiceParameter";
@@ -286,16 +293,17 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string DocumentDownloadAction = "DOC1";
         public const string DocumentPreviewAction = "DOCUMENTPREVIEW";
         public const string BulkDocumentDownloadAction = "BULKDOC";
+        public const string WhitelistedDomains = "WhitelistedDomains";
 
         public const string SingleDownloadAction = "Download";
-
-        public const string InvoiceDetailsAction = "DT1";
 
         public const string AuthSumOperationType = "authsum";
         public const string ApprovalChainOperation = "APPRCHAIN";
         public const string ProcurementDetailAction = "DTL";
         public const string HeaderOperationType = "HDR";
         public const string SummaryOperationType = "SUM";
+        public const string AttachmentsOperationType = "ATTACH";
+        public const string AttachmentUpload = "Attachment Upload";
         public const string EditedDetailsOperationType = "EditedDetails";
         public const string TransactionDetailsOperationType = "TransactionDetails";
         public const string AdditionalDetails = "ADDNDTL";
@@ -366,6 +374,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string BusinessProcessNameGetSummary = "GetSummary";
         public const string BusinessProcessNameGetSummaryFromTenant = "GetSummaryFromTenant";
         public const string BusinessProcessNameAddSummaryCopy = "AddSummaryCopy";
+        public const string BusinessProcessNameAddAttachments = "AddAttachments";
         public const string BusinessProcessNameSaveEditedDetails = "SaveEditedDetails";
         public const string BusinessProcessNameSumamryFromARX = "FromARX";
         public const string BusinessProcessNameSumamryFromBackChannel = "BackChannel";
@@ -399,6 +408,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string Xcv = "Xcv";
         public const string Tcv = "Tcv";
         public const string MessageId = "MessageId";
+        public const string TenantId = "TenantId";
 
         #endregion Request/Response Headers Mappings
 
@@ -514,6 +524,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string MessageTitle = "MessageTitle";
         public const string ActionBody = "ActionBody";
         public const string JustificationKey = "Justification";
+        public const string ActionBodyLineItemId = "LineItemID";
         public const string StatusGood = "Good";
         public const string UserImage = "UserImage";
 
@@ -562,26 +573,5 @@ namespace Microsoft.CFS.Approvals.Contracts
 
         public const string SummaryTemplate = "SummaryTemplate";
         public const string DetailsTemplate = "DetailsTemplate";
-
-        #region ElevateCapexConstants
-
-        public const string StandardServerRequest = "standardsrvs";
-        public const string StandardServerAction = "StandardServersAction";
-        public const string StandardServerApproverComment = "StandardServersApproverComment";
-        public const string ManualStandardServerRequest = "manualstdrvs";
-        public const string ManualStandardServerAction = "ServerManualAction";
-        public const string ManualStandardServerApproverComment = "ServerManualApproverComment";
-        public const string NetworkEquipmentRequest = "networkequip";
-        public const string NetworkEquipmentAction = "NetworkT1EquipmentsAction";
-        public const string NetworkEquipmentApproverComment = "NetworkT1EquipmentsApproverComment";
-        public const string ManualNetworkRequest = "manualntwrk";
-        public const string ManualNetworkAction = "NetworkT1ManualAction";
-        public const string ManualNetworkComment = "NetworkT1ManualApproverComment";
-        public const string RequestLineItemId = "lineitemid";
-        public const string ActionBodyLineItemId = "LineItemID";
-        public const string AdaptiveCardBody = "body";
-        public const string ActionBlock = "actionBlock";
-
-        #endregion ElevateCapexConstants
     }
 }

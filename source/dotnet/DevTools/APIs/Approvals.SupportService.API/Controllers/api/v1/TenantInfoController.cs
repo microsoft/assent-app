@@ -1,70 +1,71 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.SupportService.API.Controllers.api.v1
+namespace Microsoft.CFS.Approvals.SupportService.API.Controllers.api.v1;
+using System;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.Model.Models;
+using Microsoft.CFS.Approvals.SupportService.API.Filters;
+using Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+/// <summary>
+/// The TenantInfo Controller
+/// </summary>
+[Route("api/v1/TenantInfo")]
+[ApiController]
+[TypeFilter(typeof(AuthorizationFilter))]
+public class TenantInfoController : ControllerBase
 {
-    using System;
-    using Microsoft.AspNetCore.Mvc;
-    using Microsoft.AspNetCore.Mvc.Infrastructure;
-    using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
-    using Microsoft.CFS.Approvals.DevTools.Model.Models;
-    using Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper;
-    using Newtonsoft.Json;
-    using Newtonsoft.Json.Linq;
+    /// <summary>
+    /// The table helper
+    /// </summary>
+    private readonly ITableHelper _azureTableStorageHelper;
+
+    private readonly string _environment;
 
     /// <summary>
-    /// The TenantInfo Controller
+    /// Constructor of TenantInfoController
     /// </summary>
-    [Route("api/v1/TenantInfo")]
-    [ApiController]
-    public class TenantInfoController : ControllerBase
+    /// <param name="azureTableStorageHelper"></param>
+    /// <param name="configurationHelper"></param>
+    /// <param name="actionContextAccessor"></param>
+    public TenantInfoController(
+        Func<string, string, ITableHelper> azureTableStorageHelper,
+        ConfigurationHelper configurationHelper,
+        IActionContextAccessor actionContextAccessor)
     {
-        /// <summary>
-        /// The table helper
-        /// </summary>
-        private readonly ITableHelper _azureTableStorageHelper;
+        _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
+        _azureTableStorageHelper = azureTableStorageHelper(
+            configurationHelper.appSettings[_environment]["StorageAccountName"],
+            configurationHelper.appSettings[_environment]["StorageAccountKey"]);
+    }
 
-        private readonly string _environment;
-
-        /// <summary>
-        /// Constructor of TenantInfoController
-        /// </summary>
-        /// <param name="azureTableStorageHelper"></param>
-        /// <param name="configurationHelper"></param>
-        /// <param name="actionContextAccessor"></param>
-        public TenantInfoController(
-            Func<string, string, ITableHelper> azureTableStorageHelper,
-            ConfigurationHelper configurationHelper,
-            IActionContextAccessor actionContextAccessor)
+    /// <summary>
+    /// Update action detail
+    /// </summary>
+    /// <param name="body"></param>
+    /// <param name="tenantID"></param>
+    /// <returns></returns>
+    [HttpPost]
+    [Route("UpdateActionDetail/{env}")]
+    public async Task<IActionResult> UpdateActionDetail([FromBody] JObject body, string tenantID)
+    {
+        try
         {
-            _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
-            _azureTableStorageHelper = azureTableStorageHelper(
-                configurationHelper.appSettings[_environment].StorageAccountName,
-                configurationHelper.appSettings[_environment].StorageAccountKey);
+            var tenant = _azureTableStorageHelper.GetTableEntityByRowKey<TenantEntity>("ApprovalTenantInfo", tenantID);
+            var tenantDetails = body.SelectToken("tenantDetails");
+            tenant.TenantActionDetails = JsonConvert.SerializeObject(tenantDetails);
+            var result = await _azureTableStorageHelper.Merge<TenantEntity>("ApprovalTenantInfo", tenant);
+            return Ok();
         }
-
-        /// <summary>
-        /// Update action detail
-        /// </summary>
-        /// <param name="body"></param>
-        /// <param name="tenantID"></param>
-        /// <returns></returns>
-        [HttpPost]
-        [Route("UpdateActionDetail/{env}")]
-        public IActionResult UpdateActionDetail([FromBody] JObject body, string tenantID)
+        catch (Exception ex)
         {
-            try
-            {
-                var tenant = _azureTableStorageHelper.GetTableEntityByRowKey<TenantEntity>("ApprovalTenantInfo", tenantID);
-                var tenantDetails = body.SelectToken("tenantDetails");
-                tenant.TenantActionDetails = JsonConvert.SerializeObject(tenantDetails);
-                var result = _azureTableStorageHelper.InsertOrReplace<TenantEntity>("ApprovalTenantInfo", tenant);
-                return Ok();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            return BadRequest(ex.Message);
         }
     }
 }

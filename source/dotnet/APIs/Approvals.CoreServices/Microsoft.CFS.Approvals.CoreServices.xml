@@ -151,6 +151,34 @@
             downloads all the Attachment for the request and return that to the client device as a HttpResponse in a zip
             </returns>
         </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController">
+            <summary>
+            Class AttachmentUploadController,
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController.attachmentHelper">
+            <summary>
+            Attachment helper.
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IAttachmentHelper)">
+            <summary>
+            AttachmentUploadController.
+            </summary>
+            <param name="attachmentHelper"></param>       
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController.Post(System.Collections.Generic.List{Microsoft.CFS.Approvals.Model.AttachmentUploadInfo},System.Int32,System.String,System.String,System.String,System.String)">
+            <summary>
+            Post method for uploading the attachments.
+            </summary>
+            <param name="files"> List of files to be uploaded into the blob storage.</param>
+            <param name="tenantId">Tenant id.</param>
+            <param name="documentNumber">Document number.</param>
+            <param name="sessionId">GUID SessionId. Unique for each user session</param>
+            <param name="tcv">GUID Transaction Id. Unique for each transaction</param>
+            <param name="xcv">GUID Cross Correlation Vector. Unique for each request across system boundaries</param>
+            <returns></returns>
+        </member>
         <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AutoRefreshController">
             <summary>
             Class AutoRefreshController.
@@ -277,7 +305,6 @@
             The ActionString is a part of the HttpRequest's Content, which contains details regarding the type of action taken;
             the request or DocumentNumber on which action needs to be taken; the comments added by the approver; and additional information (if any)
             </summary>
-            <param name="approvalRequest">The Approval Request object</param>
             <param name="tenantId">The Unique TenantId (Int32) for which the action needs to be performed for the given request or documentNumber</param>
             <param name="sessionId">GUID SessionId. Unique for each user session</param>
             <param name="clientDevice">Client Device</param>
@@ -334,7 +361,7 @@
             </summary>
             <param name="detailsHelper"></param>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentDownloadController.Get(System.Int32,System.String,System.String,System.String,System.Int32,System.String,System.String,System.String,System.String)">
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentDownloadController.Get(System.Int32,System.String,System.String,System.String,System.Int32,System.String,System.Boolean,System.String,System.String,System.String)">
             <summary>
             Retrieves attachment file for download on the details page from the tenant LOB system that the approval belongs to.
             </summary>
@@ -344,6 +371,7 @@
             <param name="fiscalYear">Fiscal Year of Request number (if any)</param>
             <param name="page"></param>
             <param name="attachmentId">The unique attachmentId of the attachment to be downloaded from LOB system</param>
+            <param name="isPreAttached">Specifies the type of the attachment if the attachment is pre attached from tenant or post attached from ui.</param>
             <param name="sessionId">GUID SessionId. Unique for each user session</param>
             <param name="tcv">GUID Transaction Id. Unique for each transaction</param>
             <param name="xcv">GUID Cross Correlation Vector. Unique for each request across system boundaries</param>
@@ -399,7 +427,7 @@
             <param name="detailsHelper"></param>
             <param name="officeDocumentCreator"></param>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentPreviewController.Get(System.Int32,System.String,System.String,System.String,System.Int32,System.String,System.String,System.String,System.String,System.String)">
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentPreviewController.Get(System.Int32,System.String,System.String,System.String,System.Int32,System.String,System.Boolean,System.String,System.String,System.String,System.String)">
             <summary>
             Retrieves attachment file for preview on the details page from the tenant LOB system that the approval belongs to.
             </summary>
@@ -409,6 +437,7 @@
             <param name="fiscalYear">Fiscal Year of Request number (if any)</param>
             <param name="page"></param>
             <param name="attachmentId">The unique attachmentId of the attachment to be previewed from LOB system</param>
+            <param name="isPreAttached">Specifies the type of the attachment if the attachment is pre attached from tenant or post attached from ui.</param>
             <param name="attachmentName">The attachmentName of the attachment to be previewed from LOB system</param>
             <param name="sessionId">GUID SessionId. Unique for each user session</param>
             <param name="tcv">GUID Transaction Id. Unique for each transaction</param>
@@ -598,25 +627,9 @@
             </summary>
             <param name="summaryHelper"></param>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.OutOfSyncSummaryController.Get(System.String)">
-            <summary>
-            Get summary for the current user from azure table storage.
-            </summary>
-            <param name="sessionId">GUID SessionId. Unique for each user session</param>
-            <returns>
-            Out of Sync requests from all tenants for the current user.
-            This contains only summary data (i.e. no details) to be displayed on the home page.
-            </returns>
-            <remarks>
-            <para>
-            e.g.
-            HTTP GET api/OutOfSyncSummary
-            </para>
-            </remarks>
-        </member>
         <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.OutOfSyncSummaryController.Get(System.String,System.String)">
             <summary>
-            Get summary for the current user and particular tenant from azure table storage given Document Type ID.
+            Get out of sync requests for the current user sorted/ filtered by tenant from azure table storage given Document Type ID (optional).
             </summary>
             <param name="id">GUID DocumentTypeId of the Tenant</param>
             <param name="sessionId">GUID SessionId. Unique for each user session</param>
@@ -627,7 +640,7 @@
             <remarks>
             <para>
             e.g.
-            HTTP GET api/OutOfSyncSummary?Id=[tenantDocTypeID]
+            HTTP GET api/v1/OutOfSyncSummary?id=[tenantDocTypeID]
             </para>
             </remarks>
         </member>
@@ -816,25 +829,9 @@
             </summary>
             <param name="summaryHelper">The summary helper.</param>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController.Get(System.String)">
-            <summary>
-            Get summary for the current user from azure table storage.
-            </summary>
-            <param name="sessionId">GUID SessionId. Unique for each user session</param>
-            <returns>
-            Pending approvals from all tenants for the current user.
-            This contains only summary data (i.e. no details) to be displayed on the home page.
-            </returns>
-            <remarks>
-            <para>
-            e.g.
-            HTTP GET api/Summary
-            </para>
-            </remarks>
-        </member>
         <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController.Get(System.String,System.String)">
             <summary>
-            Get summary for the current user and particular tenant from azure table storage given Document Type ID.
+            Get summary for the current user sorted/ filtered by tenant from azure table storage given Document Type ID (optional).
             </summary>
             <param name="Id">GUID DocumentTypeId of the Tenant</param>
             <param name="SessionId">GUID SessionId. Unique for each user session</param>
@@ -845,7 +842,7 @@
             <remarks>
             <para>
             e.g.
-            HTTP GET api/Summary?Id=[tenantDocTypeID]
+            HTTP GET api/v1/Summary?Id=[tenantDocTypeID]
             </para>
             </remarks>
         </member>
@@ -1002,7 +999,7 @@
             <remarks>
             <para>
             e.g.
-            HTTP GET api/UserDelegationSettings?tenantId=[tenantId]&amp;loggedInAlias=[loggedInAlias]&amp;SessionId=[userSessionId]
+            HTTP GET api/UserDelegationSettings/[tenantId]/loggedInAlias]?SessionId=[userSessionId]
             </para>
             </remarks>
         </member>
@@ -1091,7 +1088,7 @@
         </member>
         <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.GetAlias">
             <summary>
-            The Get Alias
+            Get alias
             </summary>
             <returns>user alias</returns>
         </member>
@@ -1146,6 +1143,11 @@
         <member name="T:Microsoft.CFS.Approvals.CoreServices.Utils.AuthorizationMiddleware">
             <summary>
             Custom Authorization Middleware class which takes care of additional security checks
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Utils.AuthorizationMiddleware.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalTenantInfoHelper,Microsoft.CFS.Approvals.Core.BL.Interface.IDelegationHelper,Microsoft.Extensions.Configuration.IConfiguration)">
+            <summary>
+            Constructor
             </summary>
         </member>
         <member name="M:Microsoft.CFS.Approvals.CoreServices.Utils.AuthorizationMiddleware.InvokeAsync(Microsoft.AspNetCore.Http.HttpContext,Microsoft.AspNetCore.Http.RequestDelegate)">

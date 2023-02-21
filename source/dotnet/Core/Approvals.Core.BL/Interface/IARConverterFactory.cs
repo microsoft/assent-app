@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.Core.BL.Interface
+namespace Microsoft.CFS.Approvals.Core.BL.Interface;
+
+public interface IARConverterFactory
 {
-    public interface IARConverterFactory
-    {
-        IARConverter GetARConverter();
-    }
+    IARConverter GetARConverter();
 }

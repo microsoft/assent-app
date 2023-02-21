@@ -1,19 +1,16 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.Model
+namespace Microsoft.CFS.Approvals.Model;
+
+public class ApprovalDetailsEntity : BaseTableEntity
 {
-    using Microsoft.Azure.Cosmos.Table;
+    public int TenantID { get; set; }
 
-    public class ApprovalDetailsEntity : TableEntity
-    {
-        public int TenantID { get; set; }
+//[EncryptProperty]
+public string JSONData { get; set; }
 
-        //[EncryptProperty]
-        public string JSONData { get; set; }
+public string BlobPointer { get; set; }
 
-        public string BlobPointer { get; set; }
-
-        public string Version { get; set; }
-    }
+public string Version { get; set; }
 }

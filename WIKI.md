@@ -21,6 +21,7 @@
       - [Approval Response for single approval success scenario](#Approval-response-for-single-approval-success-scenario)</br>
       - [Approval Response for single approval failure scenario](#Approval-response-for-single-approval-failure-scenario)</br>
       - [Approval Response for bulk approvals success and failure scenario](#Approval-response-for-bulk-approvals-success-and-failure-scenario)</br>
+    - [Details of attaching documents while performing actions for Tenant](#details-of-attaching-documents-for-tenants)</br>
 
 ## Introduction
 
@@ -763,3 +764,25 @@ This is the response format to the synchronous ApprovalRequest which Approvals s
 |  DisplayMessage| String | A display error message when a specific error message needs to be shown to the user .Provide a message for the user even if response is http OK. DisplayMessage shouldn’t have technical error message. It should have user friendly error message while the technical error message should be in the ErrorMessages property. For non-business failure errors, like code exception, a generic message with support link should be sent in the DisplayMessage. Ex. If a business rule fails, user needs to understand the reason for failure and hence should see this message. Ex. In case a SQL Connection fails to establish, ErrorMessage can show SQL connection failed, but DisplayMessage should show something like "Your request could not be processed. Please try again later". |
 | Telemetry | Object | Contains the Xcv/Tcv/BusinessProcessName which is used for Telemetry and Logging. |
 
+### Details of attaching documents while performing actions for Tenant
+While performing approval action, users might optionally upload an attachment to the approval request such as receipt or proof of delivery, etc. 
+Tenants can control various aspects of this feature such as,
+- Are users allowed to upload documents while performing approval action.
+- Are users required/mandated to upload documents while perforiming approval action.
+- If allowed, what are maximum number of documents that user can attach with the request.
+- If allowed, what is the maximum size of documents that user can attach with the request.
+
+While onboarding tenants to the Approval framework, we configure tenants with following properties,
+
+| Property Name | Type | Remarks |
+|--|--|--|
+| AttachmentContainerName| String | The name of blob container provisioned per tenants where all attahcments are stored. |
+| FileAtachmentOptions | Object | Collection of different settings per tenant to control the attachment feature. |
+| -- AllowFileUpload | Boolean| Boolean identifier to control if user is allowed to upload the file attachment. |
+| -- MaxAttachments | Integer | Maximum number of attachments allowed for user to attach with the approval request. |
+| -- AllowedFileTypes | String | The different types of file allowed to be attached with approval request. |
+| -- MaxFileSizeInBytes | Integer | Maximum size of files in byte allowed for user per file to attach with the approval request. |
+
+It should be noted that tenant can have some files sent as part of the approval request, seprate from what user is attaching. These are controlled by 'attachmentType'. There are api's exposed to preview and upload the attchments.
+For tenant to fetch this attachments, they are configured with access via Managed identity on the container level specified in AttachmentContainerName property while onboarding the tenant. It is responsibility of the tenant to pull the attachments from the storage prior to completion of approval workflow and use them in its approval process. Once the approval request is deleted, all documents related to the request will be cleaned up from approval store.
+The approval supports upload failures and displays them gracefully on presentation layer. For example if there were 5 documents there were uploaded by user, 4 of them were successfully processed and 1 got errored out, the presenttion layer will popup message for the failed one and ask user to retry. 

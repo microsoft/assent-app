@@ -28,7 +28,7 @@ namespace Microsoft.CFS.Approvals.Contracts.AttributeValidators
             foreach (Approver approver in approvers)
             {
                 System.ComponentModel.DataAnnotations.Validator.TryValidateObject(approver, new ValidationContext(approver), resultsTemp);
-                if (approver.Alias != null && (approver.Alias.Contains('^') || approver.Alias.Contains('/') || approver.Alias.Contains('\\') || approver.Alias.Contains('#') || approver.Alias.Contains('?')))
+                if (approver.Alias != null && (approver.Alias.Contains("^") || approver.Alias.Contains("/") || approver.Alias.Contains("\\") || approver.Alias.Contains("#") || approver.Alias.Contains("?")))
                     results.Add(new ValidationResult(Constants.NameAliasEntityAliasInvalidCharsMessage, new List<string> { "ApprovalRequestExpression.Approvers.Alias" }));
             }
             results.AddRange(resultsTemp);

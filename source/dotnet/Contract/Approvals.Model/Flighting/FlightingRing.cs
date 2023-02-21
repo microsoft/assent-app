@@ -1,13 +1,11 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.Model.Flighting
+namespace Microsoft.CFS.Approvals.Model.Flighting;
+
+public class FlightingRing: BaseTableEntity
 {
-    using Microsoft.Azure.Cosmos.Table;
-    public class FlightingRing: TableEntity
-    {
-        public int Id { get; set; }
-        public int RingLevel { get; set; }
-        public string RingDescription { get; set; }
-    }
+    public int Id { get; set; }
+    public int RingLevel { get; set; }
+    public string RingDescription { get; set; }
 }

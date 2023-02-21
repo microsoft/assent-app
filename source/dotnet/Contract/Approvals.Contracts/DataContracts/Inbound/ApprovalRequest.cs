@@ -74,7 +74,7 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
         /// Extension data.
         /// </summary>
         [Obsolete]
-        public ExtensionDataObject ExtensionData { get; set; }        
+        public ExtensionDataObject ExtensionData { get; set; }
 
         /// <summary>
         /// Contains the Xcv/Tcv/BusinessProcessName which is used for Telemetry and Logging 

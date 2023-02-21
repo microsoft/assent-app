@@ -2,10 +2,8 @@
 // Licensed under the MIT License.
 
 
-namespace Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Interface
+namespace Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Interface;
+public interface IServiceHelper
 {
-    public interface IServiceHelper
-    {
-        void GetKeyVault(string Env);
-    }
+    void GetKeyVault(string Env);
 }

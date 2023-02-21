@@ -15,6 +15,11 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
     public abstract class ApprovalRequestExpression
     {
         /// <summary>
+        /// Operation date time
+        /// </summary>
+        private DateTime operationDateTime = DateTime.UtcNow;
+
+        /// <summary>
         /// Instantiates an ApprovalRequestExpression object setting the RefreshDetails flag to true by default
         /// </summary>
         public ApprovalRequestExpression()
@@ -110,7 +115,17 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
         /// <summary>
         /// This date time property represents the moment when the operation is performed. Operation includes the Create, Update or Delete.
         /// </summary>
-        public DateTime OperationDateTime { get; set; }
+        public DateTime OperationDateTime
+        {
+            get
+            {
+                return operationDateTime;
+            }
+            set
+            {
+                operationDateTime = value.GetDateTimeWithUtcKind();
+            }
+        }
 
         /// <summary>
         /// Contains the Xcv/Tcv/BusinessProcessName which is used for Telemetry and Logging

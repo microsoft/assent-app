@@ -1,76 +1,75 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.PayloadReceiver.BL
+namespace Microsoft.CFS.Approvals.PayloadReceiver.BL;
+
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using Microsoft.CFS.Approvals.Contracts;
+using Microsoft.CFS.Approvals.PayloadReceiver.BL.Interface;
+using Microsoft.Extensions.Configuration;
+
+/// <summary>
+/// Approval request expression helper
+/// </summary>
+[ExcludeFromCodeCoverage]
+public class ApprovalRequestExpressionHelper : IApprovalRequestExpressionHelper
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics.CodeAnalysis;
-    using Microsoft.CFS.Approvals.Contracts;
-    using Microsoft.CFS.Approvals.PayloadReceiver.BL.Interface;
-    using Microsoft.Extensions.Configuration;
+    /// <summary>
+    /// The configuration
+    /// </summary>
+    private readonly IConfiguration _config = null;
 
     /// <summary>
-    /// Approval request expression helper
+    /// Contructor of ApprovalRequestExpressionHelper
     /// </summary>
-    [ExcludeFromCodeCoverage]
-    public class ApprovalRequestExpressionHelper : IApprovalRequestExpressionHelper
+    /// <param name="config"></param>
+    public ApprovalRequestExpressionHelper(IConfiguration config)
     {
-        /// <summary>
-        /// The configuration
-        /// </summary>
-        private readonly IConfiguration _config = null;
+        _config = config;
+    }
 
-        /// <summary>
-        /// Contructor of ApprovalRequestExpressionHelper
-        /// </summary>
-        /// <param name="config"></param>
-        public ApprovalRequestExpressionHelper(IConfiguration config)
+    /// <summary>
+    /// Get current approval request expression type
+    /// </summary>
+    /// <param name="tenantId"></param>
+    /// <returns></returns>
+    public Type GetCurrrentApprovalRequestExpressionType(string tenantId)
+    {
+        Type type = null;
+        try
         {
-            _config = config;
-        }
-
-        /// <summary>
-        /// Get current approval request expression type
-        /// </summary>
-        /// <param name="tenantId"></param>
-        /// <returns></returns>
-        public Type GetCurrrentApprovalRequestExpressionType(string tenantId)
-        {
-            Type type = null;
-            try
+            var keyValue = string.Empty;
+            var configKey = _config[ConfigurationKey.ApprovalRequestExpressionClass.ToString()];
+            if (configKey != null)
             {
-                var keyValue = string.Empty;
-                var configKey = _config[ConfigurationKey.ApprovalRequestExpressionClass.ToString()];
-                if (configKey != null)
-                {
-                    keyValue = configKey;
-                }
-                else
-                {
-                    throw new KeyNotFoundException(ConfigurationKey.ApprovalRequestExpressionClass.ToString() + " not found!!");
-                }
-
-                // If version number is provided, find its type, else get the latest default version from configuration
-                if (!string.IsNullOrEmpty(tenantId))
-                {
-                    // Temp Code
-                    // TODO:: Replace with logic to find the type from Tenant Info Table
-                    type = Activator.CreateInstance(Type.GetType(keyValue))
-                            .GetType();
-                }
-                else
-                {
-                    type = Activator.CreateInstance(Type.GetType(keyValue))
-                            .GetType();
-                }
+                keyValue = configKey;
             }
-            catch
+            else
             {
-                // Catch and log and return Null for Payload Type
+                throw new KeyNotFoundException(ConfigurationKey.ApprovalRequestExpressionClass.ToString() + " not found!!");
             }
 
-            return type;
+            // If version number is provided, find its type, else get the latest default version from configuration
+            if (!string.IsNullOrEmpty(tenantId))
+            {
+                // Temp Code
+                // TODO:: Replace with logic to find the type from Tenant Info Table
+                type = Activator.CreateInstance(Type.GetType(keyValue))
+                        .GetType();
+            }
+            else
+            {
+                type = Activator.CreateInstance(Type.GetType(keyValue))
+                        .GetType();
+            }
         }
+        catch
+        {
+            // Catch and log and return Null for Payload Type
+        }
+
+        return type;
     }
 }

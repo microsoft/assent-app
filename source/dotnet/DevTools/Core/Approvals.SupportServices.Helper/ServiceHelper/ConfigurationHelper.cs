@@ -1,25 +1,23 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper
+namespace Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper;
+using System.Collections.Generic;
+using Microsoft.Extensions.Configuration;
+
+/// <summary>
+/// The Configuration Helper class
+/// </summary>
+public class ConfigurationHelper
 {
-    using System.Collections.Generic;
-    using Microsoft.CFS.Approvals.DevTools.Model.Models;
+    public readonly Dictionary<string, IConfiguration> appSettings;
 
     /// <summary>
-    /// The Configuration Helper class
+    /// Constructor of ConfigurationHelper
     /// </summary>
-    public class ConfigurationHelper
+    /// <param name="keyValuePairs"></param>
+    public ConfigurationHelper(Dictionary<string, IConfiguration> keyValuePairs)
     {
-        public readonly Dictionary<string, AppSettings> appSettings;
-
-        /// <summary>
-        /// Constructor of ConfigurationHelper
-        /// </summary>
-        /// <param name="keyValuePairs"></param>
-        public ConfigurationHelper(Dictionary<string, AppSettings> keyValuePairs)
-        {
-            appSettings = keyValuePairs;
-        }
+        appSettings = keyValuePairs;
     }
 }

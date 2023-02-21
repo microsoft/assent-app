@@ -179,9 +179,33 @@ export function TopHeader(props: { upn: string; displayName: string; feedback: I
                                 title="Feedback"
                             />
                         )}
+                        <IconButton
+                            iconProps={{ iconName: 'Accessibility' }}
+                            styles={{ icon: { color: 'white' }, ...interactiveStyles }}
+                            onClick={handleAccessibilityClick}
+                            title="Accessibility"
+                        />
+                        <IconButton
+                            iconProps={{ iconName: 'Settings' }}
+                            styles={{ icon: { color: 'white' }, ...interactiveStyles }}
+                            onClick={handleSettingsClick}
+                            title="Settings"
+                        />
+                        <IconButton
+                            iconProps={{ iconName: 'Ringer' }}
+                            styles={{ icon: { color: 'white' }, ...interactiveStyles }}
+                            onClick={handleNotificationsClick}
+                            title="Notifications"
+                        />
+                        <IconButton
+                            iconProps={{ iconName: 'Help' }}
+                            styles={{ icon: { color: 'white' }, ...interactiveStyles }}
+                            onClick={handleHelpClick}
+                            title="Help"
+                        />
                         <CommandBarButton
                             onClick={handleProfileClick}
-                            title="Profile"
+                            title= "Profile"
                             styles={{
                                 ...interactiveStyles,
                                 root: { backgroundColor: CoherenceColors.bluePrimary, ...interactiveStyles.root },

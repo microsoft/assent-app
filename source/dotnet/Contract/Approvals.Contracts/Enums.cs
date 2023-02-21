@@ -74,9 +74,13 @@ namespace Microsoft.CFS.Approvals.Contracts
         CosmosDbEndPoint,
         CosmosDbNameActionAuditLog,
         CosmosDbNameAuditAgent,
+        CosmosDbPartitionKeyPathAuditAgent,
+        CosmosDbPartitionKeyPath,
         DaysForReminderMails, // No of days for which we need to send reminder mail
         DetailControllerExceptionMessage,
         DeviceDeepLinkUrl,
+        DocDBNameAuditAgent,
+        DocDBCollectionAuditAgent,
         DomainName,
         EditableConfigurationTableName,
         EnableValidation,
@@ -283,9 +287,11 @@ namespace Microsoft.CFS.Approvals.Contracts
     public enum FlightingFeatureName : int
     {
         ManageOutOfSync = 14,
+        OutlookEmailApprovalMyOrder = 22,
         ActionableEmailWithMobileFriendlyAdaptiveCard = 26,
         ModernAdaptiveDetailsUI = 27,
-        MSTeamNotification = 28
+        MSTeamNotification = 28,
+        UploadAttachment = 29
     }
 
     public enum FlightingFeatureStatus : int
@@ -337,5 +343,38 @@ namespace Microsoft.CFS.Approvals.Contracts
         Danger = 1, //Approvals Critical Notification
         Warning = 2, //LOB Critical Notification
         Info = 3, //Informational/Future events
+    }
+
+    public static class QueryComparisons
+    {
+        //
+        // Summary:
+        //     Represents the Equal operator.
+        public static string Equal = "eq";
+        //
+        // Summary:
+        //     Represents the Not Equal operator.
+        public static string NotEqual = "ne";
+        //
+        // Summary:
+        //     Represents the Greater Than operator.
+        public static string GreaterThan = "gt";
+        //
+        // Summary:
+        //     Represents the Greater Than or Equal operator.
+        public static string GreaterThanOrEqual = "ge";
+        //
+        // Summary:
+        //     Represents the Less Than operator.
+        public static string LessThan = "lt";
+        //
+        // Summary:
+        //     Represents the Less Than or Equal operator.
+        public static string LessThanOrEqual = "le";
+    }
+
+    public static class TableOperators
+    {
+        public static string And = "and";
     }
 }

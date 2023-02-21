@@ -1,25 +1,24 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.SyntheticTransaction.Common.Models
+namespace Microsoft.CFS.Approvals.SyntheticTransaction.Common.Models;
+
+using Microsoft.CFS.Approvals.Model;
+
+/// <summary>
+/// Test Tenant Summary Entity class
+/// </summary>
+public class TestTenantSummaryEntity : BaseTableEntity
 {
-    using Microsoft.Azure.Cosmos.Table;
-
     /// <summary>
-    /// Test Tenant Summary Entity class
+    /// Constructor of TestTenantSummaryEntity
     /// </summary>
-    public class TestTenantSummaryEntity : TableEntity
+    public TestTenantSummaryEntity()
     {
-        /// <summary>
-        /// Constructor of TestTenantSummaryEntity
-        /// </summary>
-        public TestTenantSummaryEntity()
-        {
-        }
-
-        public string JsonData { get; set; }
-        public string Approver { get; set; }
-        public string TenantID { get; set; }
-        public bool IsActionTaken { get; set; }
     }
+
+    public string JsonData { get; set; }
+    public string Approver { get; set; }
+    public string TenantID { get; set; }
+    public bool IsActionTaken { get; set; }
 }

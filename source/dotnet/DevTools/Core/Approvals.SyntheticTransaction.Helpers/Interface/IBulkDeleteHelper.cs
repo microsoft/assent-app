@@ -1,18 +1,16 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-namespace Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Interface
+namespace Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Interface;
+using System.Net.Http;
+using System.Threading.Tasks;
+using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Models;
+
+public interface IBulkDeleteHelper
 {
-    using System.Net.Http;
-    using System.Threading.Tasks;
-    using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Models;
+    Task<object> BulkDelete(string tenant, string approver, string days, string docNumber, string tcv);
 
-    public interface IBulkDeleteHelper
-    {
-        Task<object> BulkDelete(string tenant, string approver, string days, string docNumber);
+    Task<HttpResponseMessage> SendDeletePayload(TestHarnessDocument documnet, string approver, string comment, string action, string tcv);
 
-        HttpResponseMessage SendDeletePayload(TestHarnessDocument documnet, string approver, string comment, string action);
-
-        Task<bool> UpdateDocumentStatus(TestHarnessDocument document);
-    }
+    Task<bool> UpdateDocumentStatus(TestHarnessDocument document);
 }
