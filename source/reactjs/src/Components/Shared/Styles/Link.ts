@@ -2,7 +2,7 @@
 //import styled from "styled-components";
 
 export const Link = styled.a`
-    color: #0078d4;
+    color: #006cbe;
 
     &:hover {
         color: #0078d4;

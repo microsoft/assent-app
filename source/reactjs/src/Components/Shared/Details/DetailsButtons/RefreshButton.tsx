@@ -9,11 +9,12 @@ import { DetailsType, IDetailsAppState } from '../../Details/Details.types';
 import { IComponentsAppState } from '../../SharedComponents.types';
 import { SharedComponentsPersistentInitialState } from '../../SharedComponents.persistent-reducer';
 import { TooltipHost } from '@fluentui/react/lib/Tooltip';
-import { getTenantInfo } from '../../SharedComponents.selectors';
+import { getSelectedPage, getTenantInfo } from '../../SharedComponents.selectors';
 import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
 
 function RefreshButton(): React.ReactElement {
     const { useSelector, dispatch } = React.useContext(Context as React.Context<IEmployeeExperienceContext>);
+    const selectedPage = useSelector(getSelectedPage);
     const { userAlias } = useSelector(
         (state: IComponentsAppState) =>
             state.SharedComponentsPersistentReducer || SharedComponentsPersistentInitialState
@@ -48,7 +49,7 @@ function RefreshButton(): React.ReactElement {
                         requestHeader(
                             tenantId,
                             displayDocumentNumber,
-                            userAlias,
+                            selectedPage === 'history' ? '' : userAlias,
                             isPullModelEnabled,
                             summaryJSON,
                             summaryDataMapping
@@ -59,7 +60,7 @@ function RefreshButton(): React.ReactElement {
                             tenantId,
                             documentNumber,
                             displayDocumentNumber,
-                            userAlias,
+                            selectedPage === 'history' ? '' : userAlias,
                             requiresTemplate,
                             isPullModelEnabled
                         )

@@ -1,3 +1,5 @@
+import { IFileUpload } from "./FileUpload/FileUpload";
+
 export enum DetailsActionType {
     REQUEST_USER_IMAGE = 'REQUEST_USER_IMAGE',
     RECEIVE_USER_IMAGE = 'RECEIVE_USER_IMAGE',
@@ -45,7 +47,12 @@ export enum DetailsActionType {
     SET_BULK_MESSAGEBAR_HEIGHT = 'SET_BULK_MESSAGEBAR_HEIGHT',
     SET_ALIAS_MESSAGEBAR_HEIGHT = 'SET_ALIAS_MESSAGEBAR_HEIGHT',
     CONCAT_FAILED_REQUESTS = 'CONCAT_FAILED_REQUESTS',
-    RECEIVE_APPROVAL_RESPONSE_DETAILS = 'RECEIVE_APPROVAL_RESPONSE_DETAILS'
+    RECEIVE_APPROVAL_RESPONSE_DETAILS = 'RECEIVE_APPROVAL_RESPONSE_DETAILS',
+    OPEN_FILE_UPLOAD = 'OPEN_FILE_UPLOAD',
+    CLOSE_FILE_UPLOAD = 'CLOSE_FILE_UPLOAD',
+    UPLOAD_FILE = 'UPLOAD_FILE',
+    FAILED_UPLOAD_FILE = 'FAILED_UPLOAD_FILE',
+    SUCCESS_UPLOAD_FILE = 'SUCCESS_UPLOAD_FILE',
 }
 
 export type DetailsAction =
@@ -92,7 +99,12 @@ export type DetailsAction =
     | IConcatFailedRequests
     | IRequestDocumentStart
     | IRequestAllDocumentsAction
-    | IRequestDocumentEnd;
+    | IRequestDocumentEnd
+    | IOpenFileUploadAction
+    | ICloseFileUploadAction
+    | IUploadFileAction
+    | IFailedUploadFilesAction
+    | ISuccessUploadFilesAction;
 
 export interface ISetFooterHeight {
     type: DetailsActionType.SET_FOOTER_HEIGHT;
@@ -203,8 +215,39 @@ export interface IRequestDocumentPreviewAction {
     documentNumber: string;
     displayDocumentNumber: string;
     attachmentId: string;
+    isPreAttached: boolean;
     userAlias: string;
     isModal: boolean;
+}
+
+export interface IOpenFileUploadAction {
+    type: DetailsActionType.OPEN_FILE_UPLOAD;
+    isModal: boolean;
+}
+
+export interface ICloseFileUploadAction {
+    type: DetailsActionType.CLOSE_FILE_UPLOAD;
+}
+
+export interface IUploadFileAction {
+    type: DetailsActionType.UPLOAD_FILE;
+    tenantId: string;
+    documentNumber: string;
+    displayDocumentNumber: string;
+    userAlias: string;
+    requiresTemplate: boolean;
+    isPullModelEnabled: boolean;
+    files: IFileUpload[];
+}
+
+export interface IFailedUploadFilesAction {
+    type: DetailsActionType.FAILED_UPLOAD_FILE;
+    uploadFilesErrorMessage: string;
+    uploadFilesErrorMessageList: string[];
+}
+
+export interface ISuccessUploadFilesAction {
+    type: DetailsActionType.SUCCESS_UPLOAD_FILE;
 }
 
 export interface IRequestAllDocumentsAction {

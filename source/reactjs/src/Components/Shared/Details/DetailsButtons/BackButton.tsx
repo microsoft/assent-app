@@ -7,7 +7,7 @@ import { Context, withContext } from '@micro-frontend-react/employee-experience/
 import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
 import { sharedComponentsReducerName, sharedComponentsReducer } from '../../SharedComponents.reducer';
 import { sharedComponentsSagas } from '../../SharedComponents.sagas';
-import { clearDocumentPreview, closeDocumentPreview, closeMicrofrontend } from '../Details.actions';
+import { clearDocumentPreview, closeDocumentPreview, closeFileUpload, closeMicrofrontend } from '../Details.actions';
 import { TooltipHost } from '@fluentui/react/lib/Tooltip';
 
 function BackButton(props: { callbackOnBackButton?(): void }): React.ReactElement {
@@ -22,6 +22,7 @@ function BackButton(props: { callbackOnBackButton?(): void }): React.ReactElemen
                 onClick={(): void => {
                     dispatch(clearDocumentPreview());
                     dispatch(closeDocumentPreview());
+                    dispatch(closeFileUpload());
                     dispatch(closeMicrofrontend());
                     if (props.callbackOnBackButton) {
                         props.callbackOnBackButton();

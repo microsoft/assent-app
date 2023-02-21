@@ -89,7 +89,6 @@ function HelpPanelContent(): React.ReactElement {
                             <li>
                                 <Link
                                     title={link.alternateText ? link.alternateText : null}
-                                    ref={input => input && index == 0 && input.focus()}
                                     href={link.link}
                                     target={link.target ? link.target: null}
                                 >

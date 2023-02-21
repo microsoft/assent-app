@@ -374,18 +374,20 @@ function HistoryTable(): React.ReactElement {
                             </Stack>
                             {!isLoadingHistory && (
                                 <Stack padding="0 0 8px 0">
-                                    <Text className="ms-hiddenMdDown">
-                                        Displaying requests{' '}
-                                        <b>
-                                            {dynamicPageSize * (historySelectedPage - 1) +
-                                                1 +
-                                                ' to ' +
-                                                (dynamicPageSize * (historySelectedPage - 1) +
-                                                    filterHistoryData.length)}
-                                        </b>{' '}
-                                        out of <b>{historyTotalRecords}</b> from the Last{' '}
-                                        {selectedTimePeriod === '3' ? selectedTimePeriod : historyTimePeriod} Months
-                                    </Text>
+                                    {historyTotalRecords > 0 && (
+                                        <Text className="ms-hiddenMdDown">
+                                            Displaying requests{' '}
+                                            <b>
+                                                {dynamicPageSize * (historySelectedPage - 1) +
+                                                    1 +
+                                                    ' to ' +
+                                                    (dynamicPageSize * (historySelectedPage - 1) +
+                                                        filterHistoryData.length)}
+                                            </b>{' '}
+                                            out of <b>{historyTotalRecords}</b> from the Last{' '}
+                                            {selectedTimePeriod === '3' ? selectedTimePeriod : historyTimePeriod} Months
+                                        </Text>
+                                    )}
                                     <Text className="ms-hiddenLgUp">Showing Last {historyTimePeriod} Months </Text>
                                 </Stack>
                             )}

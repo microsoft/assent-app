@@ -89,6 +89,7 @@ export enum SharedComponentsActionType {
     UPDATE_SELECTED_TENANT_DELEGATION = 'UPDATE_SELECTED_TENANT_DELEGATION',
     UPDATE_SUCCESSFUL_PULLTENANT_REQUESTS = 'UPDATE_SUCCESSFUL_PULLTENANT_REQUESTS',
     TOGGLE_PROFILE_PANEL = 'TOGGLE_PROFILE_PANEL',
+    TOGGLE_ACCESSIBILITY_PANEL = 'TOGGLE_ACCESSIBILITY_PANEL',
 }
 
 export type SharedComponentsAction =
@@ -168,7 +169,8 @@ export type SharedComponentsAction =
     | IReceiveTenantDelegations
     | IUpdateSelectedTenantDelegation
     | IUpdateSuccessfulPullTenantRequests
-    | IToggleProfilePanel;
+    | IToggleProfilePanel
+    | IToggleAccessibilityPanel;
 
 export interface IClearUserPreferencesAPIMessages {
     type: SharedComponentsActionType.CLEAR_USER_PREFERENCES_API_MESSAGES;
@@ -553,5 +555,10 @@ export interface IUpdateSuccessfulPullTenantRequests {
 
 export interface IToggleProfilePanel {
     type: SharedComponentsActionType.TOGGLE_PROFILE_PANEL;
+    isOpen: boolean;
+}
+
+export interface IToggleAccessibilityPanel {
+    type: SharedComponentsActionType.TOGGLE_ACCESSIBILITY_PANEL;
     isOpen: boolean;
 }

@@ -65,6 +65,7 @@ export function Pagination(props: IPaginationProps): React.ReactElement {
                             value={inputNumber > 0 ? inputNumber.toString() : ''}
                             onChange={onChangeSecondTextFieldValue}
                             styles={narrowTextFieldStyles}
+                            ariaLabel="Pagination"
                         />
                     </Stack.Item>
                     <Stack.Item>

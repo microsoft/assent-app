@@ -83,6 +83,23 @@ export const ErrorResultIcon = styled.div`
     margin: 0 50px;
 `;
 
+export const AccessibilityIcon = styled.div`
+    width: 16px;
+    height: 16px;
+    background-image: url('/icons/accessibility-white.png');
+    background-size: 16px 16px;
+    font-size: 16;
+
+
+    @media screen and (forced-colors: active) and (prefers-color-scheme: light) {
+        background-image: url('/icons/ic_fluent_accessibility_24_regular.svg');
+    }
+
+    
+    
+
+`;
+
 export const ErrorText = styled.p`
     color: #d73b02;
 `;
@@ -254,5 +271,5 @@ export const PullTenantCardLabel = styled.div`
 export const dropdownStyles: Partial<IDropdownStyles> = {
     dropdownOptionText: { overflow: 'visible', whiteSpace: 'normal' },
     dropdownItem: { height: 'auto' },
-    title: {overflow: 'visible', whiteSpace: 'normal' , height:'auto'}
+    title: { overflow: 'visible', whiteSpace: 'normal', height: 'auto' }
 };

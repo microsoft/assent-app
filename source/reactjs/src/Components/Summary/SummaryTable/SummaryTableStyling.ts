@@ -23,7 +23,12 @@ export const SummaryTableMainContainer = styled.div`
 
 export const failedIconStyle = {
     color: '#A80000',
-    fontSize: 16,
+    fontSize: 12,
+    cursor: 'default'
+};
+
+export const pendingIconStyle = {
+    fontSize: 11,
     cursor: 'default'
 };
 

@@ -2,12 +2,25 @@
 import * as React from 'react';
 import * as Styled from './SummaryTableStyling';
 import * as SharedStyled from '../../Shared/SharedLayout';
-import { failedIconStyle, fileIconCell, paginationWidth, paginationAlign } from './SummaryTableStyling';
+import { failedIconStyle, pendingIconStyle, fileIconCell, paginationWidth, paginationAlign } from './SummaryTableStyling';
 import { ISummaryRecordModel } from './SummaryTable.types';
 import { SummaryTableFieldNames } from './SummaryTableFieldNames';
 import { booleanToReadableValue, imitateClickOnKeyPressForAnchor } from '../../../Helpers/sharedHelpers';
 import { Dictionary } from 'adaptivecards';
-import { TooltipHost, IDetailsListProps, DetailsHeader } from '@fluentui/react';
+import {
+    TooltipHost,
+    IDetailsListProps,
+    DetailsHeader,
+    IContextualMenuProps,
+    Dialog,
+    TextField,
+    DialogFooter,
+    PrimaryButton,
+    DefaultButton,
+    ContextualMenu,
+    DialogType,
+    ITextField,
+} from '@fluentui/react';
 import {
     updatePanelState,
     updateRetainBulkSelection,
@@ -25,6 +38,7 @@ import {
     SelectionMode,
     DetailsList,
     IColumn,
+    IDetailsList,
 } from '@fluentui/react/lib/DetailsList';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { updateApprovalRecords } from '../../Shared/SharedComponents.actions';
@@ -57,6 +71,7 @@ import { DATE_FORMAT_OPTION, DEFAULT_LOCALE } from '../../Shared/SharedConstants
 import { Context } from '@micro-frontend-react/employee-experience/lib/Context';
 import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
 import { Link } from '../../Shared/Styles/Link';
+import { getIsKeyboardColumnResizingOn } from '../../AccessibilityPanel/Accessibility.selectors';
 
 const ColSize = {
     XXS: 40,
@@ -68,6 +83,10 @@ const ColSize = {
     XXL: 200,
     XXXL: 230,
 };
+
+const RESIZE = 'Resize';
+
+const COLUMN_HEADER_ACCESSIBILITY_LABEL = ' - Click to resize or sort column';
 
 function SummaryTableColumns(props: any): React.ReactElement {
     const { useSelector, dispatch, telemetryClient } = React.useContext(
@@ -87,6 +106,7 @@ function SummaryTableColumns(props: any): React.ReactElement {
     const filteredTenantInfo = useSelector(getFilteredTenantInfo);
     const tableRowCount = useSelector(getTableRowCount);
     const disabled = useSelector(getIsDisabled);
+    const isKeyboardColumnResizingOn = useSelector(getIsKeyboardColumnResizingOn);
 
     const [windowWidth, setWindowWidth] = React.useState<number>(0);
     const [dimensions, setDimensions] = React.useState({
@@ -108,6 +128,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
     const [numFilters, setNumFilters] = React.useState(0);
     const [sortedColumn, setSortedColumn] = React.useState('');
     const [isSortedDescending, setIsSortedDescending] = React.useState(false);
+
+    let detailsListRef = React.useRef<IDetailsList>(null);
+    const input = React.useRef<number | null>(null);
+    const [isDialogHidden, setIsDialogHidden] = React.useState(true);
+    const textfieldRef = React.useRef<ITextField>(null);
+    const columnToEdit = React.useRef<IColumn | null>(null);
+    const clickHandler = React.useRef<string>(RESIZE);
+    const [contextualMenuProps, setContextualMenuProps] = React.useState<IContextualMenuProps | undefined>(undefined);
 
     const documentNumberPrefix = filteredTenantInfo?.documentNumberPrefix;
     const isSingleGroupShown = props?.isSingleGroupShown ?? false;
@@ -450,30 +478,36 @@ function SummaryTableColumns(props: any): React.ReactElement {
             return dimensions.width >= breakpointMap.xxxl
                 ? ColSize.XXXL
                 : dimensions.width >= 1440
-                ? ColSize.Large
-                : ColSize.Medium;
+                    ? ColSize.Large
+                    : ColSize.Medium;
         } else if (colSize === ColSize.Large) {
             return dimensions.width >= breakpointMap.xxxl
                 ? ColSize.XL
                 : dimensions.width >= 1440
-                ? ColSize.Large
-                : ColSize.Medium;
+                    ? ColSize.Large
+                    : ColSize.Medium;
         } else if (colSize === ColSize.Medium) {
             return dimensions.width >= breakpointMap.xxxl
                 ? ColSize.XL
                 : dimensions.width >= 1440
-                ? ColSize.Medium
-                : ColSize.Small;
+                    ? ColSize.Medium
+                    : ColSize.Small;
         } else {
             return colSize;
         }
+    };
+
+    /* allows screen readers to provide infromation about context menu that opens on click of column header */
+    const setAriaLabel = (columnName: string): string => {
+        const labelExtension = isKeyboardColumnResizingOn ? COLUMN_HEADER_ACCESSIBILITY_LABEL : '';
+        return columnName + labelExtension;
     };
 
     const allColumns: IColumn[] = [
         {
             key: 'IsRead',
             name: 'IsRead',
-            ariaLabel: 'Status',
+            ariaLabel: setAriaLabel('Status'),
             iconName: 'Page',
             className: fileIconCell,
             isIconOnly: true,
@@ -507,8 +541,7 @@ function SummaryTableColumns(props: any): React.ReactElement {
             isSortedDescending: sortedColumn === 'ApprovalIdentifier' ? isSortedDescending : true,
             maxWidth: 200,
             invertAlignment: true,
-            ariaLabel: 'Document Number',
-            onColumnClick: onSort,
+            ariaLabel: setAriaLabel('Document Number'),
             onRender: (item: any) => {
                 const isOpen = getIdentifyingKey(item) === displayDocumentNumber;
                 return (
@@ -551,8 +584,7 @@ function SummaryTableColumns(props: any): React.ReactElement {
             isSortedDescending: sortedColumn === 'SubmittedDate' ? isSortedDescending : true,
             minWidth: ColSize.Medium,
             maxWidth: ColSize.Medium,
-            ariaLabel: 'Submitted Date',
-            onColumnClick: onSort,
+            ariaLabel: setAriaLabel('Submitted Date'),
             onRender: (item: any) => {
                 return (
                     <Stack horizontal>
@@ -566,14 +598,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'Submitter',
             name: 'Submitter',
+            //type: 'custom',
             fieldName: SummaryTableFieldNames.Submitter,
             isResizable: true,
             isSorted: sortedColumn === 'Submitter',
             isSortedDescending: sortedColumn === 'Submitter' ? isSortedDescending : true,
             minWidth: ColSize.Large,
             maxWidth: ColSize.XL,
-            ariaLabel: 'Submitter',
-            onColumnClick: onSort,
+            ariaLabel: setAriaLabel('Submitter'),
             onRender: (item: any) => {
                 if (item['Submitter']) {
                     return (
@@ -611,14 +643,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'Title',
             name: 'Title',
+            //type: 'custom',
             fieldName: SummaryTableFieldNames.Title,
             isResizable: true,
             isSorted: sortedColumn === 'Title',
             isSortedDescending: sortedColumn === 'Title' ? isSortedDescending : true,
             minWidth: 120,
             maxWidth: 200,
-            ariaLabel: 'Title',
-            onColumnClick: onSort,
+            ariaLabel: setAriaLabel('Title'),
             onRender: (item: any) => {
                 if (item['Title']) {
                     return (
@@ -632,14 +664,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'UnitValue',
             name: 'Unit Value',
+            //type: 'number',
             fieldName: SummaryTableFieldNames.UnitValue,
             isResizable: true,
             isSorted: sortedColumn === 'UnitValue',
             isSortedDescending: sortedColumn === 'UnitValue' ? isSortedDescending : true,
             minWidth: ColSize.Large,
             maxWidth: ColSize.Large,
-            ariaLabel: 'Unit Value',
-            onColumnClick: onSort,
+            ariaLabel: setAriaLabel('Unit Value'),
             onRender: (item: any) => {
                 return (
                     <Stack horizontal>
@@ -656,7 +688,7 @@ function SummaryTableColumns(props: any): React.ReactElement {
             isSorted: sortedColumn === 'CompanyCode',
             isSortedDescending: sortedColumn === 'CompanyCode' ? isSortedDescending : true,
             maxWidth: 200,
-            ariaLabel: 'Company Code',
+            ariaLabel: setAriaLabel('Company Code'),
             onRender: (item: any) => {
                 return (
                     <Stack horizontal>
@@ -668,14 +700,14 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'CustomAttribute',
             name: 'Additional Information',
+            //type: 'custom',
             fieldName: SummaryTableFieldNames.CustomAttribute,
             isResizable: true,
             isSorted: sortedColumn === 'CustomAttribute',
             isSortedDescending: sortedColumn === 'CustomAttribute' ? isSortedDescending : true,
             minWidth: 120,
             maxWidth: 300,
-            onColumnClick: onSort,
-            ariaLabel: 'Additional Information',
+            ariaLabel: setAriaLabel('Additional Information'),
             onRender: (item: any) => {
                 if (item['CustomAttribute']) {
                     return (
@@ -691,32 +723,41 @@ function SummaryTableColumns(props: any): React.ReactElement {
         // for Labor Management
         {
             key: 'allowInBulkApproval',
-            name: 'allowInBulkApproval',
-            ariaLabel: 'Status',
-            iconName: 'Info',
-            isIconOnly: true,
+            name: 'Anomaly',
             fieldName: SummaryTableFieldNames.allowInBulkApproval,
             isSorted: sortedColumn === 'allowInBulkApproval',
             isSortedDescending: sortedColumn === 'allowInBulkApproval' ? isSortedDescending : true,
-            minWidth: 25,
-            maxWidth: 25,
+            minWidth: ColSize.Small,
+            maxWidth: ColSize.Medium,
+            isResizable: true,
             onRender: (item: any) => {
-                let allowed = item['allowInBulkApproval'] ?? true;
+                const hasAnomaly = item?.actionDetails || false;
                 let icon;
                 let title = '';
-                if (!allowed) {
+                let exceptionReason = 'Standard';
+                if (hasAnomaly) {
                     if (item.isLateApproval) {
                         title = 'Late Approval';
                     } else {
                         title = item?.actionDetails?.[0]?.actionType ?? '';
                     }
                 }
-                if (!allowed) {
+                if (hasAnomaly) {
                     icon = <Icon title={title} iconName="Warning" style={failedIconStyle} />;
+                    exceptionReason = item?.actionDetails?.[0]?.actionType ?? ''
                 } else {
-                    null;
+                    icon = <Icon title={title} iconName="Completed" style={pendingIconStyle} />
                 }
-                return icon;
+                return (
+                    <TooltipHost content={exceptionReason}>
+                        <Stack horizontal>
+                            <Stack.Item styles={SharedStyled.StackStylesOverflowWithEllipsis}>
+                                {icon}
+                                {" " + exceptionReason}
+                            </Stack.Item>
+                        </Stack>
+                    </TooltipHost>
+                );
             },
         },
         {
@@ -727,7 +768,7 @@ function SummaryTableColumns(props: any): React.ReactElement {
             maxWidth: ColSize.XS,
             isSorted: sortedColumn === 'viewDetails',
             isSortedDescending: sortedColumn === 'viewDetails' ? isSortedDescending : true,
-            ariaLabel: 'Details',
+            ariaLabel: setAriaLabel('Details'),
             onRender: (item: any) => {
                 const isOpen = getIdentifyingKey(item) === displayDocumentNumber;
                 return (
@@ -753,7 +794,7 @@ function SummaryTableColumns(props: any): React.ReactElement {
             maxWidth: ColSize.Small,
             isSorted: sortedColumn === 'actionDetails',
             isSortedDescending: sortedColumn === 'actionDetails' ? isSortedDescending : true,
-            ariaLabel: 'Approval Status',
+            ariaLabel: setAriaLabel('Approval Status'),
             isResizable: true,
             onRender: (item: any) => {
                 const identifyingKey = getIdentifyingKey(item);
@@ -788,11 +829,10 @@ function SummaryTableColumns(props: any): React.ReactElement {
             fieldName: SummaryTableFieldNames.submittedForFullName,
             minWidth: getColSizeforDimension(ColSize.Medium),
             maxWidth: dimensions.width >= breakpointMap.xxxl ? ColSize.XXL : ColSize.XL,
-            ariaLabel: 'Submitted For',
+            ariaLabel: setAriaLabel('Submitted For'),
             isSorted: sortedColumn === 'submittedForFullName',
             isSortedDescending: sortedColumn === 'submittedForFullName' ? isSortedDescending : true,
             isResizable: true,
-            onColumnClick: onSort,
             onRender: (item: any) => {
                 const displayText = item['submittedForFullName'] ?? '';
                 return (
@@ -809,14 +849,13 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'assignmentName',
             name: 'Assignment Name',
-            ariaLabel: 'Assignment Name',
+            ariaLabel: setAriaLabel('Assignment Name'),
             fieldName: SummaryTableFieldNames.assignmentName,
             minWidth: getColSizeforDimension(ColSize.Large),
             maxWidth: ColSize.XXXL,
             isSorted: sortedColumn === 'assignmentName',
             isSortedDescending: sortedColumn === 'assignmentName' ? isSortedDescending : true,
             isResizable: true,
-            onColumnClick: onSort,
             onRender: (item: any) => {
                 const displayText = item?.assignmentDetails?.assignmentName || '';
                 return (
@@ -833,14 +872,13 @@ function SummaryTableColumns(props: any): React.ReactElement {
         {
             key: 'laborDate',
             name: 'Labor Date',
-            ariaLabel: 'Labor Date',
+            ariaLabel: setAriaLabel('Labor Date'),
             fieldName: SummaryTableFieldNames.laborDate,
             minWidth: ColSize.XS,
             maxWidth: ColSize.Small,
             isSorted: sortedColumn === 'laborDate',
             isSortedDescending: sortedColumn === 'laborDate' ? isSortedDescending : true,
             isResizable: true,
-            onColumnClick: onSort,
             onRender: (item: any) => {
                 return (
                     <Stack horizontal>
@@ -857,11 +895,10 @@ function SummaryTableColumns(props: any): React.ReactElement {
             fieldName: SummaryTableFieldNames.laborHours,
             minWidth: ColSize.XS,
             maxWidth: ColSize.Small,
-            ariaLabel: 'Labor Duration',
+            ariaLabel: setAriaLabel('Labor Duration'),
             isSorted: sortedColumn === 'laborHours',
             isSortedDescending: sortedColumn === 'laborHours' ? isSortedDescending : true,
             isResizable: true,
-            onColumnClick: onSort,
             onRender: (item: any) => {
                 return (
                     <Stack horizontal>
@@ -877,12 +914,11 @@ function SummaryTableColumns(props: any): React.ReactElement {
             name: 'Labor Category',
             fieldName: SummaryTableFieldNames.laborCategoryName,
             minWidth: ColSize.Small,
-            ariaLabel: 'Labor Category',
+            ariaLabel: setAriaLabel('Labor Category'),
             isSorted: sortedColumn === 'laborCategoryName',
             isSortedDescending: sortedColumn === 'laborCategoryName' ? isSortedDescending : true,
             maxWidth: ColSize.Large,
             isResizable: true,
-            onColumnClick: onSort,
             onRender: (item: any) => {
                 return (
                     <TooltipHost content={item['laborCategoryName']}>
@@ -901,11 +937,10 @@ function SummaryTableColumns(props: any): React.ReactElement {
             fieldName: SummaryTableFieldNames.submittedByFullName,
             minWidth: ColSize.Small,
             maxWidth: ColSize.Large,
-            ariaLabel: 'Submitted By',
+            ariaLabel: setAriaLabel('Submitted By'),
             isSorted: sortedColumn === 'submittedByFullName',
             isSortedDescending: sortedColumn === 'submittedByFullName' ? isSortedDescending : true,
             isResizable: true,
-            onColumnClick: onSort,
             onRender: (item: any) => {
                 const displayText = item['submittedByFullName'] ?? '';
                 return (
@@ -924,18 +959,16 @@ function SummaryTableColumns(props: any): React.ReactElement {
             name: 'Is Billable',
             fieldName: SummaryTableFieldNames.isBillable,
             minWidth: ColSize.XXS,
-            ariaLabel: 'Is Billable',
+            ariaLabel: setAriaLabel('Is Billable'),
             maxWidth: ColSize.XXS,
             isSorted: sortedColumn === 'isBillable',
             isSortedDescending: sortedColumn === 'isBillable' ? isSortedDescending : true,
             isResizable: true,
-            onColumnClick: onSort,
             onRender: (item: any) => {
                 return (
                     <Stack horizontal>
-                        <Stack.Item>{`${
-                            booleanToReadableValue(item?.assignmentDetails?.isBillable) || ''
-                        }`}</Stack.Item>
+                        <Stack.Item>{`${booleanToReadableValue(item?.assignmentDetails?.isBillable) || ''
+                            }`}</Stack.Item>
                     </Stack>
                 );
             },
@@ -948,8 +981,7 @@ function SummaryTableColumns(props: any): React.ReactElement {
             isResizable: true,
             isSorted: sortedColumn === 'laborNotes',
             isSortedDescending: sortedColumn === 'laborNotes' ? isSortedDescending : true,
-            ariaLabel: 'Notes',
-            onColumnClick: onSort,
+            ariaLabel: setAriaLabel('Notes'),
             onRender: (item: any) => {
                 const notesValue = item?.['laborNotes'] || '';
                 return (
@@ -1224,30 +1256,94 @@ function SummaryTableColumns(props: any): React.ReactElement {
         }
     }
 
+    const dialogStyles = { main: { maxWidth: 450 } };
+    const resizeDialogContentProps = {
+        type: DialogType.normal,
+        title: 'Resize Column',
+        closeButtonAriaLabel: 'Close',
+        subText: 'Enter desired column width pixels:',
+    };
+
+    const modalProps = {
+        titleAriaId: 'Dialog',
+        subtitleAriaId: 'Dialog sub',
+        isBlocking: false,
+        styles: dialogStyles,
+    };
+
+    const hideDialog = () => setIsDialogHidden(true);
+
+    const showDialog = () => setIsDialogHidden(false);
+
+    const resizeColumn = (column: IColumn) => {
+        columnToEdit.current = column;
+        clickHandler.current = RESIZE;
+        showDialog();
+    };
+
+    const onHideContextualMenu = React.useCallback(() => setContextualMenuProps(undefined), []);
+
+    const onColumnClickAccessible = (ev: React.MouseEvent<HTMLElement>, column: IColumn): void => {
+        setContextualMenuProps(getContextualMenuProps(ev, column));
+    };
+
+    const getContextualMenuProps = (ev: React.MouseEvent<HTMLElement>, column: IColumn): IContextualMenuProps => {
+        const items = [
+            { key: 'resize', text: 'Resize', onClick: () => resizeColumn(column) },
+            { key: 'sort', text: 'Sort', onClick: () => onSort(ev, column) },
+        ];
+
+        return {
+            items: items,
+            target: ev.currentTarget as HTMLElement,
+            gapSpace: 10,
+            isBeakVisible: true,
+            onDismiss: onHideContextualMenu,
+        };
+    };
+
+    const confirmDialog = () => {
+        const detailsList = detailsListRef.current;
+
+        if (textfieldRef.current) {
+            input.current = Number(textfieldRef.current.value);
+        }
+
+        if (columnToEdit.current && input.current && detailsList) {
+            if (clickHandler.current === RESIZE) {
+                const width = input.current;
+                detailsList.updateColumn(columnToEdit.current, { width: width });
+            }
+        }
+
+        input.current = null;
+        hideDialog();
+    };
+
     return (
         <React.Fragment>
             <div
                 style={
                     isSingleGroupShown
                         ? {
-                              position: 'relative',
-                              height: `${
-                                  dimensions.width <= 480
-                                      ? dimensions.height * 0.65
-                                      : dimensions.width < 1024
-                                      ? dimensions.height
-                                      : isBulkSelected
-                                      ? dimensions.height - SharedStyled.bulkTableViewBottomOffset
-                                      : dimensions.height - 300
-                              }px`,
-                              overflowY: 'scroll',
-                          }
+                            position: 'relative',
+                            height: `${dimensions.width <= 480
+                                ? dimensions.height * 0.65
+                                : dimensions.width < 1024
+                                    ? dimensions.height
+                                    : isBulkSelected
+                                        ? dimensions.height - SharedStyled.bulkTableViewBottomOffset
+                                        : dimensions.height - 300
+                                }px`,
+                            overflowY: 'scroll',
+                        }
                         : isPaginationEnabled
-                        ? {}
-                        : { height: `${Math.min((props.tenantGroup.length + 1) * 50, 250)}px`, overflowY: 'scroll' }
+                            ? {}
+                            : { height: `${Math.min((props.tenantGroup.length + 1) * 50, 250)}px`, overflowY: 'scroll' }
                 }
             >
                 <DetailsList
+                    componentRef={detailsListRef}
                     ariaLabel={`${props.tenantName} table`}
                     columns={renderColumns(isPullTenantSelected ? 'pullTenant' : 'all')}
                     items={summaryTableRecords}
@@ -1262,12 +1358,25 @@ function SummaryTableColumns(props: any): React.ReactElement {
                     setKey="multiple"
                     onRenderDetailsHeader={onRenderDetailsHeader as any}
                     onRenderRow={onRenderDetailsRow as any}
-                    onColumnHeaderClick={onSort as any}
+                    onColumnHeaderClick={isKeyboardColumnResizingOn ? onColumnClickAccessible : onSort}
                     layoutMode={
                         isSingleGroupShown ? DetailsListLayoutMode.fixedColumns : DetailsListLayoutMode.justified
                     }
                 />
             </div>
+            {contextualMenuProps && <ContextualMenu {...contextualMenuProps} />}
+            <Dialog
+                hidden={isDialogHidden}
+                onDismiss={hideDialog}
+                dialogContentProps={resizeDialogContentProps}
+                modalProps={modalProps}
+            >
+                <TextField componentRef={textfieldRef} ariaLabel={'Enter column width'} />
+                <DialogFooter>
+                    <PrimaryButton onClick={confirmDialog} text={clickHandler.current} />
+                    <DefaultButton onClick={hideDialog} text="Cancel" />
+                </DialogFooter>
+            </Dialog>
             {/* {isPaginationEnabled && (
                 <Stack horizontal horizontalAlign="end">
                     <Stack horizontal horizontalAlign="space-between" styles={paginationWidth}>
