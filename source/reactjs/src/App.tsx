@@ -43,19 +43,37 @@ import { TopHeader } from './Components/Shared/Components/SecondaryHeader/TopHea
 import CoherenceTheme from './Helpers/Theme';
 import { SideNav } from './Components/Shared/Components/SideNav';
 import { initializeIcons } from '@fluentui/font-icons-mdl2';
+import { initializeFileTypeIcons } from '@fluentui/react-file-type-icons';
 import { UserSettingsPanel } from './Components/UserSettingsPanel/UserSettingsPanel';
 import { helpPanelReducer, helpPanelReducerName } from './Components/HelpPanel/HelpPanel.reducer';
 import { helpPanelSagas } from './Components/HelpPanel/HelpPanel.sagas';
 import { ProfilePanel } from './Components/ProfilePanel';
+import { registerIcons } from '@fluentui/react/lib/Styling';
+import { AccessibilityPanel } from './Components/AccessibilityPanel/AccessibilityPanel';
+import { accessibilityReducer, accessibilityReducerName } from './Components/AccessibilityPanel/Accessibility.reducer';
+import { FeedbackRegistry, IFeedback } from './Components/Feedback/IFeedback';
+import CacheBuster from 'react-cache-buster';
+import { version } from '../package.json';
 
 export function App(): React.ReactElement {
     useLoginOnStartup(true, { scopes: ['https://graph.microsoft.com/.default'] });
     initializeIcons();
+    // See: https://developer.microsoft.com/en-us/fluentui#/styles/web/file-type-icons
+    initializeFileTypeIcons();
+    //registering icon for reference in fluent components
+    registerIcons({
+        icons: {
+            Accessibility: <SharedStyled.AccessibilityIcon />,
+        },
+    });
     useDynamicReducer(sharedComponentsReducerName, sharedComponentsReducer as Reducer, [sharedComponentsSagas], false);
     useDynamicReducer(helpPanelReducerName, helpPanelReducer as Reducer, [helpPanelSagas], false);
     usePersistentReducer(sharedComponentsPersistentReducerName, sharedComponentsPersistentReducer);
+    usePersistentReducer(accessibilityReducerName, accessibilityReducer);
     getNotifications(); // to get notification on initial load
-    const { useSelector, dispatch } = React.useContext(Context as React.Context<IEmployeeExperienceContext>);
+    const { useSelector, dispatch, authClient, telemetryClient } = React.useContext(
+        Context as React.Context<IEmployeeExperienceContext>
+    );
     const teachingBubbleVisibility = useSelector(getTeachingBubbleVisibility);
     const isPanelOpen = useSelector(getIsPanelOpen);
     const isSettingPanelOpen = useSelector(getIsSettingPanelOpen);
@@ -67,7 +85,13 @@ export function App(): React.ReactElement {
     const [headerConfig, setHeaderConfig] = React.useState<any>(null);
     const [showLoading, setShowLoading] = React.useState(true);
 
+    const [feedback, setFeedback] = React.useState<IFeedback>(null);
+
     React.useEffect(() => {
+        const registry = new FeedbackRegistry();
+                if (__FEEDBACK_CONFIGURATION_URL__) {
+            setFeedback(registry.getImplementation() as IFeedback);
+        }
         const timer = setTimeout(() => setShowLoading(false), 12000);
         return () => {
             clearTimeout(timer);
@@ -156,54 +180,39 @@ export function App(): React.ReactElement {
         </SharedStyled.HeightBelowShell>
     );
 
-    /* for internal telemetry logging
-    initializeOBFeedback(
-        __OCV_APP_ID__,
-        __OCV_ENVIRONMENT_NAME__,
-        '/ocv/scripts/officebrowserfeedback.min.js',
-        '/ocv/styles/officebrowserfeedback.min.css',
-        '/ocv/intl/',
-        'https://eesideas.powerappsportals.com/d365community/forum/aba5cb3a-a022-ec11-b6e6-000d3a339bda',
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        __OCV_TELEMETRY_GROUP__,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        false
-    ).then(() => {});
-    */
-
     return (
-        <div>
-            <HelpPanel />
-            <UserSettingsPanel />
-            <NotificationPanelCustom />
-            <ProfilePanel />
-            <BrowserRouter>
-                <TopHeader upn={user?.email} displayName={user?.name} />
-                <SideNav links={navConfig} />
-                <div>
-                    <Stack horizontal className={isPanelOpen ? 'ms-hiddenSm' : ''}>
-                        <Stack.Item grow>
-                            <SecondaryHeader />
-                        </Stack.Item>
-                    </Stack>
-                    <Main id="main" tabIndex={-1} role="main">
-                        {isValidUser ? <Routes /> : loginMessage}
-                    </Main>
-                </div>
-            </BrowserRouter>
-        </div>
+        <CacheBuster
+            currentVersion={version}
+            isEnabled={true} //If false, the library is disabled.
+            isVerboseMode={false} //If true, the library writes verbose logs to console.
+            loadingComponent={
+                <SharedStyled.SpinnerContainer>
+                    <Spinner label="Loading..." />
+                </SharedStyled.SpinnerContainer>
+            } //If not passed, nothing appears at the time of new version check.
+        >
+            <div>
+                <AccessibilityPanel />
+                <HelpPanel />
+                <UserSettingsPanel />
+                <NotificationPanelCustom />
+                <ProfilePanel />
+                <BrowserRouter>
+                    <TopHeader upn={user?.email} displayName={user?.name} feedback={feedback} />
+                    <SideNav links={navConfig} />
+                    <div>
+                        <Stack horizontal className={isPanelOpen ? 'ms-hiddenSm' : ''}>
+                            <Stack.Item grow>
+                                <SecondaryHeader />
+                            </Stack.Item>
+                        </Stack>
+                        <Main id="main" tabIndex={-1} role="main">
+                            {isValidUser ? <Routes /> : loginMessage}
+                        </Main>
+                    </div>
+                </BrowserRouter>
+            </div>
+        </CacheBuster>
     );
 }
 

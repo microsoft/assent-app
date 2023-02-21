@@ -10,8 +10,8 @@ export const imitateClickOnKeyPressForDiv = (
             e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar' || e.which === 13 || e.which === 32;
         const isCheckBoxClicked =
             e.target?.getAttribute('class')?.indexOf('Checkbox') > -1 ||
-            e.target?.getAttribute('type') == 'checkbox' ||
-            e.target?.getAttribute('data-icon-name') == 'CheckMark'
+                e.target?.getAttribute('type') == 'checkbox' ||
+                e.target?.getAttribute('data-icon-name') == 'CheckMark'
                 ? true
                 : false;
         if (!isCheckBoxClicked && enterOrSpace) {
@@ -38,6 +38,10 @@ export const imitateClickOnKeyPressForAnchor = (
 
 export const isMobileResolution = (width: number): boolean => {
     return width <= breakpointMap.l;
+};
+
+export const isMediumResolution = (width: number): boolean => {
+    return width <= breakpointMap.xl;
 };
 
 export const toCamelCase = (text: string): string => {
@@ -127,8 +131,8 @@ const getNestedValue = (obj: any, key: string): any => {
         }
         const curValue = key.includes('.')
             ? key.split('.').reduce(function (p, prop) {
-                  return p?.[prop];
-              }, obj)
+                return p?.[prop];
+            }, obj)
             : obj[key];
         return curValue;
     } else {

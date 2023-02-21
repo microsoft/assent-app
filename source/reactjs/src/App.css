@@ -14,15 +14,15 @@ body {
 }
 
 .sr-only {
-    border: 0; 
-    clip: rect(0 0 0 0); 
-    height: 1px; 
+    border: 0;
+    clip: rect(0 0 0 0);
+    height: 1px;
     margin: -1px;
     overflow: hidden;
     padding: 0;
     position: absolute;
     width: 1px;
-  }
+}
 
 /* Overriding background-color for OCV feedback option selected based on contrast recommendation from accessibility */
 .obf-OverallAnchorActive {
@@ -46,15 +46,24 @@ body {
     max-width: 92%;
 }
 
+a.ac-anchor {
+    line-height: 21px;
+    outline-offset: 0px;
+    margin-left: 1px;
+}
+
+
 .horizontal-separator {
     border-right: 1px solid lightgray;
 }
 
 @media only screen and (max-width: 768px) {
+
     /* For mobile phones: */
     .approve-note-input {
         max-width: 70% !important;
     }
+
     .approve-note-input-style {
         max-width: 92%;
     }
@@ -103,29 +112,33 @@ body {
     body {
         padding: 14px 0px 0px !important;
     }
+
     .primarybuttonsClass {
         height: 3px !important;
         font-size: 3px;
         padding: 0px 0px;
     }
-   
+
     .caretDownWrapper,
     .title {
         height: 7px !important;
         line-height: 3px !important;
-        font-size: 3px; 
+        font-size: 3px;
     }
-    .ms-Link{
+
+    .ms-Link {
         height: 18px !important;
         line-height: 14px !important;
         font-size: 14px;
     }
+
     .ms-Dropdown-title {
         height: 12px !important;
         line-height: 10px !important;
         font-size: 3px;
         margin-top: -5.5px;
     }
+
     .ms-Dropdown-caretDownWrapper {
         height: 7px !important;
         line-height: 7px !important;
@@ -147,9 +160,11 @@ body {
         font-size: 8px;
         margin-top: 2%;
     }
+
     .ms-Icon {
         font-size: 10px;
     }
+
     .ms-MessageBar-icon {
         height: 10px !important;
         width: 10px;
@@ -176,6 +191,7 @@ body {
         line-height: 2px !important;
         font-size: 3px;
     }
+
     div[class^='ms-Persona-initials'],
     div[class*=' ms-Persona-initials'] {
         font-size: 0.5px;
@@ -184,10 +200,12 @@ body {
         line-height: 2px;
         padding-top: 4.05px;
     }
+
     div[class^='mobileNavWrapper'],
     div[class*=' mobileNavWrapper'] {
         margin-top: -2px;
     }
+
     .ms-Button {
         height: 15px !important;
         font-size: 7px;
@@ -245,11 +263,13 @@ body {
         font-size: 8px;
         padding: 0px 0px;
     }
+
     .ms-Checkbox-text {
         line-height: 12px !important;
         font-size: 6px;
         margin-left: 0px;
     }
+
     .ms-Checkbox-checkbox,
     .checkbox {
         height: 12px !important;
@@ -257,6 +277,7 @@ body {
         line-height: 12px !important;
         font-size: 6px;
     }
+
     .searchBoxContainer-240,
     .ms-Dropdown-caretDownWrapper,
     .caretDownWrapper,
@@ -267,9 +288,11 @@ body {
         line-height: 14px !important;
         font-size: 6px;
     }
+
     .ms-Link {
         font-size: 12px;
     }
+
     .ms-MessageBar-icon {
         height: 10px !important;
         width: 10px;
@@ -296,6 +319,7 @@ body {
         font-size: 6px;
         padding-top: 12px;
     }
+
     div[class^='ms-Persona-initials'],
     div[class*=' ms-Persona-initials'] {
         font-size: 6px;
@@ -303,6 +327,7 @@ body {
         width: 14px;
         line-height: 14px;
     }
+
     div[class^='mobileNavWrapper'],
     div[class*=' mobileNavWrapper'] {
         margin-top: 0px;
@@ -312,6 +337,7 @@ body {
         height: 24px !important;
     }
 }
+
 @media (min-device-width: 1023px) and (min-width: 640px) and (max-width: 915px) {
     .ms-lg12 {
         width: 100vw;
@@ -347,7 +373,8 @@ body {
 
 .navContainer {
     position: fixed;
-    background: #e5e5e5; /*rgb(242, 242, 242)*/
+    background: #e5e5e5;
+    /*rgb(242, 242, 242)*/
 }
 
 .primarybuttonsClass {
@@ -438,6 +465,7 @@ body {
 }
 
 @media only screen and (min-device-width: 768px) and (max-device-width: 1024px) and (orientation: portrait) {
+
     /* STYLES GO HERE */
     .ms-width50 {
         width: 50%;
@@ -451,31 +479,34 @@ body {
 @media (min-device-width: 1023px) and (min-width: 320px) and (max-width: 639px) {
     .ms-Checkbox-text {
         line-height: 16px !important;
-        font-size: 16px !important;       
+        font-size: 16px !important;
         margin-left: 0px;
-      
+
     }
+
     .ms-Checkbox-checkbox,
     .checkbox {
         height: 16px !important;
-        width: 16px;      
-        font-size: 16px;      
+        width: 16px;
+        font-size: 16px;
     }
-   
+
     .ms-Dropdown-title,
     .ms-Dropdown-title {
-        height: 23px !important;      
-        font-size: 16px !important;   
+        height: 23px !important;
+        font-size: 16px !important;
     }
+
     .ms-Dropdown-caretDownWrapper {
         height: 7px !important;
         line-height: 7px !important;
         font-size: 7px;
         margin-top: 7px;
-    }    
+    }
 }
 
-@media only screen and  (orientation: portrait) {
+@media only screen and (orientation: portrait) {
+
     /* STYLES GO HERE */
     .h3-width {
         width: 60%;
@@ -495,6 +526,7 @@ body {
         width: 100%;
         max-width: 100% !important;
     }
+
     .ms-Grid-col-mobile {
         padding-right: 1%;
     }
@@ -505,6 +537,7 @@ body {
         width: 50%;
     }
 }
+
 .ms-MessageBar-innerText {
     overflow: visible;
 }
@@ -549,15 +582,19 @@ body {
     .text-365 {
         forced-color-adjust: auto !important;
     }
+
     .checkbox-363 {
         forced-color-adjust: auto !important;
     }
+
     .checkbox-314 {
         forced-color-adjust: auto !important;
     }
+
     .checkbox-374 {
         forced-color-adjust: auto !important;
     }
+
     .text-316 {
         forced-color-adjust: auto !important;
     }
