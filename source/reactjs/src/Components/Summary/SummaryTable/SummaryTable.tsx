@@ -116,7 +116,7 @@ export function SummaryTable(props: any) {
         setFilteredData(filtered);
     }, [includedValuesObj, numFilters, props.tenantGroup]);
 
-    function getUniqueValuesForColumn(data: any[], columnKey: string): any {
+    function getUniqueValuesForColumn(data: any[], columnKey: string, defaultValue?: string): any {
         let res = [];
         let uniqueVals: any = [];
         let selectedKeys: string[] = [];
@@ -129,6 +129,9 @@ export function SummaryTable(props: any) {
                 : data[i][columnKey];
             if (typeof curValue === 'boolean') {
                 curValue = booleanToReadableValue(curValue);
+            }
+            if (defaultValue && !curValue) {
+                curValue = defaultValue;
             }
             if (curValue && !uniqueVals.includes(curValue)) {
                 const filterSelected = includedValuesObj?.[columnKey]?.includes(curValue) ?? false;
@@ -161,8 +164,12 @@ export function SummaryTable(props: any) {
                           return p?.[prop];
                       }, item)
                     : item[key];
+                const columnInfo = tableColumns.find((col) => col.field == key);
                 if (typeof curValue === 'boolean') {
                     curValue = booleanToReadableValue(curValue);
+                }
+                if (columnInfo?.defaultValue && !curValue) {
+                    curValue = columnInfo.defaultValue;
                 }
                 if (value && value.length > 0 && !value.includes(curValue)) {
                     res = false;
@@ -176,7 +183,11 @@ export function SummaryTable(props: any) {
         const filterCategories = tableColumns
             .filter((col) => col.isFilterable)
             ?.map((item, index) => {
-                const [uniqueValues, selectedKeys] = getUniqueValuesForColumn(props.tenantGroup, item.field);
+                const [uniqueValues, selectedKeys] = getUniqueValuesForColumn(
+                    props.tenantGroup,
+                    item.field,
+                    item.defaultValue
+                );
                 return {
                     key: item.field,
                     label: item.title,

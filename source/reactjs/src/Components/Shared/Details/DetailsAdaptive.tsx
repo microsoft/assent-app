@@ -1244,12 +1244,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                             )}
                             {/* show continue message after successful completion to allow user to proceed */}
                             {!this.props.isPullModelEnabled && this.state.showContinue && !postActionHasError && (
-                                <ContinueMessage
-                                    isBulkAction={false}
-                                    customLabel={
-                                        this.state.actionCompleted ? 'Click continue to work on other requests' : null
-                                    }
-                                />
+                                <ContinueMessage isBulkAction={false} isActionCompleted={this.state.actionCompleted} />
                             )}
                             <Styled.ExtraLargeSpace />
                         </Stack.Item>

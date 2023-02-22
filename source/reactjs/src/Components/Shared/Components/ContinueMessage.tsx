@@ -12,10 +12,12 @@ import {
 import { useHistory, useLocation } from 'react-router-dom';
 import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
 
-export function ContinueMessage(props: { isBulkAction: boolean; customLabel?: string }): React.ReactElement {
+const BUTTON_MESSAGE = 'click continue to work on other requests';
+
+export function ContinueMessage(props: { isBulkAction: boolean; isActionCompleted?: boolean }): React.ReactElement {
     const { useSelector, dispatch } = React.useContext(Context as React.Context<IEmployeeExperienceContext>);
     const isBulkAction = props.isBulkAction;
-    const customLabel = props.customLabel;
+    const isActionCompleted = props.isActionCompleted;
     const userAlias = useSelector(getUserAlias);
     const history = useHistory();
     const location = useLocation();
@@ -36,6 +38,12 @@ export function ContinueMessage(props: { isBulkAction: boolean; customLabel?: st
         }
     }
 
+    const continueLabel = 'Please ' + (isActionCompleted ? '' : 'wait for confirmation or ') + BUTTON_MESSAGE;
+
+    const continueAriaLabel = isActionCompleted
+        ? 'Your action has successfully completed. ' + continueLabel
+        : continueLabel;
+
     return (
         <div
             style={{
@@ -46,17 +54,20 @@ export function ContinueMessage(props: { isBulkAction: boolean; customLabel?: st
                 alignItems: 'center',
                 outline: 'none',
             }}
-            ref={(input) => input && input.focus()}
-            tabIndex={0}
         >
             <Stack tokens={{ childrenGap: '10' }}>
                 <Stack.Item>
-                    <Label>
-                        {customLabel ?? 'Please wait for confirmation or click continue to work on other requests.'}
-                    </Label>
+                    <Label>{continueLabel}</Label>
                 </Stack.Item>
                 <Stack.Item align={isBulkAction ? 'end' : 'center'}>
-                    <PrimaryButton ariaLabel="Continue" text="Continue" onClick={handleContinueClick} />
+                    <PrimaryButton
+                        ariaLabel={continueAriaLabel}
+                        text="Continue"
+                        onClick={handleContinueClick}
+                        componentRef={(input: { focus: () => any }) => {
+                            input && input.focus();
+                        }}
+                    />
                 </Stack.Item>
             </Stack>
         </div>

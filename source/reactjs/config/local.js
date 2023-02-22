@@ -4,7 +4,7 @@ const staticComponents = {
     /* =========================
      * Add host app entry point here
      * ====================== */
-    app: './src/App.tsx'
+    app: './src/App.tsx',
 };
 
 const dynamicComponents = {
@@ -30,23 +30,21 @@ const globals = {
     __API_URL_ROOT__: process.env.apiBaseUrl || '/api/v1',
     __GRAPH_BASE_URL__: process.env.graphBaseUrl || 'https://graph.microsoft.com/v1.0/',
     __GRAPH_RESOURCE_URL__: process.env.graphResourceUrl || 'https://graph.microsoft.com',
-    __RESOURCE_URL__: process.env.resourceUrl || 'https://api.approvals.contoso.com/',
-    __MICROFRONTEND_CDN_URL__: process.env.microfrontendURL || '',
     __UPN_SUFFIX__: process.env.upnSuffix || '@contoso.com',
-    //OCV App Id and telemetry group
-    __OCV_APP_ID__: process.env.ocvAppId || 0000,
-    __OCV_ENVIRONMENT_NAME__: 'Int',
-    __OCV_TELEMETRY_GROUP__: process.env.telemetryGroup || {
-        featureArea: 'Modern Website'
-    },
-
+    __RESOURCE_URL__: process.env.resourceUrl || 'https://api.approvals.contoso.com/',
+    __MICROFRONTEND_CDN_URL__:
+        process.env.microfrontendURL || '',
+    //Feedback data
+    __FEEDBACK_ENVIRONMENT_NAME__: 'Int',
+    __FEEDBACK_CONFIGURATION_URL__: '',
+    //CELA Invoice API Url
     __API_BASE_MATTER_URL__: process.env.apiBaseUrl || '',
     __API_BASE_MATTER_RESOURCE_URL__: process.env.apiBaseUrl || '',
-    __CLASSIC_WEB_URL__: process.env.classicWebUrl || 'https://approvals.contoso.com/'
+    __CLASSIC_WEB_URL__: process.env.classicWebUrl || 'https://approvals.contoso.com/',
 };
 
 module.exports = {
     staticComponents,
     dynamicComponents,
-    globals
+    globals,
 };

@@ -14,14 +14,11 @@ declare global {
     const __GRAPH_BASE_URL__: string;
     const __UPN_SUFFIX__: string;
     const __GRAPH_RESOURCE_URL__: string;
-    const __AUTHORITY__:string;
+    const __AUTHORITY__: string;
     const __API_BASE_MATTER_URL__: string;
     const __API_BASE_MATTER_RESOURCE_URL__: string;
-    const __OCV_APP_ID__:number;
-    const __OCV_ENVIRONMENT_NAME__:string;
-    const __OCV_TELEMETRY_GROUP__: {
-        featureArea: string
-    };
+    const __FEEDBACK_ENVIRONMENT_NAME__: string;
+    const __FEEDBACK_CONFIGURATION_URL__: string;
     const __MICROFRONTEND_CDN_URL__: string;
     const __CLASSIC_WEB_URL__: string;
 }

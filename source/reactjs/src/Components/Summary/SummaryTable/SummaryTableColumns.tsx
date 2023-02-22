@@ -2,7 +2,7 @@
 import * as React from 'react';
 import * as Styled from './SummaryTableStyling';
 import * as SharedStyled from '../../Shared/SharedLayout';
-import { failedIconStyle, fileIconCell, paginationWidth, paginationAlign } from './SummaryTableStyling';
+import { failedIconStyle, pendingIconStyle, fileIconCell, paginationWidth, paginationAlign } from './SummaryTableStyling';
 import { ISummaryRecordModel } from './SummaryTable.types';
 import { SummaryTableFieldNames } from './SummaryTableFieldNames';
 import { booleanToReadableValue, imitateClickOnKeyPressForAnchor } from '../../../Helpers/sharedHelpers';
@@ -478,20 +478,20 @@ function SummaryTableColumns(props: any): React.ReactElement {
             return dimensions.width >= breakpointMap.xxxl
                 ? ColSize.XXXL
                 : dimensions.width >= 1440
-                ? ColSize.Large
-                : ColSize.Medium;
+                    ? ColSize.Large
+                    : ColSize.Medium;
         } else if (colSize === ColSize.Large) {
             return dimensions.width >= breakpointMap.xxxl
                 ? ColSize.XL
                 : dimensions.width >= 1440
-                ? ColSize.Large
-                : ColSize.Medium;
+                    ? ColSize.Large
+                    : ColSize.Medium;
         } else if (colSize === ColSize.Medium) {
             return dimensions.width >= breakpointMap.xxxl
                 ? ColSize.XL
                 : dimensions.width >= 1440
-                ? ColSize.Medium
-                : ColSize.Small;
+                    ? ColSize.Medium
+                    : ColSize.Small;
         } else {
             return colSize;
         }
@@ -723,32 +723,41 @@ function SummaryTableColumns(props: any): React.ReactElement {
         // for Labor Management
         {
             key: 'allowInBulkApproval',
-            name: 'allowInBulkApproval',
-            ariaLabel: setAriaLabel('Status'),
-            iconName: 'Info',
-            isIconOnly: true,
+            name: 'Anomaly',
             fieldName: SummaryTableFieldNames.allowInBulkApproval,
             isSorted: sortedColumn === 'allowInBulkApproval',
             isSortedDescending: sortedColumn === 'allowInBulkApproval' ? isSortedDescending : true,
-            minWidth: 25,
-            maxWidth: 25,
+            minWidth: ColSize.Small,
+            maxWidth: ColSize.Medium,
+            isResizable: true,
             onRender: (item: any) => {
-                let allowed = item['allowInBulkApproval'] ?? true;
+                const hasAnomaly = item?.actionDetails || false;
                 let icon;
                 let title = '';
-                if (!allowed) {
+                let exceptionReason = 'Standard';
+                if (hasAnomaly) {
                     if (item.isLateApproval) {
                         title = 'Late Approval';
                     } else {
                         title = item?.actionDetails?.[0]?.actionType ?? '';
                     }
                 }
-                if (!allowed) {
+                if (hasAnomaly) {
                     icon = <Icon title={title} iconName="Warning" style={failedIconStyle} />;
+                    exceptionReason = item?.actionDetails?.[0]?.actionType ?? ''
                 } else {
-                    null;
+                    icon = <Icon title={title} iconName="Completed" style={pendingIconStyle} />
                 }
-                return icon;
+                return (
+                    <TooltipHost content={exceptionReason}>
+                        <Stack horizontal>
+                            <Stack.Item styles={SharedStyled.StackStylesOverflowWithEllipsis}>
+                                {icon}
+                                {" " + exceptionReason}
+                            </Stack.Item>
+                        </Stack>
+                    </TooltipHost>
+                );
             },
         },
         {
@@ -958,9 +967,8 @@ function SummaryTableColumns(props: any): React.ReactElement {
             onRender: (item: any) => {
                 return (
                     <Stack horizontal>
-                        <Stack.Item>{`${
-                            booleanToReadableValue(item?.assignmentDetails?.isBillable) || ''
-                        }`}</Stack.Item>
+                        <Stack.Item>{`${booleanToReadableValue(item?.assignmentDetails?.isBillable) || ''
+                            }`}</Stack.Item>
                     </Stack>
                 );
             },
@@ -1318,21 +1326,20 @@ function SummaryTableColumns(props: any): React.ReactElement {
                 style={
                     isSingleGroupShown
                         ? {
-                              position: 'relative',
-                              height: `${
-                                  dimensions.width <= 480
-                                      ? dimensions.height * 0.65
-                                      : dimensions.width < 1024
-                                      ? dimensions.height
-                                      : isBulkSelected
-                                      ? dimensions.height - SharedStyled.bulkTableViewBottomOffset
-                                      : dimensions.height - 300
-                              }px`,
-                              overflowY: 'scroll',
-                          }
+                            position: 'relative',
+                            height: `${dimensions.width <= 480
+                                ? dimensions.height * 0.65
+                                : dimensions.width < 1024
+                                    ? dimensions.height
+                                    : isBulkSelected
+                                        ? dimensions.height - SharedStyled.bulkTableViewBottomOffset
+                                        : dimensions.height - 300
+                                }px`,
+                            overflowY: 'scroll',
+                        }
                         : isPaginationEnabled
-                        ? {}
-                        : { height: `${Math.min((props.tenantGroup.length + 1) * 50, 250)}px`, overflowY: 'scroll' }
+                            ? {}
+                            : { height: `${Math.min((props.tenantGroup.length + 1) * 50, 250)}px`, overflowY: 'scroll' }
                 }
             >
                 <DetailsList

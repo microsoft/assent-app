@@ -11,15 +11,11 @@ export const SecondaryHeaderContainer = styled.div<{ isTopHeader: boolean }>`
     padding-left: ${(props: { isTopHeader: boolean }) => (props.isTopHeader ? '0px' : '48px')};
 
     .ms-Button-menuIcon {
-        color: rgb(0, 13, 23) !important;
+        color: ${(props: { isTopHeader: boolean }) => (props.isTopHeader ? 'white' : 'rgb(0, 13, 23) !important')};
     }
 
-    @media only screen and (min-device-width: 1023px) and (min-width: 320px) and (max-width: 639px) {
+    @media only screen and (max-width: 639px) {
         height: 24px !important;
-    }
-
-    @media only screen and (min-device-width: 1023px) and (max-width: 320px) {
-        height: 14px !important;
     }
 
     @media only screen and (min-device-width: 1023px) and (max-width: 1024px) {
@@ -44,6 +40,15 @@ export const topHeaderTitleLink = styled.a`
     text-overflow: ellipsis;
     border: 1px solid transparent;
     color: rgb(255, 255, 255) !important;
+
+    @media only screen and (max-width: 639px) {
+        font-size: 10px;
+        height: 24px;
+        line-height: 24px;
+    }
+    &:focus {
+        border: 1px solid black !important;
+    }
 `;
 
 export const SummaryCountText = styled(Text).attrs({
@@ -118,11 +123,14 @@ export const DelegationBarStyles: IMessageBarStyles = {
         paddingBottom: '0.25%',
         backgroundColor: '#D0E7F8', // Coherence DefaultThemeColors.blue20
         selectors: {
+            '@media only screen and (min-device-width: 1023px) and  (min-width: 1024px) and (max-width: 1024px)': {
+                marginLeft: '0px',
+            },
             '@media only screen and (min-device-width: 1023px) and  (min-width: 1024px) and (max-width: 2048px)': {
                 marginLeft: '36px',
             },
             '@media only screen and (min-device-width: 1023px) and  (min-width: 763px) and (max-width: 1023px)': {
-                paddingLeft: '33px !important;',
+                paddingLeft: '50px !important;',
                 marginLeft: -48 + 'px !important;',
                 marginBottom: -5 + 'px !important;',
                 width: 'calc(100vw + 48px)',
@@ -186,6 +194,7 @@ export const SecondaryHeaderStackStyles = (isPanelOpen: boolean, isTopHeader?: b
                 height: 14 + 'px',
                 display: `${isPanelOpen ? 'none' : 'flex'}`,
             },
+
         },
     },
 });
@@ -229,7 +238,6 @@ export const SecondaryHeaderDelegationIconStyling: IStackItemStyles = {
             },
             '@media (min-device-width: 1023px) and (max-width: 320px)': {
                 height: 14 + 'px',
-                marginTop: '2px',
             },
         },
     },

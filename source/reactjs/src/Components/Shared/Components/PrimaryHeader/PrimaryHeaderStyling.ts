@@ -202,7 +202,7 @@ export const DropDownStyle = (
     },
     dropdownOptionText: { overflow: 'visible', whiteSpace: 'normal' },
     dropdownItem: { height: 'auto' },
-    title: { overflow: 'visible', whiteSpace: 'normal', height: 'auto' },
+    title: { overflow: 'visible', whiteSpace: 'nowrap', height: 'auto' },
     label: {
         paddingRight: '5px',
         marginTop: '1px',
@@ -228,10 +228,10 @@ export const DropDownStyle = (
         },
     },
     dropdown: {
-        width: isMaximized ? '175px' : largestOptionWidth,
+        width: isMaximized ? '175px' : 'largestOptionWidth',
         selectors: {
             [maxWidth.xxl]: {
-                width: isMaximized ? '100px' : isPanelOpen ? '150px' : largestOptionWidth,
+                width: isMaximized ? '100px' : 'largestOptionWidth',
             },
             [maxWidth.m]: {
                 width: isMaximized ? '100px' : isPanelOpen ? '150px' : '175px',

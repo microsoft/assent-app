@@ -55,8 +55,10 @@ import { getAreDetailsEditable, getSummaryJSON } from './Details.selectors';
 import { postEditableDetails, updateAdditionalData } from './Details.actions';
 import { startCase } from 'lodash';
 import sanitizeHtml = require('sanitize-html');
+import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
 
 const RECEIPTS_ERROR = 'Receipts must be reviewed before submission';
+const ANOMALY_ERROR = 'Anomalies must be reviewed before submission';
 const COMPLIANCE_ERROR = 'Compliance with Anti-Corruption policies must be confirmed before submission';
 const NEXT_APPROVER_ERROR = 'Next approver is required';
 const PLACEMENT_ERROR = 'Approver placement is required';
@@ -83,12 +85,19 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
     const [displayNotesInput, setDisplayNotesInput] = React.useState(null);
     const [actionAdditionalInformation, setActionAdditionalInformation] = React.useState(null);
     const [remainingChars, setRemainingChars] = React.useState(null);
+
     const [receiptsCheck, setReceiptsCheck] = React.useState(false);
     const [corruptionCheck, setCorruptionCheck] = React.useState(false);
+    const [anomalyCheck, setAnomalyCheck] = React.useState(false);
+
     const [displayCorruptionError, setDisplayCorruptionError] = React.useState(false);
     const [displayReceiptError, setDisplayReceiptError] = React.useState(false);
+    const [displayAnomalyError, setDisplayAnomalyError] = React.useState(false);
+
     const [displayReceiptCheckbox, setDisplayReceiptCheckbox] = React.useState(false);
     const [displayCorruptionCheckbox, setDisplayCorruptionCheckbox] = React.useState(false);
+    const [displayAnomalyCheckbox, setDisplayAnomalyCheckbox] = React.useState(false);
+
     const [actionName, setActionName] = React.useState('');
     const [isJustificationApplicableForAction, setIsJustificationApplicableForAction] = React.useState(true);
 
@@ -147,7 +156,7 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
             : filteredTenantInfo?.actionDetails
         : isExternalTenantActionDetailsForSingle
         ? externalTenantInfo?.actionDetails
-        : props.actionDetails;
+        : props.actionDetails ?? filteredTenantInfo?.actionDetails;
 
     React.useImperativeHandle(ref, () => {
         return {
@@ -164,7 +173,6 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
             }, FIRST_RENDER_TIMEOUT);
         }
     }, [justificationRef, displayNotesInput, actionAdditionalInformation]);
-
 
     const isJustificationApplicableinSummary = (isBulk: boolean): boolean => {
         if (isBulk) {
@@ -299,7 +307,7 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                         return value._default || value.Default;
                     });
                     const defaultSelectedValueKey =
-                        defaultSelectedValueIndex > 0
+                        defaultSelectedValueIndex >= 0
                             ? control.IsValueFromSummaryObject
                                 ? summaryObjectValues[controlIndex][defaultSelectedValueIndex]
                                 : controlValues[defaultSelectedValueIndex].Code
@@ -364,19 +372,20 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                         </Stack.Item>
                     </Stack>
                 );
-            } else if (control.Type == 'checkbox') {
-                //TODO: evaluate conditions outside of render
-                if (
-                    control.Values.length > 0 &&
-                    (control.Values[0].Condition == null ||
-                        control.Values[0].Condition == '' ||
-                        validateCondition(getConditionPropertyObject(), control.Values[0].Condition))
-                ) {
+            } else if (control.Type == 'checkbox' || control.type == 'checkbox') {
+                const actionValues = control.Values || control.values;
+                if (actionValues?.length > 0) {
                     if (control.Code === 'receiptCheck' && !displayReceiptCheckbox) {
                         setDisplayReceiptCheckbox(true);
                     } else if (control.Code === 'corruptionCheck' && !displayCorruptionCheckbox) {
                         setDisplayCorruptionCheckbox(true);
+                    } else if (
+                        (control.Code === 'anomalyCheck' || control.code === 'anomalyCheck') &&
+                        !displayAnomalyCheckbox
+                    ) {
+                        setDisplayAnomalyCheckbox(true);
                     }
+
                     const inputProps: ICheckboxProps['inputProps'] = {
                         'aria-required': true,
                     };
@@ -391,6 +400,11 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                             if (displayCorruptionError && checked) {
                                 setDisplayCorruptionError(false);
                             }
+                        } else if (control.Code === 'anomalyCheck' || control.code === 'anomalyCheck') {
+                            setAnomalyCheck(checked);
+                            if (displayAnomalyError && checked) {
+                                setDisplayAnomalyError(false);
+                            }
                         }
                     };
                     const checkboxErrorMessage =
@@ -398,16 +412,20 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                             ? RECEIPTS_ERROR
                             : control.Code === 'corruptionCheck'
                             ? COMPLIANCE_ERROR
+                            : control.code === 'anomalyCheck' || control.Code === 'anomalyCheck'
+                            ? ANOMALY_ERROR
                             : '';
                     const showErrorMessage =
                         (displayReceiptError && control.Code === 'receiptCheck') ||
-                        (displayCorruptionError && control.Code === 'corruptionCheck');
+                        (displayCorruptionError && control.Code === 'corruptionCheck') ||
+                        (displayAnomalyError && (control.code === 'anomalyCheck' || control.Code === 'anomalyCheck'));
+
                     const checkboxStyles = showErrorMessage ? { checkbox: { borderColor: 'red' } } : null;
                     return (
-                        <>
-                            <label className="ms-Label custom-label">{control.Text}</label>
+                        <div style={{ maxWidth: isBulk ? '100%' : '60%' }}>
+                            <label className="ms-Label custom-label">{control.Text || control.text}</label>
                             <Checkbox
-                                label={control.Values[0].Text}
+                                label={actionValues[0].Text || actionValues[0].text}
                                 inputProps={inputProps}
                                 onChange={onCheckboxChange}
                                 styles={checkboxStyles}
@@ -417,7 +435,7 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                                     {checkboxErrorMessage}
                                 </p>
                             )}
-                        </>
+                        </div>
                     );
                 }
             }
@@ -483,10 +501,13 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
 
     const getConditionPropertyObject = (): object => {
         let conditionPropertyObject = {};
-        if (headerDetailsJSON) {
+        if (headerDetailsJSON && !isPullTenantSelected) {
             conditionPropertyObject = Object.assign(conditionPropertyObject, headerDetailsJSON, {
                 isMicrofrontendOpen: isMicrofrontendOpen,
             });
+        } else if (isPullTenantSelected && summaryJSON) {
+            conditionPropertyObject = summaryJSON;
+            return conditionPropertyObject;
         }
         const flatConditionPropertyObject = flattenObject(conditionPropertyObject);
         return flatConditionPropertyObject;
@@ -545,6 +566,28 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
         return [res, areCommentsRequired];
     };
 
+    const filterByCondition = (additionalInfo: any, isBulk: boolean): any => {
+        function isCondValid(control: any) {
+            if (control.Type == 'checkbox' || control.type == 'checkbox') {
+                const actionValues = control.Values || control.values;
+                const actionCondition =
+                    actionValues?.length > 0 ? actionValues?.[0].Condition || actionValues?.[0].condition : null;
+                let isValid = false;
+                if (isBulk) {
+                    isValid = selectedApprovalRecords.some((selection: any) =>
+                        validateCondition(selection, actionCondition)
+                    );
+                } else {
+                    isValid = validateCondition(getConditionPropertyObject(), actionCondition);
+                }
+                return isValid;
+            } else {
+                return true;
+            }
+        }
+        return additionalInfo?.filter(isCondValid);
+    };
+
     const handleEnterNotesAndJustifications = (actionItem: any, isBulk: boolean, isPrimaryAction?: boolean): void => {
         const actionDetailComments = getValueFromProperty(actionItem, 'Comments');
         const isJustificationApplicableInItem = getValueFromProperty(actionItem, 'isJustificationApplicable');
@@ -560,6 +603,7 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
         const code = getValueFromProperty(actionItem, 'Code');
         const justifications = getValueFromProperty(actionItem, 'Justifications');
         const actionAdditionalInformation = getValueFromProperty(actionItem, 'AdditionalInformation');
+        const filteredAdditionalInfo = filterByCondition(actionAdditionalInformation, isBulk);
         const actionConfirmationMessage = getValueFromProperty(actionItem, 'ActionConfirmationMessage');
         const nameInItem = getValueFromProperty(actionItem, 'Name');
         if (props.executeMicrofrontendActionRef) {
@@ -599,7 +643,7 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
             setDisplayNotesInput(true);
             setIsCommentMandatory(isCommentMandatory);
             setActionDetailsComments(actionDetailComments);
-            setActionAdditionalInformation(actionAdditionalInformation);
+            setActionAdditionalInformation(filteredAdditionalInfo);
             setSummaryObjectValues(getSummaryObjectValues(actionAdditionalInformation));
             setAdditionalControlValidation(getValidationInfo(actionAdditionalInformation));
             setCharLimit(_charLimit);
@@ -628,7 +672,7 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
             setDisplayNotesInput(true);
             setIsCommentMandatory(isCommentMandatory);
             setActionDetailsComments(actionDetailComments);
-            setActionAdditionalInformation(actionAdditionalInformation);
+            setActionAdditionalInformation(filteredAdditionalInfo);
             setSummaryObjectValues(getSummaryObjectValues(actionAdditionalInformation));
             setAdditionalControlValidation(getValidationInfo(actionAdditionalInformation));
             setCharLimit(_charLimit);
@@ -644,7 +688,8 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
         const areCommentsRequired = isPullTenantSelected
             ? areCommentsByKeyRequired
             : actionDetailComments || actionAdditionalInformation;
-        if (isPrimaryAction && !isJustificationRequired && !areCommentsRequired) {
+        const isAdditionalInfoRequired = filteredAdditionalInfo && filteredAdditionalInfo.length > 0;
+        if (isPrimaryAction && !isJustificationRequired && !areCommentsRequired && !isAdditionalInfoRequired) {
             const oneClickSubmission = {
                 code,
             };
@@ -655,7 +700,6 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
             }
         }
     };
-
     const clearNotesPopupData = () => {
         setCode('');
         setReasonCode('');
@@ -668,10 +712,13 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
         setDisplayNotesInput(false);
         setReceiptsCheck(false);
         setCorruptionCheck(false);
+        setAnomalyCheck(false);
         setDisplayReceiptError(false);
         setDisplayCorruptionError(false);
+        setDisplayAnomalyError(false);
         setDisplayReceiptCheckbox(false);
         setDisplayCorruptionCheckbox(false);
+        setDisplayAnomalyCheckbox(false);
         setSequenceID('');
         setNextApprover('');
         setSummaryObjectValues(null);
@@ -811,6 +858,10 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                 requiredFieldsProvided = false;
                 setDisplayCorruptionError(true);
             }
+            if (displayAnomalyCheckbox && !anomalyCheck) {
+                requiredFieldsProvided = false;
+                setDisplayAnomalyError(true);
+            }
         }
         const areAdditionalControlsValid = validateAdditionalControls();
         if (!areAdditionalControlsValid) {
@@ -821,6 +872,7 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
 
     const handleAdditionalActionDetails = () => {
         let res: any = {};
+        res['anomaliesChecked'] = anomalyCheck;
         for (let i = 0; i < justificationsWithKeys.length; i++) {
             const curItem = justificationsWithKeys[i];
             if (curItem.isApplicable) {
@@ -1355,6 +1407,7 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                 {!displayNotesInput ? (
                     <>
                         {isBulk && renderBulkApprovalMessage()}
+                        {tenantAdditionalNotes && renderAdditionalNotes(isBulk)}
                         <Stack horizontal tokens={stackTokens} styles={DetailsStyled.buttonZoomStyle}>
                             {getValueFromProperty(actionDetails, 'Primary') &&
                                 renderPrimaryButtons(getValueFromProperty(actionDetails, 'Primary'), isBulk)}
@@ -1364,7 +1417,6 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                                 </Stack.Item>
                             )}
                         </Stack>
-                        {tenantAdditionalNotes && renderAdditionalNotes(isBulk)}
                     </>
                 ) : (
                     <Stack tokens={stackTokens}>{renderSubmitAndCacelPanel(isBulk)}</Stack>

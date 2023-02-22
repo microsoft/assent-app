@@ -68,6 +68,7 @@ module.exports = (env) => {
                             },
                         ],
                     },
+                    { test: /\.json$/, type: 'json' },
                 ],
             },
             resolve: {

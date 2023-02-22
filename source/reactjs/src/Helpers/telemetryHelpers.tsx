@@ -80,6 +80,7 @@ export enum TrackingEventId {
     FileAttachmentUploadFailure,
     FileAttachmentUploadSuccess,
     ParseFileAttachmentUploadFailure,
+    FeedbackLaunchFailure,
 }
 
 export const getContextCommonTelemetryProperties = (
@@ -97,7 +98,7 @@ export const getContextCommonTelemetryProperties = (
         SessionId: correlationId,
         EventId: eventId,
         EventName: eventName,
-        ComponentType: 'Web'
+        ComponentType: 'Web',
     };
     return logData;
 };
@@ -114,7 +115,7 @@ export const trackBusinessProcessEvent = (
     try {
         const businessProcessProperties = {
             BusinessProcessName: businessProcessName,
-            EventType: 'BusinessProcessEvent'
+            EventType: 'BusinessProcessEvent',
         };
         const contextCommonProperties = getContextCommonTelemetryProperties(
             authClient,
@@ -130,7 +131,7 @@ export const trackBusinessProcessEvent = (
             additionalProperties
         );
         telemetryClient.trackEvent({ name: businessProcessName }, telemetryProperties);
-    } catch (error) { }
+    } catch (error) {}
 };
 
 export const trackFeatureUsageEvent = (
@@ -144,7 +145,7 @@ export const trackFeatureUsageEvent = (
 ): void => {
     try {
         const featureUsageProperties = {
-            EventType: 'FeatureUsageEvent'
+            EventType: 'FeatureUsageEvent',
         };
         const contextCommonProperties = getContextCommonTelemetryProperties(
             authClient,
@@ -160,7 +161,7 @@ export const trackFeatureUsageEvent = (
             additionalProperties
         );
         telemetryClient.trackEvent({ name: eventName }, telemetryProperties);
-    } catch (error) { }
+    } catch (error) {}
 };
 
 export const trackException = (
@@ -183,5 +184,5 @@ export const trackException = (
         );
         const telemetryProperties = Object.assign(stateCommonProperties, contextCommonProperties, additionalProperties);
         telemetryClient.trackException({ exception: exception, properties: telemetryProperties });
-    } catch (error) { }
+    } catch (error) {}
 };

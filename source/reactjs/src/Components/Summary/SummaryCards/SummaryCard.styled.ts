@@ -127,10 +127,11 @@ export const MailReadIcon = styled.div`
     background-image: url('/icons/read-blk.png');
     background-size: 18px 18px;
 
-    @media screen and (forced-colors: active){
+    @media screen and (forced-colors: active) and (prefers-color-scheme: dark) {
         background-image: url('/icons/read-wht.png');
     }
 `;
+
 
 export const MailUnreadIcon = styled.div`
     width: 18px;
@@ -138,7 +139,7 @@ export const MailUnreadIcon = styled.div`
     background-image: url('/icons/unread-blk.png');
     background-size: 18px 18px;
 
-    @media screen and (forced-colors: active){
+    @media screen and (forced-colors: active) and (prefers-color-scheme: dark) {
         background-image: url('/icons/unread-wht.png');
     }
 `;
@@ -239,8 +240,8 @@ export const Card: any = styled.div`
         props.lastFailed
             ? '5px solid rgb(168, 0, 0)'
             : props.isRead
-            ? '5px solid rgb(255, 255, 255)'
-            : '5px solid rgb(0, 120, 212)'};
+                ? '5px solid rgb(255, 255, 255)'
+                : '5px solid rgb(0, 120, 212)'};
     height: ${(props: any) => (props.footer ? '150px' : '190px')};
 `;
 
