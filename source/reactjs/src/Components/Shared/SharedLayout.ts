@@ -94,10 +94,6 @@ export const AccessibilityIcon = styled.div`
     @media screen and (forced-colors: active) and (prefers-color-scheme: light) {
         background-image: url('/icons/ic_fluent_accessibility_24_regular.svg');
     }
-
-    
-    
-
 `;
 
 export const ErrorText = styled.p`
