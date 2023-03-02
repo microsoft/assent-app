@@ -1,4 +1,7 @@
 # Microsoft Assent
+![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/microsoft/assent-app?include_prereleases)
+[![CodeQL](https://github.com/microsoft/assent-app/actions/workflows/codeql-analysis.yml/badge.svg?branch=main)](https://github.com/microsoft/assent-app/actions/workflows/codeql-analysis.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/microsoft/assent-app/badge)](https://api.securityscorecards.dev/projects/github.com/microsoft/assent-app)
 ## Assent <sub>**A***pproval* **S***olution* **S***implified for* **ENT***erprise*<sub>
 Microsoft Assent (*a.k.a Approvals*) as a platform provides the "one stop shop" solution for approvers via a model that brings together disparate different approval requests in a consistent and ultra-modern model. Approvals delivers a unified approvals experience for any approval on multiple form factors - Website, Outlook Actionable email, Teams. It consolidates approvals across organization's line of business applications, building on modern technology and powered by Microsoft Azure. It serves as a showcase for solving modern IT scenarios using the latest technologies.
 - Payload Receiver Service API - Accepts payload from tenant system.
