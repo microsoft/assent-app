@@ -4,7 +4,7 @@
 
 This project uses GitHub Issues to track bugs and feature requests. Please search the existing issues before filing new issues to avoid duplicates. 
 
-For new issues, [file your bug](https://github.com/microsoft/approvals/issues/new?assignees=&labels=Bug&template=&title=%5BPlatform/UI%5D+%5BIssue+Category+if+applicable+%28e.g.+Accessibility%29%5D+%5BBug+Title%5D) or [feature request](https://github.com/microsoft/Approvals/issues/new?assignees=cr-chinmaya%2C+emishra&amp;labels=Request&amp;template=&amp;title=%5BPlatform/UI%5D+%5BFeature+Request+Category+if+applicable%5D+%5BTitle%5D) as a new Issue.
+For new issues, [file your bug](https://github.com/microsoft/assent-app/issues/new?assignees=&labels=Bug&template=&title=%5BPlatform/UI%5D+%5BIssue+Category+if+applicable+%28e.g.,+Accessibility%29%5D+%5BBug+Title%5D) or [feature request](https://github.com/microsoft/assent-app/issues/new?assignees=cr-chinmaya%2C+emishra&amp;labels=Request&amp;template=&amp;title=%5BPlatform/UI%5D+%5BFeature+Request+Category+if+applicable%5D+%5BTitle%5D) as a new Issue.
 
 ## Microsoft Support Policy  
 
@@ -20,12 +20,19 @@ Approvals has a lifecycle. A lifecycle begins when a project/service is released
 This tables describes the various packages we offer, the support type, latest patch version and end of support date for Adaptive Cards SDKs.
 
 
-#### `1.x` (Current)
+#### `2.x` (Current)
 
 | **Platform** | **Package** | **Latest Patch Version** | **Patch Release Date** | **Support Level** | **End of Support** |
 | --- | --- | --- | --- | --- | --- |
-| ReactJS (JavaScript) | approvals | 1.0.0 | 2022.03.18 | Current | 2022.12.31 |
-| .NET | approvals | 1.0.0 | 2022.03.18 | Current | 2022.12.03 |
+| ReactJS (JavaScript) | assent | 2.2.0 | 2023.02.22 | Current | 2023.12.31 |
+| .NET | assent | 2.2.0 | 2023.02.22 | Current | 2023.12.31 |
+
+#### `1.x`
+
+| **Platform** | **Package** | **Latest Patch Version** | **Patch Release Date** | **Support Level** | **End of Support** |
+| --- | --- | --- | --- | --- | --- |
+| ReactJS (JavaScript) | assent | 1.1.0 | 2022.08.05 | EOL | 2022.12.31 |
+| .NET | assent | 1.1.0 | 2022.08.05 | EOL | 2022.12.31 |
 
 
 ## Release Types
