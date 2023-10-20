@@ -94,7 +94,7 @@ public class PayloadReceiverHelper : IPayloadReceiverHelper
             IConfidentialClientApplication app = ConfidentialClientApplicationBuilder.
                 Create(_configurationSetting.appSettings[_environment].PayloadReceiverServiceClientId).
                 WithClientSecret(_configurationSetting.appSettings[_environment].PayloadReceiverServiceAppKey).
-                WithAuthority(new Uri(string.Format("{0}{1}", _configuration["AADInstance"], _configuration["Tenant"]))).
+                WithAuthority(new Uri(string.Format("{0}{1}", _configuration["IdentityProviderInstance"], _configuration["Tenant"]))).
                 Build();
             var scopes = new[] { _configurationSetting.appSettings[_environment].ResourceURL + "/.default" };
             var result = app.AcquireTokenForClient(scopes).ExecuteAsync().Result;

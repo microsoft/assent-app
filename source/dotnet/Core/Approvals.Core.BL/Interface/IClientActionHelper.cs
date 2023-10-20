@@ -18,7 +18,7 @@ public interface IClientActionHelper
     /// <param name="clientDevice">Client Device</param>
     /// <param name="userAlias">User Alias</param>
     /// <param name="loggedInUser">Logged-in user Alias</param>
-    /// <param name="aadUserToken">AAD Token</param>
+    /// <param name="oauth2UserToken">OAuth 2.0 Token</param>
     /// <param name="submissionType">Action submission type</param>
     /// <param name="xcv">X-Correlation ID</param>
     /// <param name="tcv">T-Correlation ID</param>
@@ -30,7 +30,7 @@ public interface IClientActionHelper
             string clientDevice,
             string userAlias,
             string loggedInUser,
-            string aadUserToken,
+            string oauth2UserToken,
             ActionSubmissionType submissionType,
             string xcv = "",
             string tcv = "",

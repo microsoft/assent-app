@@ -49,8 +49,8 @@ public class HttpHelper : IHttpHelper
         Dictionary<string, string> headers = null,
         string content = "")
     {
-        var accessToken = (await _authenticationHelper.AcquireOAuth2TokenAsync(
-                          clientId, clientKey, authority, resourceUri, string.Empty)).AccessToken;
+        var accessToken = (await _authenticationHelper.AcquireOAuth2TokenByScopeAsync(
+                          clientId, clientKey, authority, resourceUri, "/.default")).AccessToken;
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Constant.Bearer, accessToken);
 
         // Create HttpRequestMessage

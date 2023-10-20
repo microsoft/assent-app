@@ -29,6 +29,7 @@ using Microsoft.CFS.Approvals.Utilities.Interface;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using NotificationType = Model.NotificationType;
 
 /// <summary>
 /// The Email Helper class
@@ -426,7 +427,7 @@ public class EmailHelper : IEmailHelper
 
                 // Fetch missing details from LOB system and store it in azuretable
                 missingDataResponseJObject = GetDetailsDataforApprovalRequest(tenantInfo, approvalIdentifier, summaryRow, logData, operationName);
-                
+
                 if (missingDataResponseJObject != null && missingDataResponseJObject.Property("Message") != null && !string.IsNullOrWhiteSpace(missingDataResponseJObject.Property("Message").Value.ToString()))
                 {
                     throw new Exception(missingDataResponseJObject.Property("Message").Value.ToString());
@@ -522,57 +523,6 @@ public class EmailHelper : IEmailHelper
         }
 
         return attachmentList;
-    }
-
-    /// <summary>
-    /// Get request activities
-    /// </summary>
-    /// <param name="documentSummary"></param>
-    /// <param name="historyDataExts"></param>
-    /// <returns></returns>
-    public List<TransactionHistoryExt> GetRequestActivities(JObject documentSummary, List<TransactionHistoryExt> historyDataExts)
-    {
-        if (documentSummary != null && !string.IsNullOrWhiteSpace(documentSummary.ToString()))
-        {
-            SummaryJson summary = documentSummary.ToString().FromJson<SummaryJson>();
-
-            // Adding Existing RequestActivities entries if sent by tenant systems.
-            if (summary.AdditionalData != null && summary.AdditionalData.Count() > 0)
-            {
-                // TODO: Put all the Email Keywords used in EmailHeler.cs as a constant.
-                string requestActivitiesHeader = "RequestActivities";
-
-                if (summary.AdditionalData.ContainsKey(requestActivitiesHeader))
-                {
-                    var requestActivities = summary.AdditionalData[requestActivitiesHeader];
-                    var requestActivitiesValue = ((JValue)requestActivities).Value; // If requestActivities=null, null will returned.
-                    if (requestActivitiesValue != null)
-                    {
-                        JArray requestActivitiesArray = requestActivitiesValue.ToString().ToJArray();
-
-                        var approvalRequestActivities = requestActivitiesArray.ToObject<List<ApprovalRequestActivities>>();
-
-                        foreach (ApprovalRequestActivities request in approvalRequestActivities)
-                        {
-                            historyDataExts.AddRange(
-                                request.Value.Select(requestActivityValue => new TransactionHistoryExt()
-                                {
-                                    Approver = requestActivityValue.Alias,
-                                    JsonData = documentSummary.ToString(),
-                                    ActionTaken = (string.IsNullOrWhiteSpace(requestActivityValue.Action) ? string.Empty : requestActivityValue.Action),
-                                    ApproverType = request.Name,
-                                    _future = true,
-                                    ApproverName = requestActivityValue.Name,
-                                    ApproversNote = "{\"Comment\":\"" + (string.IsNullOrWhiteSpace(requestActivityValue.Notes) ? string.Empty : requestActivityValue.Notes) + "\"}",
-                                    ActionDate = requestActivityValue.ActionDate,
-                                    _isPreApprover = true
-                                }));
-                        }
-                    }
-                }
-            }
-        }
-        return historyDataExts;
     }
 
     /// <summary>
@@ -1089,6 +1039,7 @@ public class EmailHelper : IEmailHelper
         Dictionary<string, string> additionalData,
         List<NotificationDataAttachment> notificationDataAttachment)
     {
+        var notificationMessageId = Guid.NewGuid().ToString();
         var logData = new Dictionary<LogDataKey, object>
         {
             { LogDataKey.BusinessProcessName, string.Format(tenantInfo.BusinessProcessName, Constants.BusinessProcessNameSendNotificationToUser, Constants.BusinessProcessNameSendNotificationEmail) },
@@ -1100,7 +1051,8 @@ public class EmailHelper : IEmailHelper
             { LogDataKey.DocumentNumber, deviceNotificationInfo?.ApprovalIdentifier?.DocumentNumber },
             { LogDataKey.TenantName, deviceNotificationInfo?.Application },
             { LogDataKey.Approver, deviceNotificationInfo?.Approver },
-            { LogDataKey.NotificationTemplateKey, deviceNotificationInfo?.NotificationTemplateKey }
+            { LogDataKey.NotificationTemplateKey, deviceNotificationInfo?.NotificationTemplateKey },
+            { LogDataKey.NotificationMessageId, notificationMessageId }
         };
 
         try
@@ -1145,23 +1097,23 @@ public class EmailHelper : IEmailHelper
                         template = _emailTemplateHelper.GetTemplates().Where(emailtemplate => (emailtemplate.PartitionKey.Equals(tenantId.ToString(), StringComparison.InvariantCultureIgnoreCase)) && Regex.IsMatch(emailtemplate.RowKey, templatePattern)).FirstOrDefault();
                     }
 
-                    var emailData = new NotificationFrameworkItem
+                    var emailData = new NotificationItem
                     {
                         Bcc = BCCEmailAddress,
                         Body = template.TemplateContent,
                         Cc = FormatEmailIfNotValid(deviceNotificationInfo.CC),
                         Subject = GetSubjectTemplate(template.TemplateContent),
-                        TemplateData = templateData,
+                        TemplateData = templateData.ToDictionary(pair => pair.Key, pair => (object)pair.Value),
                         TemplatePartitionKey = new List<string>() { tenantId.ToString() },
                         TemplateRowExp = ApprovalEmailNotificationTemplates.EmailTemplatePartitionKey(deviceNotificationInfo.NotificationTemplateKey, deviceNotificationInfo.ActionTaken),
                         To = FormatEmailIfNotValid(deviceNotificationInfo.To),
-                        NotificationTypes = new List<NotificationFrameworkType>(),
-                        Telemetry = new Telemetry() { Xcv = summaryRows.FirstOrDefault().Xcv, MessageId = summaryRows.FirstOrDefault().Tcv },
+                        NotificationTypes = new List<NotificationType>(),
+                        Telemetry = new Telemetry() { Xcv = summaryRows.FirstOrDefault().Xcv, MessageId = notificationMessageId },
                         // Set TemplateId null to avoid NF logic app to refetch the template and send email with placeholders.
-                        TemplateId = null,
+                        TemplateId = template.TemplateId,
                         TenantIdentifier = tenantInfo.RowKey
                     };
-                    emailData.NotificationTypes.Add(NotificationFrameworkType.Mail);
+                    emailData.NotificationTypes.Add(NotificationType.Mail);
 
                     // to bind the attachments.
                     emailData.Attachments = notificationDataAttachment?.Select(item => new NotificationDataAttachment
@@ -1169,7 +1121,8 @@ public class EmailHelper : IEmailHelper
                         FileBase64 = item.FileBase64,
                         FileName = item.FileName,
                         IsInline = item.IsInline,
-                        FileUrl = item.FileUrl
+                        FileUrl = item.FileUrl,
+                        FileSize = item.FileSize
                     }).ToList();
 
                     _notificationProvider.Tenant = tenant;
@@ -1280,7 +1233,6 @@ public class EmailHelper : IEmailHelper
         Dictionary<LogDataKey, object> logData)
     {
         var placeHolderDictionary = new Dictionary<string, string>();
-        List<TransactionHistoryExt> requestActivitiesHistory = new List<TransactionHistoryExt>();
 
         string templateData = String.Empty;
         ApprovalSummaryRow summaryData;
@@ -1301,9 +1253,7 @@ public class EmailHelper : IEmailHelper
             JObject summaryWithApprover = (summaryData.SummaryJson).ToJObject();
             await AddApprover(summaryData.Approver, summaryWithApprover);
 
-            // Adding RequestActivities values passed by tenant in AdditionalData of summary and appending the values from TransactionHistory
-            GetRequestActivities(summaryWithApprover, requestActivitiesHistory).AddRange(historyDataExt);
-            placeHolderDictionary = await MapSummaryData(summaryWithApprover.ToString(), tenantInfo, deviceNotificationInfo.ActionDetails, summaryData.Approver, requestActivitiesHistory, Xcv, tenant, responseJObject, summaryRows, emailType, deviceNotificationInfo, logData);
+            placeHolderDictionary = await MapSummaryData(summaryWithApprover.ToString(), tenantInfo, deviceNotificationInfo.ActionDetails, summaryData.Approver, historyDataExt, Xcv, tenant, responseJObject, summaryRows, emailType, deviceNotificationInfo, logData);
         }
         else
         {
@@ -1704,12 +1654,12 @@ public class EmailHelper : IEmailHelper
         try
         {
             ApprovalEmailNotificationTemplates template = _emailTemplateHelper.GetTemplates().Where(emailtemplate => Regex.IsMatch(emailtemplate.RowKey, ApprovalEmailNotificationTemplates.EmailTemplatePartitionKey(userDelegationNotification.NotificationTemplateKey, userDelegationNotification.ActionTaken))).FirstOrDefault();
-            NotificationData emailData = new NotificationData
+            NotificationItem emailData = new NotificationItem
             {
                 Body = template.TemplateContent,
                 Cc = FormatEmailIfNotValid(userDelegationNotification.CC),
                 Subject = GetSubjectTemplate(template.TemplateContent),
-                TemplateData = GetMailContent(userDelegationNotification),
+                TemplateData = GetMailContent(userDelegationNotification).ToDictionary(pair => pair.Key, pair => (object)pair.Value),
                 TemplatePartitionKey = new List<string>() { "0" },
                 TemplateRowExp = ApprovalEmailNotificationTemplates.EmailTemplatePartitionKey(userDelegationNotification.NotificationTemplateKey, userDelegationNotification.ActionTaken),
                 To = FormatEmailIfNotValid(userDelegationNotification.To)

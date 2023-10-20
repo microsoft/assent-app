@@ -37,7 +37,7 @@ public interface IDetailsHelper
     /// <param name="isWorkerTriggered">To understand if Worker role has triggered the details fetch</param>
     /// <param name="sectionType">section type. eg. Summary Details</param>
     /// <param name="clientDevice">Client Device</param>
-    /// <param name="aadUserToken">AAD User Token</param>
+    /// <param name="oauth2UserToken">The OAuth 2.0 User Token</param>
     /// <returns>Details data as JObject</returns>
     Task<JObject> AuthSum
         (
@@ -60,7 +60,7 @@ public interface IDetailsHelper
             bool isWorkerTriggered,
             int sectionType,
             string clientDevice,
-            string aadUserToken
+            string oauth2UserToken
         );
 
     /// <summary>
@@ -139,7 +139,7 @@ public interface IDetailsHelper
     /// <param name="userAlias">Alias of the Approver of this request</param>
     /// <param name="loggedInAlias">Logged in User Alias</param>
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
-    /// <param name="aadUserToken">The Azure AD user token</param>
+    /// <param name="oauth2UserToken">The OAuth 2.0 user token</param>
     /// <param name="isWorkerTriggered">To understand if Worker role has triggered the details fetch</param>
     /// <param name="sectionType">section type. eg. Summary Details</param>
     /// <returns>Details of the request as a Task of JObject</returns>
@@ -156,7 +156,7 @@ public interface IDetailsHelper
             string userAlias,
             string loggedInAlias,
             string clientDevice,
-            string aadUserToken,
+            string oauth2UserToken,
             bool isWorkerTriggered,
             int sectionType,
             string pageType,
@@ -178,7 +178,7 @@ public interface IDetailsHelper
     /// <param name="userAlias">Alias of the Approver of this request</param>
     /// <param name="loggedInAlias">Logged in User Alias</param>
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
-    /// <param name="aadUserToken">The Azure AD user token</param>
+    /// <param name="oauth2UserToken">The OAuth 2.0 user token</param>
     /// <returns>HttpResponseMessage with Stream data of the attachment</returns>
     Task<byte[]> GetDocuments(
             int tenantId,
@@ -193,7 +193,7 @@ public interface IDetailsHelper
             string userAlias,
             string loggedInAlias,
             string clientDevice,
-            string aadUserToken);
+            string oauth2UserToken);
 
     /// <summary>
     /// This method gets all the Attachment content for a request
@@ -209,11 +209,11 @@ public interface IDetailsHelper
     /// <param name="userAlias">Alias of the Approver of this request</param>
     /// <param name="loggedInAlias">Logged in User Alias</param>
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
-    /// <param name="aadUserToken">The Azure AD user token</param>
+    /// <param name="oauth2UserToken">The OAuth 2.0 user token</param>
     /// <returns>HttpResponseMessage with Stream data of the attachment</returns>
     Task<byte[]> GetAllDocumentsZipped(int tenantId, string documentNumber, string displayDocumentNumber,
        string fiscalYear, IRequestAttachment[] attachments, string sessionId, string tcv, string xcv, string userAlias, string loggedInAlias,
-       string clientDevice, string aadUserToken);
+       string clientDevice, string oauth2UserToken);
 
     /// <summary>
     /// Bulk Attachment Download : Gets the attachments from the LOB application for the selected requests
@@ -245,24 +245,21 @@ public interface IDetailsHelper
     /// <param name="displayDocumentNumber">Display Document Number of the request</param>
     /// <param name="fiscalYear">Fiscal year of the request</param>
     /// <param name="attachmentId">Attachment ID of the Document to be downloaded</param>
-    /// <param name="IsPreAttached">Specifies the type of the attachment if the attachment is pre attached from tenant or post attached from ui.</param>
+    /// <param name="isPreAttached">Specifies the type of the attachment if the attachment is pre attached from tenant or post attached from ui.</param>
     /// <param name="sessionId">GUID session id</param>
     /// <param name="tcv">GUID transaction correlation vector for telemetry and logging</param>
     /// <param name="xcv">Cross system correlation vector for telemetry and logging</param>
-    /// <param name="userAlias">Alias of the Approver of this request</param>
     /// <param name="loggedInAlias">Logged in User Alias</param>
-    /// <param name="clientDevice">Client Device (Web/WP8..)</param>
-    /// <param name="aadUserToken">The Azure AD user token</param>
     /// <returns>HttpResponseMessage with Stream data of the attachment</returns>
-    Task<byte[]> GetDocumentPreview(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, string attachmentId, bool IsPreAttached, string sessionId, string tcv, string xcv, string alias, string loggedInAlias, string v1, string v2);
+    Task<byte[]> GetDocumentPreview(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, string attachmentId, bool isPreAttached, string sessionId, string tcv, string xcv, string alias, string loggedInAlias, string v1, string v2);
 
     /// <summary>
     /// This method will prepare base64 image of the alias
     /// </summary>
     /// <param name="alias">Input alias</param>
-    /// <param name="SessionId">Session ID </param>
+    /// <param name="sessionId">Session ID </param>
     /// <param name="clientDevice">Client Device</param>
     /// <param name="logData">Log Data</param>
     /// <returns>Returns base64 string</returns>
-    Task<string> GetUserImage(string alias, string SessionId, string clientDevice, Dictionary<LogDataKey, object> logData);
+    Task<string> GetUserImage(string alias, string sessionId, string clientDevice, Dictionary<LogDataKey, object> logData);
 }

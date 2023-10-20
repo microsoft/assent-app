@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 namespace Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Helpers;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,7 +12,7 @@ using Microsoft.Azure.KeyVault;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Models;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Interface;
 using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
+using Microsoft.Identity.Client;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -41,22 +42,9 @@ public class KeyVaultHelper : IKeyVaultHelper
     public Dictionary<string, AppSettings> GetKeyVault()
     {
         Dictionary<string, AppSettings> appSettings = new Dictionary<string, AppSettings>();
-        var kvc = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(
-              async (string authority, string resource, string scope) =>
-              {
-                  var authContext = new AuthenticationContext(string.Format("{0}{1}", _configuration["AADInstance"], _configuration["TenantID"]));
-                  var credential = new ClientCredential(_configuration["KeyVaultClientId"], _configuration["KeyVaultClientSecret"]);
-                  AuthenticationResult result = await authContext.AcquireTokenAsync(resource, credential);
-                  if (result == null)
-                  {
-                      throw new InvalidOperationException("Failed to retrieve JWT token");
-                  }
-                  return result.AccessToken;
-              }));
         var environments = _configuration["Environmentlist"].Split(',').ToList();
         foreach (var environment in environments)
         {
-
             SecretClient secretClient = new SecretClient(new Uri(_configuration["KeyVaultSecretUri"]), new DefaultAzureCredential());
             var secretResponse = secretClient.GetSecret(string.Format("{0}-{1}", environment, "TestHarnessConfiguration"));
             var config = JsonConvert.DeserializeObject<JObject>(secretResponse.Value.Value);

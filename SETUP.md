@@ -55,7 +55,7 @@ Make a note of all keys or secrets or Client Ids of the newly created resources:
 > 
 > Application Insights Client Id
 > 
-> AADs Client Id and Client Secret
+> Microsoft Entra ID Client Id and Client Secret
 > 
 > Managed Identity Client Id and Client Secret
 

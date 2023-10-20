@@ -21,7 +21,7 @@ public interface ITenantFactory
     /// <param name="tenantInfo"></param>
     /// <param name="alias"></param>
     /// <param name="clientDevice"></param>
-    /// <param name="aadToken"></param>
+    /// <param name="oauth2Token"></param>
     /// <returns></returns>
-    ITenant GetTenant(ApprovalTenantInfo tenantInfo, string alias, string clientDevice, string aadToken);
+    ITenant GetTenant(ApprovalTenantInfo tenantInfo, string alias, string clientDevice, string oauth2Token);
 }

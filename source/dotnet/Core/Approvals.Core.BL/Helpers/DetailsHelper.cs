@@ -185,7 +185,7 @@ public class DetailsHelper : IDetailsHelper
     /// <param name="isWorkerTriggered">is Worker role triggered</param>
     /// <param name="sectionType">Section type e.g. Summary, Details</param>
     /// <param name="clientDevice">Client Device</param>
-    /// <param name="aadUserToken">AAD User Token</param>
+    /// <param name="oauth2UserToken">OAuth 2.0 User Token</param>
     /// <returns>Details data as JObject</returns>
     public async Task<JObject> AuthSum(
         ITenant tenantAdaptor,
@@ -207,7 +207,7 @@ public class DetailsHelper : IDetailsHelper
         bool isWorkerTriggered,
         int sectionType,
         string clientDevice,
-        string aadUserToken)
+        string oauth2UserToken)
     {
         #region Logging Prep
 
@@ -324,7 +324,7 @@ public class DetailsHelper : IDetailsHelper
 
                     if (responseObject.Property("Actions") == null)
                     {
-                        var actions = await AddAllowedActions(alias, loggedInAlias, tenantInfo, documentSummary, additionalData, clientDevice, sessionId, xcv, tcv, aadUserToken);
+                        var actions = await AddAllowedActions(alias, loggedInAlias, tenantInfo, documentSummary, additionalData, clientDevice, sessionId, xcv, tcv, oauth2UserToken);
                         if (actions != null)
                         {
                             responseObject.Add("Actions", JToken.FromObject(actions));
@@ -438,9 +438,9 @@ public class DetailsHelper : IDetailsHelper
                         if (additionalDataValue["RequestActivities"] != null)
                         {
                             var requestActivities = additionalDataValue["RequestActivities"];
-                            if (requestActivities != null && ((JValue)requestActivities).Value != null)
+                            var value = ((JValue)requestActivities).Value;
+                            if (requestActivities != null && value != null && value.ToString().IsJsonArray())
                             {
-                                var value = ((JValue)requestActivities).Value;
                                 var requestActivitiesObject = JsonConvert.DeserializeObject(value.ToString());
                                 responseObject["RequestActivities"] = requestActivitiesObject.ToJson().ToJArray();
                             }
@@ -573,10 +573,12 @@ public class DetailsHelper : IDetailsHelper
                     #endregion Add base64 UserImage string
 
                     #region Check if Upload Attachment feature enabled
+
                     var isUploadAttachmentEnabled = (tenantInfo.IsUploadAttachmentsEnabled ?
-                                                     _flightingDataProvider.IsFeatureEnabledForUser(alias, (int)FlightingFeatureName.UploadAttachment)
-                                                    : false);
+                                                                         _flightingDataProvider.IsFeatureEnabledForUser(alias, (int)FlightingFeatureName.UploadAttachment)
+                                                                        : false);
                     responseObject.Add("isUploadAttachmentEnabled", isUploadAttachmentEnabled);
+
                     #endregion Check if Upload Attachment feature enabled
                 }
 
@@ -779,9 +781,9 @@ public class DetailsHelper : IDetailsHelper
     /// <param name="userAlias">Alias of the Approver of this request</param>
     /// <param name="loggedInAlias">Logged in User Alias</param>
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
-    /// <param name="aadUserToken">The Azure AD user token</param>
+    /// <param name="oauth2UserToken">The OAuth 2.0 user token</param>
     /// <returns>HttpResponseMessage with Stream data of the attachment</returns>
-    public async Task<byte[]> GetAllDocumentsZipped(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, IRequestAttachment[] attachments, string sessionId, string tcv, string xcv, string userAlias, string loggedInAlias, string clientDevice, string aadUserToken)
+    public async Task<byte[]> GetAllDocumentsZipped(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, IRequestAttachment[] attachments, string sessionId, string tcv, string xcv, string userAlias, string loggedInAlias, string clientDevice, string oauth2UserToken)
     {
         #region Logging Prep
 
@@ -831,7 +833,7 @@ public class DetailsHelper : IDetailsHelper
 
             ITenant tenantAdaptor = null;
 
-            tenantAdaptor = _tenantFactory.GetTenant(tenantInfo, userAlias, clientDevice, aadUserToken);
+            tenantAdaptor = _tenantFactory.GetTenant(tenantInfo, userAlias, clientDevice, oauth2UserToken);
 
             #endregion Get Tenant Type
 
@@ -886,7 +888,6 @@ public class DetailsHelper : IDetailsHelper
                             {
                                 response = await DownloadUserAttachedDocuments(approvalIdentifier.DocumentNumber, attachment.ID, tenantInfo, requestDetails);
                             }
-
 
                             if (response != null)
                             {
@@ -995,13 +996,13 @@ public class DetailsHelper : IDetailsHelper
     /// <param name="userAlias">Alias of the Approver of this request</param>
     /// <param name="loggedInAlias">Logged in User Alias</param>
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
-    /// <param name="aadUserToken">The Azure AD user token</param>
+    /// <param name="oauth2UserToken">The OAuth 2.0 user token</param>
     /// <param name="isWorkerTriggered">To understand if Worker role has triggered the details fetch</param>
     /// <param name="sectionType">section type. eg. Summary Details</param>
     /// <param name="pageType">This the page calling the Details API e.g. Detail, History</param>
     /// <param name="source">Source for Details call eg. Summary, Notification</param>
     /// <returns>Details of the request as a Task of JObject</returns>
-    public async Task<JObject> GetDetails(int tenantId, string documentNumber, string operation, string fiscalYear, int page, string sessionId, string tcv, string xcv, string userAlias, string loggedInAlias, string clientDevice, string aadUserToken, bool isWorkerTriggered, int sectionType, string pageType, string source)
+    public async Task<JObject> GetDetails(int tenantId, string documentNumber, string operation, string fiscalYear, int page, string sessionId, string tcv, string xcv, string userAlias, string loggedInAlias, string clientDevice, string oauth2UserToken, bool isWorkerTriggered, int sectionType, string pageType, string source)
     {
         #region Logging Prep
 
@@ -1067,7 +1068,7 @@ public class DetailsHelper : IDetailsHelper
                     tenantInfo,
                     userAlias,
                     clientDevice,
-                    aadUserToken);
+                    oauth2UserToken);
 
             #endregion Get Tenant Type
 
@@ -1221,7 +1222,7 @@ public class DetailsHelper : IDetailsHelper
                                 isWorkerTriggered,
                                 sectionType,
                                 clientDevice,
-                                aadUserToken);
+                                oauth2UserToken);
 
                         if (responseJObject == null)
                         {
@@ -1246,7 +1247,6 @@ public class DetailsHelper : IDetailsHelper
                             responseJObject.Add("CurrentApprovers", string.Join(",", currentApproverInDbJson?.JSONData?.FromJson<List<Approver>>()?.Select(s => s.Name)));
                         }
 
-
                         if (responseJObject.ContainsKey("FileAttachmentOptions"))
                         {
                             responseJObject["FileAttachmentOptions"] = attachmentProperties?.FileAttachmentOptions.ToJToken();
@@ -1263,7 +1263,7 @@ public class DetailsHelper : IDetailsHelper
 
                         if (clientDevice.Equals(Constants.TeamsClient, StringComparison.InvariantCultureIgnoreCase))
                         {
-                            FetchMissingDetailsDataFromLOB(responseJObject, tenantId, documentNumber, fiscalYear, sessionId, tcv, xcv, userAlias, loggedInAlias, clientDevice, aadUserToken, sectionType, pageType, source);
+                            FetchMissingDetailsDataFromLOB(responseJObject, tenantId, documentNumber, fiscalYear, sessionId, tcv, xcv, userAlias, loggedInAlias, clientDevice, oauth2UserToken, sectionType, pageType, source);
                         }
 
                         logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
@@ -1358,15 +1358,11 @@ public class DetailsHelper : IDetailsHelper
                 if (summaryJson.Attachments == null)
                 {
                     summaryJson.Attachments = new List<Attachment>();
-
                 }
-
-                summaryJson.Attachments.Add(new Attachment() { ID = userAttachment.ID, Name = userAttachment.Name, IsPreAttached = userAttachment.IsPreAttached });
+                summaryJson.Attachments.Add(new Attachment() { ID = userAttachment.ID, Name = userAttachment.Name, IsPreAttached = userAttachment.IsPreAttached, Category = userAttachment.Category, Description = userAttachment.Description, UploadedBy = userAttachment.UploadedBy, UploadedDate = userAttachment.UploadedDate });
             }
-
             documentSummary.SummaryJson = summaryJson.ToJson();
         }
-
     }
 
     /// <summary>
@@ -1384,9 +1380,9 @@ public class DetailsHelper : IDetailsHelper
     /// <param name="userAlias">Alias of the Approver of this request</param>
     /// <param name="loggedInAlias">Logged in User Alias</param>
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
-    /// <param name="aadUserToken">The Azure AD user token</param>
+    /// <param name="oauth2UserToken">The OAuth 2.0 user token</param>
     /// <returns>HttpResponseMessage with Stream data of the attachment</returns>
-    public async Task<byte[]> GetDocumentPreview(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, string attachmentId, bool isPreAttached, string sessionId, string tcv, string xcv, string userAlias, string loggedInAlias, string clientDevice, string aadUserToken)
+    public async Task<byte[]> GetDocumentPreview(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, string attachmentId, bool isPreAttached, string sessionId, string tcv, string xcv, string userAlias, string loggedInAlias, string clientDevice, string oauth2UserToken)
     {
         #region Logging Prep
 
@@ -1440,7 +1436,7 @@ public class DetailsHelper : IDetailsHelper
                                                         tenantInfo,
                                                         userAlias,
                                                         clientDevice,
-                                                        aadUserToken);
+                                                        oauth2UserToken);
 
             #endregion Get Tenant Type
 
@@ -1466,7 +1462,6 @@ public class DetailsHelper : IDetailsHelper
             }
 
             #endregion Check Permissions
-
 
             byte[] response = null;
 
@@ -1530,7 +1525,7 @@ public class DetailsHelper : IDetailsHelper
         List<Attachment> attachmentsSummary = new List<Attachment>();
         if (requestDetails != null && requestDetails.Any())
         {
-            // Filter to get only the row which has TransactionalDetails 
+            // Filter to get only the row which has TransactionalDetails
             var existingAttachmentsRecord = requestDetails.FirstOrDefault(x => x.RowKey.Equals(Constants.AttachmentsOperationType, StringComparison.InvariantCultureIgnoreCase));
 
             if (existingAttachmentsRecord != null)
@@ -1565,9 +1560,9 @@ public class DetailsHelper : IDetailsHelper
     /// <param name="userAlias">Alias of the Approver of this request</param>
     /// <param name="loggedInAlias">Logged in User Alias</param>
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
-    /// <param name="aadUserToken">The Azure AD user token</param>
+    /// <param name="oauth2UserToken">The OAuth 2.0 user token</param>
     /// <returns>HttpResponseMessage with Stream data of the attachment</returns>
-    public async Task<byte[]> GetDocuments(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, string attachmentId, bool IsPreAttached, string sessionId, string tcv, string xcv, string userAlias, string loggedInAlias, string clientDevice, string aadUserToken)
+    public async Task<byte[]> GetDocuments(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, string attachmentId, bool IsPreAttached, string sessionId, string tcv, string xcv, string userAlias, string loggedInAlias, string clientDevice, string oauth2UserToken)
     {
         #region Logging Prep
 
@@ -1621,7 +1616,7 @@ public class DetailsHelper : IDetailsHelper
                                                         tenantInfo,
                                                         userAlias,
                                                         clientDevice,
-                                                        aadUserToken);
+                                                        oauth2UserToken);
 
             #endregion Get Tenant Type
 
@@ -1652,7 +1647,7 @@ public class DetailsHelper : IDetailsHelper
 
             if (IsPreAttached == false)
             {
-                response = await DownloadUserAttachedDocuments(documentNumber, attachmentId, tenantInfo, requestDetails); ;
+                response = await DownloadUserAttachedDocuments(documentNumber, attachmentId, tenantInfo, requestDetails);
             }
             else
             {
@@ -2350,7 +2345,7 @@ public class DetailsHelper : IDetailsHelper
     /// <param name="sessionId">Session ID</param>
     /// <param name="xcv">X-correlation ID</param>
     /// <param name="tcv">T-correlation ID</param>
-    /// <param name="aadUserToken">AAD User Token</param>
+    /// <param name="oauth2UserToken">OAuth 2.0 User Token</param>
     /// <returns>Tenant Action Details object</returns>
     private async Task<TenantActionDetails> AddAllowedActions(
                             string alias,
@@ -2362,7 +2357,7 @@ public class DetailsHelper : IDetailsHelper
                             string sessionId,
                             string xcv,
                             string tcv,
-                            string aadUserToken)
+                            string oauth2UserToken)
     {
         var actions = new TenantActionDetails();
 
@@ -2404,7 +2399,7 @@ public class DetailsHelper : IDetailsHelper
             TenantActionDetails actionDetailsObject;
             if (tenantInfo.IsExternalTenantActionDetails && !tenantInfo.IsPullModelEnabled)
             {
-                var tenantInfoNew = await _approvalTenantInfoHelper.GetTenantActionDetails(tenantInfo.TenantId, loggedInAlias, alias, clientDevice, sessionId, xcv, tcv, aadUserToken);
+                var tenantInfoNew = await _approvalTenantInfoHelper.GetTenantActionDetails(tenantInfo.TenantId, loggedInAlias, alias, clientDevice, sessionId, xcv, tcv, oauth2UserToken);
                 actionDetailsObject = tenantInfoNew.TenantActionDetails.FromJson<TenantActionDetails>();
             }
             else
@@ -2625,7 +2620,7 @@ public class DetailsHelper : IDetailsHelper
         tenantLogData[LogDataKey.OperationType] = "GetDetail";
 
         // overwrite TenantId as a work around to store DocumentTypeId
-        tenantLogData[LogDataKey.TenantId] = tenantLogData[LogDataKey.DocumentTypeId];
+        tenantLogData.Modify(LogDataKey.TenantId, tenantLogData.ContainsKey(LogDataKey.DocumentTypeId) ? tenantLogData[LogDataKey.DocumentTypeId] : string.Empty);
 
         tenantLogData[LogDataKey.EventId] = (int)trackingEvent;
         tenantLogData[LogDataKey.EventName] = trackingEvent.ToString();
@@ -2935,7 +2930,7 @@ public class DetailsHelper : IDetailsHelper
     /// <param name="userAlias">The userAlias</param>
     /// <param name="loggedInAlias">The loggedInAlias</param>
     /// <param name="clientDevice">The clientDevice</param>
-    /// <param name="aadUserToken">The aadUserToken</param>
+    /// <param name="oauth2UserToken">The OAuth 2.0 UserToken</param>
     /// <param name="callType">The callType</param>
     /// <param name="pageType">This the page calling the Details API e.g. Detail, History</param>
     /// <param name="source">Source for Details call eg. Summary, Notification</param>
@@ -2949,7 +2944,7 @@ public class DetailsHelper : IDetailsHelper
         string userAlias,
         string loggedInAlias,
         string clientDevice,
-        string aadUserToken,
+        string oauth2UserToken,
         int callType,
         string pageType,
         string source)
@@ -2967,7 +2962,7 @@ public class DetailsHelper : IDetailsHelper
                 // Fetch missing details from LOB system and store it in azuretable
                 missingDataResponseJObject = Task.Run(() => GetDetails(tenantId, documentNumber,
                     operationName, fiscalYear, 1, sessionId, tcv, xcv, userAlias, loggedInAlias, clientDevice,
-                    aadUserToken, false, callType, pageType, source)).Result;
+                    oauth2UserToken, false, callType, pageType, source)).Result;
 
                 if (missingDataResponseJObject != null && missingDataResponseJObject.Count > 0)
                 {

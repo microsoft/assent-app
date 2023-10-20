@@ -6,7 +6,7 @@ namespace Microsoft.CFS.Approvals.LogManager.Model;
 public enum LogDataKey
 {
     None = 0,
-    AADClientID,
+    IdentityProviderClientID,
     DocDbName,
     DocDbCollectionName,
 
@@ -142,11 +142,13 @@ public enum LogDataKey
     WatchdogFailureCount,
 
     TemplateType,
-    AADTokenType,
+    IdentityProviderTokenType,
+    NotificationMessageId,
     BlobId,
     TeamsNotificationJson,
     TeamsNotificationCorrelationId,
-    RequestMethod
+    RequestMethod,
+    Scope
 }
 
 public enum TrackingEvent
@@ -567,13 +569,13 @@ public enum TrackingEvent
     WebApiUserPreferenceFail = 607,
     WebApiSummaryDataMappingFail = 608,
 
-    //Outlook AAD related Tracking Events (DocumentAction and AutoRefresh)
-    WebApiOutlookAADActionFail = 7005,
+    //Outlook Identity Provider related Tracking Events (DocumentAction and AutoRefresh)
+    WebApiOutlookIdentityActionFail = 7005,
 
-    WebApiOutlookAADAutoRefreshFail = 7006,
+    WebApiOutlookIdentityAutoRefreshFail = 7006,
 
-    WebApiOutlookAADActionSuccess = WebApiOutlookAADActionFail * 1000,
-    WebApiOutlookAADAutoRefreshSuccess = WebApiOutlookAADAutoRefreshFail * 1000,
+    WebApiOutlookIdentityActionSuccess = WebApiOutlookIdentityActionFail * 1000,
+    WebApiOutlookIdentityAutoRefreshSuccess = WebApiOutlookIdentityAutoRefreshFail * 1000,
 
     #region Web API Positive events
 
@@ -708,10 +710,11 @@ public enum TrackingEvent
 
     #region Security
 
+    ManagedIdentityTokenGenerationError = 806,
     AcsSimpleWebToken = 807,
-    AADTokenGenerationError = 808,
+    OAuth2TokenGenerationError = 808,
     SASTokenGenerationError = 809,
-    AADTokenGenerationSuccessful = 810,
+    OAuth2TokenGenerationSuccessful = 810,
 
     #endregion Security
 
@@ -860,5 +863,4 @@ public enum TrackingEvent
 
     PayloadReprocessingSuccess = 551000,
     PayloadReprocessingFailed = 551001
-
 }

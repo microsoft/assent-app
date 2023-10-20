@@ -154,7 +154,7 @@ public class DocumentActionHelper : IDocumentActionHelper
     /// <param name="clientDevice">The client device.</param>
     /// <param name="userAlias">The user alias.</param>
     /// <param name="loggedInUser">The logged in user.</param>
-    /// <param name="aadUserToken">The Azure AD user token.</param>
+    /// <param name="oauth2UserToken">The OAuth 2.0 user token.</param>
     /// <param name="xcv">The xcv.</param>
     /// <param name="tcv">The TCV.</param>
     /// <param name="sessionId">The session identifier.</param>
@@ -165,7 +165,7 @@ public class DocumentActionHelper : IDocumentActionHelper
             string clientDevice,
             string userAlias,
             string loggedInUser,
-            string aadUserToken,
+            string oauth2UserToken,
             string xcv,
             string tcv,
             string sessionId)
@@ -237,7 +237,7 @@ public class DocumentActionHelper : IDocumentActionHelper
 
             #region Get type of Tenant
 
-            ITenant tenantAdaptor = _tenantFactory.GetTenant(tenantInfo, userAlias, clientDevice, aadUserToken);
+            ITenant tenantAdaptor = _tenantFactory.GetTenant(tenantInfo, userAlias, clientDevice, oauth2UserToken);
 
             #endregion Get type of Tenant
 
@@ -694,23 +694,23 @@ public class DocumentActionHelper : IDocumentActionHelper
 
         var actionDateTime = Convert.ToDateTime(approvalRequest.ActionDetails[approvalRequest.ActionDetails.Keys.FirstOrDefault(x => x.ToLowerInvariant() == Constants.ActionDateKey.ToLowerInvariant())]);
 
-            // Checking the responses received from tenantAdapter and creating
-            if (actionResponse.IsSuccessStatusCode)
+        // Checking the responses received from tenantAdapter and creating
+        if (actionResponse.IsSuccessStatusCode)
+        {
+            var actionAuditLogInfo = new ActionAuditLogInfo
             {
-                var actionAuditLogInfo = new ActionAuditLogInfo
-                {
-                    DisplayDocumentNumber = approvalRequest?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
-                    ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
-                    ActionStatus = Constants.SuccessStatus,
-                    ActionTaken = approvalRequest?.Action,
-                    Approver = alias,
-                    ImpersonatedUser = loggedInAlias,
-                    ClientType = clientDevice,
-                    TenantId = tenantInfo?.TenantId.ToString(),
-                    UnitValue = summaryJson?.UnitValue ?? string.Empty,
-                    UnitOfMeasure = summaryJson?.UnitOfMeasure ?? string.Empty,
-                    Id = Guid.NewGuid()
-                };
+                DisplayDocumentNumber = approvalRequest?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
+                ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
+                ActionStatus = Constants.SuccessStatus,
+                ActionTaken = approvalRequest?.Action,
+                Approver = alias,
+                ImpersonatedUser = loggedInAlias,
+                ClientType = clientDevice,
+                TenantId = tenantInfo?.TenantId.ToString(),
+                UnitValue = summaryJson?.UnitValue ?? string.Empty,
+                UnitOfMeasure = summaryJson?.UnitOfMeasure ?? string.Empty,
+                Id = Guid.NewGuid()
+            };
 
             await LogActionDetailsAsync(actionAuditLogInfo, tenantInfo, clientDevice, tcv, sessionId, loggedInAlias, alias);
 
@@ -742,23 +742,23 @@ public class DocumentActionHelper : IDocumentActionHelper
                 actionResponseContentObject.Add("ErrorMessage", "Tracking ID:" + tcv + " :: " + approvalResponse?.DisplayMessage + ".");
             }
 
-                // Failed Telemtry should receive the response received from Tenant
-                var actionAuditLogInfo = new ActionAuditLogInfo
-                {
-                    DisplayDocumentNumber = approvalRequest?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
-                    ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
-                    ActionStatus = Constants.FailedStatus,
-                    ActionTaken = approvalRequest?.Action,
-                    Approver = alias,
-                    ImpersonatedUser = loggedInAlias,
-                    ClientType = clientDevice,
-                    TenantId = tenantInfo?.TenantId.ToString(),
-                    UnitValue = summaryJson?.UnitValue ?? string.Empty,
-                    UnitOfMeasure = summaryJson?.UnitOfMeasure ?? string.Empty,
-                    ErrorMessage = approvalResponse?.E2EErrorInformation?.ErrorMessages?.ToJson(),
-                    Id = Guid.NewGuid()
-                };
-                await LogActionDetailsAsync(actionAuditLogInfo, tenantInfo, clientDevice, tcv, sessionId, loggedInAlias, alias);
+            // Failed Telemtry should receive the response received from Tenant
+            var actionAuditLogInfo = new ActionAuditLogInfo
+            {
+                DisplayDocumentNumber = approvalRequest?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
+                ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
+                ActionStatus = Constants.FailedStatus,
+                ActionTaken = approvalRequest?.Action,
+                Approver = alias,
+                ImpersonatedUser = loggedInAlias,
+                ClientType = clientDevice,
+                TenantId = tenantInfo?.TenantId.ToString(),
+                UnitValue = summaryJson?.UnitValue ?? string.Empty,
+                UnitOfMeasure = summaryJson?.UnitOfMeasure ?? string.Empty,
+                ErrorMessage = approvalResponse?.E2EErrorInformation?.ErrorMessages?.ToJson(),
+                Id = Guid.NewGuid()
+            };
+            await LogActionDetailsAsync(actionAuditLogInfo, tenantInfo, clientDevice, tcv, sessionId, loggedInAlias, alias);
 
             // bTenantCallSuccess is false whenever there is an exception either from the tenant (legacy wcf) or Approvals code
             // The below code updates the all the transactional details (which includes error messages) in the Approval Summary/ApprovalDetails table

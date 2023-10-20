@@ -25,6 +25,7 @@ using Microsoft.CFS.Approvals.Utilities.Interface;
 using Microsoft.CFS.Approvals.WatchdogProcessor.BL.Interface;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
+using NotificationType = Model.NotificationType;
 
 /// <summary>
 /// The Reminder Processor class
@@ -223,11 +224,10 @@ public class ReminderProcessor : IReminderProcessor
                     logData.Add(LogDataKey.Xcv, watchdogNotification.Xcv);
                     logData.Add(LogDataKey.Tcv, watchdogNotification.Tcv);
                     logData.Add(LogDataKey.DXcv, watchdogNotification.DocumentNumber);
-
                     NotificationDetail notificationDetails = ReminderHelper.GetNotificationDetails(watchdogNotification);
                     _logger.LogInformation(TrackingEvent.WatchDogReminderNotificationDetailFetched, logData);
 
-                    var emailData = new NotificationFrameworkItem();
+                    var emailData = new NotificationItem();
 
                     // Add summaryRow into summaryRows list
                     List<ApprovalSummaryRow> summaryRows = new List<ApprovalSummaryRow>
@@ -313,7 +313,7 @@ public class ReminderProcessor : IReminderProcessor
     /// </summary>
     /// <param name="reminderDetail"></param>
     /// <returns></returns>
-    private string GetReminderTemplateKey(ReminderDetail reminderDetail)
+    private string GetReminderTemplateKey(Contracts.DataContracts.ReminderDetail reminderDetail)
     {
         if (!String.IsNullOrEmpty(reminderDetail.ReminderTemplate))
         {
@@ -338,7 +338,7 @@ public class ReminderProcessor : IReminderProcessor
     /// or
     /// Email template not found.
     /// </exception>
-    private async Task<NotificationFrameworkItem> CreateEmailBody(ApprovalSummaryRow summaryRow, NotificationDetail notificationDetails, ApprovalTenantInfo tenantInfo, string approvalsBaseUrl, EmailType emailType, Dictionary<LogDataKey, object> logData, ITenant tenant)
+    private async Task<NotificationItem> CreateEmailBody(ApprovalSummaryRow summaryRow, NotificationDetail notificationDetails, ApprovalTenantInfo tenantInfo, string approvalsBaseUrl, EmailType emailType, Dictionary<LogDataKey, object> logData, ITenant tenant)
     {
         if (notificationDetails.Reminder == null)
         {
@@ -348,8 +348,9 @@ public class ReminderProcessor : IReminderProcessor
         _emailHelper.PopulateDataInToDictionary<LogDataKey, object>(logData, LogDataKey.TenantName, summaryRow?.Application);
         _emailHelper.PopulateDataInToDictionary<LogDataKey, object>(logData, LogDataKey.Approver, summaryRow?.Approver);
         _emailHelper.PopulateDataInToDictionary<LogDataKey, object>(logData, LogDataKey.IsEmailSentWithDetail, emailType);
-
-        var emailData = new NotificationFrameworkItem();
+        var notificationMessageId = Guid.NewGuid().ToString();
+        logData.Add(LogDataKey.NotificationMessageId, notificationMessageId);
+        NotificationItem emailData = null;
         JObject responseJObject = null;
         List<NotificationDataAttachment> notificationDataAttachment = new List<NotificationDataAttachment>();
         string templateKey = string.Empty;
@@ -445,7 +446,7 @@ public class ReminderProcessor : IReminderProcessor
 
         try
         {
-            emailData = await PreparedEmailData(summaryRow, tenantInfo, approvalsBaseUrl, responseJObject, tenant, emailType, logData, templateKey, pattern, notificationDetails, notificationDataAttachment);
+            emailData = await PreparedEmailData(summaryRow, tenantInfo, approvalsBaseUrl, responseJObject, tenant, emailType, logData, templateKey, pattern, notificationDetails, notificationDataAttachment, notificationMessageId);
         }
         catch (FileNotFoundException)
         {
@@ -476,7 +477,7 @@ public class ReminderProcessor : IReminderProcessor
             try
             {
                 // Send regular email for reminder
-                emailData = await PreparedEmailData(summaryRow, tenantInfo, approvalsBaseUrl, responseJObject, tenant, EmailType.NormalEmail, logData, templateKey, OriginalNotificationTemplateKey, notificationDetails, notificationDataAttachment);
+                emailData = await PreparedEmailData(summaryRow, tenantInfo, approvalsBaseUrl, responseJObject, tenant, EmailType.NormalEmail, logData, templateKey, OriginalNotificationTemplateKey, notificationDetails, notificationDataAttachment, notificationMessageId);
             }
             catch (Exception)
             {
@@ -504,10 +505,10 @@ public class ReminderProcessor : IReminderProcessor
     /// <param name="notificationDetails"></param>
     /// <param name="notificationDataAttachment"></param>
     /// <returns></returns>
-    private async Task<NotificationFrameworkItem> PreparedEmailData(ApprovalSummaryRow summaryRow, ApprovalTenantInfo tenantInfo, string approvalsBaseUrl, JObject responseJObject, ITenant tenant, EmailType emailType, Dictionary<LogDataKey, object> logData, string templateKey, string pattern, NotificationDetail notificationDetails, List<NotificationDataAttachment> notificationDataAttachment)
+    private async Task<NotificationItem> PreparedEmailData(ApprovalSummaryRow summaryRow, ApprovalTenantInfo tenantInfo, string approvalsBaseUrl, JObject responseJObject, ITenant tenant, EmailType emailType, Dictionary<LogDataKey, object> logData, string templateKey, string pattern, NotificationDetail notificationDetails, List<NotificationDataAttachment> notificationDataAttachment, string notificationMessageId)
     {
         ApprovalEmailNotificationTemplates template = null;
-        var emailData = new NotificationFrameworkItem();
+        var emailData = new NotificationItem();
 
         pattern = "^" + pattern + "$";
         pattern = pattern.Replace("|", "\\|");
@@ -522,19 +523,19 @@ public class ReminderProcessor : IReminderProcessor
 
             if (emailTemplate != null)
             {
+                emailData = await MapSummaryData(emailTemplate, summaryRow, tenantInfo, approvalsBaseUrl, responseJObject, tenant, emailType, logData, templateKey, notificationDetails, templates, template.TemplateId);
                 emailData.Bcc = notificationDetails.Bcc;
-                emailData.Body = await MapSummaryData(emailTemplate, summaryRow, tenantInfo, approvalsBaseUrl, responseJObject, tenant, emailType, logData, templateKey, notificationDetails, templates);
                 emailData.Subject = GetSubject(emailData.Body);
                 emailData.Cc = notificationDetails.Cc;
                 emailData.To = notificationDetails.To;
 
-                emailData.NotificationTypes = new List<NotificationFrameworkType>();
-                emailData.Telemetry = new Telemetry() { Xcv = summaryRow?.Xcv, MessageId = summaryRow?.Tcv };
+                emailData.NotificationTypes = new List<NotificationType>();
+                emailData.Telemetry = new Telemetry() { Xcv = summaryRow?.Xcv, MessageId = notificationMessageId };
                 // Set TemplateId null to avoid NF logic app to refetch the template and send email with placeholders.
                 // TODO: Undo this once the place holder replace logic is moved from MSA to NF.
-                emailData.TemplateId = null; // string.Format("{0}|{1}", deviceNotificationInfo.NotificationTemplateKey, deviceNotificationInfo.NotificationType.ToString());
+                emailData.TemplateId = template.TemplateId; // string.Format("{0}|{1}", deviceNotificationInfo.NotificationTemplateKey, deviceNotificationInfo.NotificationType.ToString());
                 emailData.TenantIdentifier = tenantInfo.RowKey;
-                emailData.NotificationTypes.Add(NotificationFrameworkType.Mail);
+                emailData.NotificationTypes.Add(NotificationType.Mail);
 
                 // to bind the attachments.
                 emailData.Attachments = notificationDataAttachment?.Select(item => new NotificationDataAttachment
@@ -542,7 +543,8 @@ public class ReminderProcessor : IReminderProcessor
                     FileBase64 = item.FileBase64,
                     FileName = item.FileName,
                     IsInline = item.IsInline,
-                    FileUrl = item.FileUrl
+                    FileUrl = item.FileUrl,
+                    FileSize = item.FileSize
                 }).ToList();
 
                 _notificationProvider.Tenant = tenant;
@@ -568,8 +570,11 @@ public class ReminderProcessor : IReminderProcessor
     /// <param name="emailType">The email type</param>
     /// <param name="logData">Log data for telemetry</param>
     /// <returns>returns a string</returns>
-    private async Task<string> MapSummaryData(string templateContent, ApprovalSummaryRow summaryRow, ApprovalTenantInfo tenantInfo, string approvalsBaseUrl, JObject responseJObject, ITenant tenant, EmailType emailType, Dictionary<LogDataKey, object> logData, string templateKey, NotificationDetail notificationDetails, IEnumerable<ApprovalEmailNotificationTemplates> templates)
+    private async Task<NotificationItem> MapSummaryData(string templateContent, ApprovalSummaryRow summaryRow, ApprovalTenantInfo tenantInfo, string approvalsBaseUrl, JObject responseJObject, ITenant tenant, EmailType emailType, Dictionary<LogDataKey, object> logData, string templateKey, NotificationDetail notificationDetails, IEnumerable<ApprovalEmailNotificationTemplates> templates, string templateId)
     {
+        NotificationItem notificationFrameworkItem = new NotificationItem();
+        notificationFrameworkItem.TemplateId = templateId;
+
         // TODO:: Quick Fix for Approver details shown as placeholders in Watch-Dog Emails
         JObject summaryWithApprover = (summaryRow.SummaryJson).ToJObject();
         await AddApprover(summaryRow.Approver, summaryWithApprover, _nameResolutionHelper);
@@ -798,13 +803,27 @@ public class ReminderProcessor : IReminderProcessor
             var OriginalNotificationTemplateKey = pattern;
             var template = templates.Where(t => Regex.IsMatch(t.RowKey, pattern)).FirstOrDefault();
             templateContent = template.TemplateContent;
+            notificationFrameworkItem.TemplateId = template.TemplateId;
         }
         // Replace placeHolder data in template
         // Keep FillTemplateData method at last otherwise placeHolder doesn't replace properly.
         templateContent = FillTemplateData(templateContent, placeHolderDict, false);
         templateContent = FillTemplateData(templateContent, placeHolderDict);
 
-        return templateContent;
+        #region Adding MEO related Template keys
+
+        if (placeHolderDict.TryGetValue("Approver.Name", out string approverName))
+            placeHolderDict.Add("ApproverName", approverName);
+        else
+            placeHolderDict.Add("ApproverName", summaryRow.Approver);
+        placeHolderDict.Add("ApprovalIdentifierDisplayDocumentNumber", summaryJson.ApprovalIdentifier.DisplayDocumentNumber);
+
+        #endregion Adding MEO related Template keys
+
+        notificationFrameworkItem.Body = templateContent;
+        notificationFrameworkItem.TemplateData = placeHolderDict.ToDictionary(pair => pair.Key, pair => (object)pair.Value);
+
+        return notificationFrameworkItem;
     }
 
     /// <summary>

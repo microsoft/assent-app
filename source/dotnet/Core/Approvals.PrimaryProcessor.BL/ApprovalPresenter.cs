@@ -1230,18 +1230,16 @@ public class ApprovalPresenter : IApprovalPresenter
 
         JObject serviceParameterObject = (approvalTenantInfo.ServiceParameter).ToJObject();
 
-        var specialServiceParameter = GetServiceParameter(serviceParameterObject);
-        serviceParameterObject[Constants.AuthKey] = specialServiceParameter[ConfigurationKey.ServiceParameterAuthKey.ToString()].ToString();
-        serviceParameterObject[Constants.ClientID] = specialServiceParameter[ConfigurationKey.ServiceParameterClientID.ToString()].ToString();
+        SetServiceParameter(serviceParameterObject);
 
-        var aadAppToken = await _authenticationHelper.AcquireOAuth2TokenAsync(
+        var oauth2AppToken = await _authenticationHelper.AcquireOAuth2TokenByScopeAsync(
             serviceParameterObject[Constants.ClientID].ToString(),
             serviceParameterObject[Constants.AuthKey].ToString(),
-            serviceParameterObject[Constants.AADInstanceName].ToString(),
+            serviceParameterObject[Constants.Authority].ToString(),
             serviceParameterObject[Constants.ResourceURL].ToString(),
-            serviceParameterObject[Constants.TenantID].ToString());
+            "/.default");
 
-        var tenantAdaptor = _tenantFactory.GetTenant(TenantInfo, String.Empty, Constants.WebClient, aadAppToken.AccessToken);
+        var tenantAdaptor = _tenantFactory.GetTenant(TenantInfo, String.Empty, Constants.WebClient, oauth2AppToken.AccessToken);
         try
         {
             var detailOperationList = TenantInfo.DetailOperations.DetailOpsList.Where(o => o.IsCached == true).ToList();
@@ -1328,22 +1326,29 @@ public class ApprovalPresenter : IApprovalPresenter
         }
     }
 
-    private Dictionary<string, object> GetServiceParameter(JObject serviceParameterObject)
+    /// <summary>
+    /// Set Service Parameter
+    /// </summary>
+    /// <param name="serviceParameterObject"></param>
+    private void SetServiceParameter(JObject serviceParameterObject)
     {
-        Dictionary<string, object> serviceParameter = new Dictionary<string, object>();
-
-        if (serviceParameterObject.ContainsKey(Constants.KeyVaultUri))
+        if (serviceParameterObject != null)
         {
-            serviceParameter.Add(ConfigurationKey.ServiceParameterAuthKey.ToString(), _config[ConfigurationKey.ServiceParameterAuthKey.ToString() + "-" + serviceParameterObject[Constants.KeyVaultUri].ToString()]);
-            serviceParameter.Add(ConfigurationKey.ServiceParameterClientID.ToString(), _config[ConfigurationKey.ServiceParameterClientID.ToString() + "-" + serviceParameterObject[Constants.KeyVaultUri].ToString()]);
+            if (!serviceParameterObject.ContainsKey(Constants.Authority))
+            {
+                serviceParameterObject[Constants.Authority] = _config[ConfigurationKey.Authority.ToString()].ToString();
+            }
+            if (serviceParameterObject.ContainsKey(Constants.KeyVaultUri))
+            {
+                serviceParameterObject[Constants.AuthKey] = _config[ConfigurationKey.ServiceParameterAuthKey.ToString() + "-" + serviceParameterObject[Constants.KeyVaultUri].ToString()].ToString();
+                serviceParameterObject[Constants.ClientID] = _config[ConfigurationKey.ServiceParameterClientID.ToString() + "-" + serviceParameterObject[Constants.KeyVaultUri].ToString()].ToString();
+            }
+            else
+            {
+                serviceParameterObject[Constants.AuthKey] = _config[ConfigurationKey.ServiceParameterAuthKey.ToString()].ToString();
+                serviceParameterObject[Constants.ClientID] = _config[ConfigurationKey.ServiceParameterClientID.ToString()].ToString();
+            }
         }
-        else
-        {
-            serviceParameter.Add(ConfigurationKey.ServiceParameterAuthKey.ToString(), _config[ConfigurationKey.ServiceParameterAuthKey.ToString()]);
-            serviceParameter.Add(ConfigurationKey.ServiceParameterClientID.ToString(), _config[ConfigurationKey.ServiceParameterClientID.ToString()]);
-        }
-
-        return serviceParameter;
     }
 
     /// <summary>

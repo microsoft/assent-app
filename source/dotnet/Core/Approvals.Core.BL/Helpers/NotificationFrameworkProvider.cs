@@ -6,6 +6,7 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -22,6 +23,7 @@ using Microsoft.CFS.Approvals.Model;
 using Microsoft.CFS.Approvals.Utilities.Interface;
 using Microsoft.Extensions.Configuration;
 using WebMarkupMin.Core;
+using NotificationType = Model.NotificationType;
 
 public class NotificationFrameworkProvider : INotificationProvider
 {
@@ -78,14 +80,14 @@ public class NotificationFrameworkProvider : INotificationProvider
     /// <param name="message">Message to send notification</param>
     public async Task SendDeviceNotification(string to, string message)
     {
-        await SendToNotificationFramework(new Model.NotificationFrameworkItem { To = to, Body = message });
+        await SendToNotificationFramework(new NotificationItem { To = to, Body = message });
     }
 
     /// <summary>
     /// This method will send email based on data.
     /// </summary>
     /// <param name="data">instance of NotificationData</param>
-    public async Task SendDeviceNotification(NotificationData data)
+    public async Task SendDeviceNotification(NotificationItem data)
     {
         await SendToNotificationFramework(data);
     }
@@ -98,19 +100,7 @@ public class NotificationFrameworkProvider : INotificationProvider
     /// <param name="body">Body content of email.</param>
     public async Task SendEmail(string to, string subject, string body)
     {
-        await SendToNotificationFramework(new NotificationData() { To = to, Subject = subject, Body = body });
-    }
-
-    /// <summary>
-    /// This is overloaded method to send email based on To, Subject, body and priority
-    /// </summary>
-    /// <param name="to">To parameter</param>
-    /// <param name="subject">subject parameter</param>
-    /// <param name="body">body parameter</param>
-    /// <param name="priority">priority parameter</param>
-    public async Task SendEmail(string to, string subject, string body, string priority)
-    {
-        await SendToNotificationFramework(new NotificationFrameworkItem { To = to, Subject = subject, Body = body, Priority = (NotificationPriority)Enum.Parse(typeof(NotificationPriority), priority) });
+        await SendToNotificationFramework(new NotificationItem() { To = to, Subject = subject, Body = body });
     }
 
     /// <summary>
@@ -121,14 +111,14 @@ public class NotificationFrameworkProvider : INotificationProvider
     /// <param name="templateData">templateData paramter</param>
     public async Task SendEmail(string to, string template, Dictionary<string, string> templateData)
     {
-        await SendToNotificationFramework(new NotificationData() { To = to, TemplateRowExp = template, TemplateData = templateData });
+        await SendToNotificationFramework(new NotificationItem() { To = to, TemplateData = templateData.ToDictionary(pair => pair.Key, pair => (object)pair.Value) });
     }
 
     /// <summary>
     /// This is overloaded method to send email based on notification data.
     /// </summary>
     /// <param name="data">data parameter</param>
-    public async Task SendEmail(NotificationData data)
+    public async Task SendEmail(NotificationItem data)
     {
         await SendToNotificationFramework(data);
     }
@@ -137,7 +127,7 @@ public class NotificationFrameworkProvider : INotificationProvider
     /// This method will send email based on list of notification objects
     /// </summary>
     /// <param name="data">List of NotificationData</param>
-    public async Task SendEmails(IEnumerable<NotificationData> data)
+    public async Task SendEmails(IEnumerable<NotificationItem> data)
     {
         foreach (var notificationData in data)
         {
@@ -149,14 +139,13 @@ public class NotificationFrameworkProvider : INotificationProvider
     /// This method will convert NotificationData object to Notification Framework and then send email through Notification framework
     /// </summary>
     /// <param name="data">Notification data object.</param>
-    private async Task SendToNotificationFramework(NotificationData data)
+    private async Task SendToNotificationFramework(NotificationItem notificationData)
     {
-        NotificationFrameworkItem notificationData = (NotificationFrameworkItem)data;
         if (notificationData?.NotificationTypes == null)
         {
-            notificationData.NotificationTypes = new List<NotificationFrameworkType>
+            notificationData.NotificationTypes = new List<NotificationType>
             {
-                NotificationFrameworkType.Mail
+                NotificationType.Mail
             };
         }
         if (notificationData?.Attachments == null)
@@ -165,10 +154,10 @@ public class NotificationFrameworkProvider : INotificationProvider
         }
         foreach (NotificationDataAttachment attachment in notificationData.Attachments)
         {
-            attachment.FileBase64 = null;
+            attachment.FileType = "application/octet-stream";
         }
         string uri = _notificationBroadcastUri;
-        HttpRequestMessage reqMessage = await Tenant.CreateRequestForNotification(HttpMethod.Post, uri);
+        HttpRequestMessage reqMessage = await Tenant.CreateRequestForNotification(HttpMethod.Post, uri, notificationData.TemplateId);
         var notificationItem = NotificationDataToNotificationItem(notificationData);
 
         var logData = new Dictionary<LogDataKey, object>
@@ -197,7 +186,7 @@ public class NotificationFrameworkProvider : INotificationProvider
     /// </summary>
     /// <param name="notification"></param>
     /// <returns>Returns final NotificationFrameworkItem with replaced values</returns>
-    private NotificationFrameworkItem NotificationDataToNotificationItem(NotificationFrameworkItem notification)
+    private NotificationItem NotificationDataToNotificationItem(NotificationItem notification)
     {
         notification.ApplicationName = "Approvals";
         if (!string.IsNullOrWhiteSpace(notification.TemplateRowExp))
@@ -225,6 +214,10 @@ public class NotificationFrameworkProvider : INotificationProvider
                 }
 
                 notification.Body = templateBody;
+                if (notification.TemplateData != null && notification.TemplateData.ContainsKey("ActionableMessage"))
+                {
+                    notification.TemplateData["ActionableMessage"] = FillTemplate(notification.TemplateData["ActionableMessage"].ToString(), notification, false);
+                }
 
                 var templateSubject = GetSubject(templateBody);
                 if (!string.IsNullOrWhiteSpace(templateSubject))
@@ -247,14 +240,14 @@ public class NotificationFrameworkProvider : INotificationProvider
     /// <param name="data">Data which will be replaced for placeholder</param>
     /// <param name="isPlaceHolderRemoved">Flag to remove placeholder if data is not present.</param>
     /// <returns>Returns template with data replaced to placeholders.</returns>
-    private string FillTemplate(string template, NotificationData data, bool isPlaceHolderRemoved = true)
+    private string FillTemplate(string template, NotificationItem data, bool isPlaceHolderRemoved = true)
     {
         string output = template;
         if (data.TemplateData != null)
         {
-            foreach (KeyValuePair<string, string> replacableData in data.TemplateData)
+            foreach (KeyValuePair<string, object> replacableData in data.TemplateData)
             {
-                output = output.Replace("#" + replacableData.Key + "#", replacableData.Value);
+                output = output.Replace("#" + replacableData.Key + "#", (string)replacableData.Value);
             }
         }
 

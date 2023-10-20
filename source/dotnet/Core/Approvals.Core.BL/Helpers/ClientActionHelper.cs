@@ -113,7 +113,7 @@ public class ClientActionHelper : IClientActionHelper
     /// <param name="clientDevice">Client Device</param>
     /// <param name="userAlias">User Alias</param>
     /// <param name="loggedInUser">Logged-in user Alias</param>
-    /// <param name="aadUserToken">AAD Token</param>
+    /// <param name="oauth2UserToken">OAuth 2.0 Token</param>
     /// <param name="submissionType">Action submission type</param>
     /// <param name="xcv">X-Correlation ID</param>
     /// <param name="tcv">T-Correlation ID</param>
@@ -125,7 +125,7 @@ public class ClientActionHelper : IClientActionHelper
             string clientDevice,
             string userAlias,
             string loggedInUser,
-            string aadUserToken,
+            string oauth2UserToken,
             ActionSubmissionType submissionType,
             string xcv = "",
             string tcv = "",
@@ -183,7 +183,7 @@ public class ClientActionHelper : IClientActionHelper
 
                 if (string.IsNullOrEmpty(loggedInUser))
                 {
-                    _logger.LogError(TrackingEvent.WebApiOutlookAADActionFail, new UnauthorizedAccessException(Constants.InValidSenderClaim), logData);
+                    _logger.LogError(TrackingEvent.WebApiOutlookIdentityActionFail, new UnauthorizedAccessException(Constants.InValidSenderClaim), logData);
                     response.StatusCode = HttpStatusCode.Unauthorized;
                     response.Headers.Add(Constants.CardActionStatus, _config[ConfigurationKey.UnAuthorizedException.ToString()]);
                     return new HttpResponseMessageResult(response);
@@ -197,7 +197,7 @@ public class ClientActionHelper : IClientActionHelper
                 }
                 if (string.IsNullOrEmpty(userActionsString))
                 {
-                    _logger.LogError(TrackingEvent.WebApiOutlookAADActionFail, new InvalidDataException(Constants.UserActionsStringIsNull), logData);
+                    _logger.LogError(TrackingEvent.WebApiOutlookIdentityActionFail, new InvalidDataException(Constants.UserActionsStringIsNull), logData);
                     response.Headers.Add(Constants.CardActionStatus, Constants.OutlookGenericErrorMessage);
                     return new HttpResponseMessageResult(response);
                 }
@@ -236,7 +236,7 @@ public class ClientActionHelper : IClientActionHelper
                 try
                 {
                     var DocumentActionHelper = _documentActionHelperDel(submissionType.ToString());
-                    var responseObject = await DocumentActionHelper.TakeAction(tenantId, actionRequestObj.ToString(), clientDevice, userAlias, loggedInUser, aadUserToken, xcv, tcv, sessionId);
+                    var responseObject = await DocumentActionHelper.TakeAction(tenantId, actionRequestObj.ToString(), clientDevice, userAlias, loggedInUser, oauth2UserToken, xcv, tcv, sessionId);
 
                     string responseContent = string.Empty;
                     response.Headers.Add(Constants.CardActionStatus, Constants.ActionSuccessfulMessage);
@@ -247,7 +247,7 @@ public class ClientActionHelper : IClientActionHelper
                     response.Content = new StringContent(responseContent);
 
                     logData[LogDataKey.ResponseContent] = responseContent;
-                    _logger.LogInformation(TrackingEvent.WebApiOutlookAADActionSuccess, logData);
+                    _logger.LogInformation(TrackingEvent.WebApiOutlookIdentityActionSuccess, logData);
 
                     return new HttpResponseMessageResult(response);
                 }
@@ -270,7 +270,7 @@ public class ClientActionHelper : IClientActionHelper
 
                     logData[LogDataKey.ResponseContent] = responseContent;
                     logData[LogDataKey.ResponseStatusCode] = response.StatusCode;
-                    _logger.LogError(TrackingEvent.WebApiOutlookAADActionFail, new Exception(message), logData);
+                    _logger.LogError(TrackingEvent.WebApiOutlookIdentityActionFail, new Exception(message), logData);
 
                     return new HttpResponseMessageResult(response);
                 }
@@ -296,7 +296,7 @@ public class ClientActionHelper : IClientActionHelper
                         break;
                 }
                 logData[LogDataKey.ResponseStatusCode] = response.StatusCode;
-                _logger.LogError(TrackingEvent.WebApiOutlookAADActionFail, exception, logData);
+                _logger.LogError(TrackingEvent.WebApiOutlookIdentityActionFail, exception, logData);
 
                 response.Headers.Add(Constants.CardActionStatus, string.IsNullOrEmpty(errorMessage) ? Constants.OutlookGenericErrorMessage : errorMessage);
                 return new HttpResponseMessageResult(response);
@@ -379,7 +379,7 @@ public class ClientActionHelper : IClientActionHelper
             {
                 if (string.IsNullOrEmpty(loggedInUser))
                 {
-                    _logger.LogError(TrackingEvent.WebApiOutlookAADAutoRefreshFail, new UnauthorizedAccessException(Constants.InValidSenderClaim), logData);
+                    _logger.LogError(TrackingEvent.WebApiOutlookIdentityAutoRefreshFail, new UnauthorizedAccessException(Constants.InValidSenderClaim), logData);
                     response.StatusCode = HttpStatusCode.Unauthorized;
                     response.Headers.Add(Constants.CardActionStatus, _config[ConfigurationKey.UnAuthorizedException.ToString()]);
                     return new HttpResponseMessageResult(response);
@@ -395,7 +395,7 @@ public class ClientActionHelper : IClientActionHelper
                 }
                 if (string.IsNullOrEmpty(userActionsString))
                 {
-                    _logger.LogError(TrackingEvent.WebApiOutlookAADAutoRefreshFail, new InvalidDataException(Constants.UserActionsStringIsNull), logData);
+                    _logger.LogError(TrackingEvent.WebApiOutlookIdentityAutoRefreshFail, new InvalidDataException(Constants.UserActionsStringIsNull), logData);
                     response.Headers.Add(Constants.CardActionStatus, Constants.OutlookGenericErrorMessage);
                     return new HttpResponseMessageResult(response);
                 }
@@ -447,7 +447,7 @@ public class ClientActionHelper : IClientActionHelper
                         if (string.IsNullOrEmpty(documentStatusResponse.CurrentStatus))
                         {
                             response.StatusCode = HttpStatusCode.BadRequest;
-                            _logger.LogError(TrackingEvent.WebApiOutlookAADAutoRefreshFail, new Exception(Constants.DocumentStatusAPIResponseIsNull), logData);
+                            _logger.LogError(TrackingEvent.WebApiOutlookIdentityAutoRefreshFail, new Exception(Constants.DocumentStatusAPIResponseIsNull), logData);
                         }
                         else
                         {
@@ -490,18 +490,18 @@ public class ClientActionHelper : IClientActionHelper
                                     //UpdateHttpResponseMessage(ref response, Constants.OutlookAutoRefreshActionResponse, placeHolderDict);
                             }
                             logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
-                            _logger.LogInformation(TrackingEvent.WebApiOutlookAADAutoRefreshSuccess, logData);
+                            _logger.LogInformation(TrackingEvent.WebApiOutlookIdentityAutoRefreshSuccess, logData);
                         }
                     }
                     else
                     {
                         logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
-                        _logger.LogError(TrackingEvent.WebApiOutlookAADAutoRefreshFail, new Exception(Constants.DocumentStatusAPIResponseIsNull), logData);
+                        _logger.LogError(TrackingEvent.WebApiOutlookIdentityAutoRefreshFail, new Exception(Constants.DocumentStatusAPIResponseIsNull), logData);
                     }
                 }
                 catch
                 {
-                    _logger.LogError(TrackingEvent.WebApiOutlookAADAutoRefreshFail, new Exception(string.Format(Constants.DocumentStatusAPIFailedWithStatusCode, HttpStatusCode.BadRequest)), logData);
+                    _logger.LogError(TrackingEvent.WebApiOutlookIdentityAutoRefreshFail, new Exception(string.Format(Constants.DocumentStatusAPIFailedWithStatusCode, HttpStatusCode.BadRequest)), logData);
                 }
             }
 
@@ -512,7 +512,7 @@ public class ClientActionHelper : IClientActionHelper
         catch (Exception exception)
         {
             logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
-            _logger.LogError(TrackingEvent.WebApiOutlookAADAutoRefreshFail, exception, logData);
+            _logger.LogError(TrackingEvent.WebApiOutlookIdentityAutoRefreshFail, exception, logData);
 
             response.StatusCode = HttpStatusCode.BadRequest;
             string errorMessage = JSONHelper.ExtractMessageFromJSON(exception.Message);
@@ -536,14 +536,14 @@ public class ClientActionHelper : IClientActionHelper
         // Extract ActionBody from the request content
         var actionRequestObj = userActionObj[Constants.ActionBody];
 
-    actionRequestObj[Constants.ActionByAlias] = loggedInUser;
+        actionRequestObj[Constants.ActionByAlias] = loggedInUser;
 
         // to get the action details.
         JObject actionRequestDetailsObj = actionRequestObj[Constants.ActionDetailsKey].ToJson().FromJson<JObject>();
 
-    // to replace the ActionDate Field.
-    string actionDate = actionRequestDetailsObj[Constants.ActionDateKey].ToString();
-    actionRequestDetailsObj[Constants.ActionDateKey] = DateTime.TryParse(actionDate, out DateTime utcNow) ? utcNow.ToString("o") : DateTime.UtcNow.ToString("o");
+        // to replace the ActionDate Field.
+        string actionDate = actionRequestDetailsObj[Constants.ActionDateKey].ToString();
+        actionRequestDetailsObj[Constants.ActionDateKey] = DateTime.TryParse(actionDate, out DateTime utcNow) ? utcNow.ToString("o") : DateTime.UtcNow.ToString("o");
 
         var justification = actionRequestDetailsObj[Constants.JustificationKey];
         var comment = actionRequestDetailsObj[Constants.CommentKey];

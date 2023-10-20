@@ -28,4 +28,6 @@ public class ApprovalEmailNotificationTemplates : BaseTableEntity
             return RowKey;
         }
     }
+
+    public string TemplateId { get; set; }
 }

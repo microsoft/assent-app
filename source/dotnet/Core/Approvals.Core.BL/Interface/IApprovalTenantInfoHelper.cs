@@ -89,7 +89,7 @@ public interface IApprovalTenantInfoHelper
     /// <param name="sessionId">The sessionId.</param>
     /// <param name="xcv">The xcv.</param>
     /// <param name="tcv">The tcv.</param>
-    /// <param name="aadUserToken">AAD Token</param>
+    /// <param name="oauth2UserToken">OAuth 2.0 Token</param>
     /// <returns>Returns Approval tenant info with action details.</returns>
-    Task<ApprovalTenantInfo> GetTenantActionDetails(int tenantId, string loggedInAlias, string alias, string clientDevice, string sessionId, string xcv, string tcv, string aadUserToken);
+    Task<ApprovalTenantInfo> GetTenantActionDetails(int tenantId, string loggedInAlias, string alias, string clientDevice, string sessionId, string xcv, string tcv, string oauth2UserToken);
 }

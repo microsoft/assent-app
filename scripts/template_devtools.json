@@ -518,7 +518,7 @@
                 "BlobForSchema": "SyntheticTransactionSchema.json",
                 "PrefixForBlobName": "TestHarnness",
                 "MasterPayload": "MasterPayload.json",
-                "AADInstance": "https://login.microsoftonline.com/",
+                "IdentityProviderInstance": "https://login.microsoftonline.com/",
                 "Tenant": "microsoft.onMicrosoft.com",
                 "TenantID": "[parameters('activeDirectoryTenantId')]",
                 "Environment": "[tolower(parameters('location'))]",
@@ -792,7 +792,7 @@
               ],
               "properties": {
                 "AllowedHosts": "*",
-                "AADInstance": "https://login.microsoftonline.com/",
+                "IdentityProviderInstance": "https://login.microsoftonline.com/",
                 "TenantID": "[parameters('activeDirectoryTenantId')]",
                 "Tenant": "",
                 "Environmentlist": "DEV,TEST,UAT",

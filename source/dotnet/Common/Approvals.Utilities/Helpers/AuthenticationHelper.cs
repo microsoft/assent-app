@@ -14,13 +14,15 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
+using global::Azure.Core;
+using global::Azure.Identity;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.Utilities.Interface;
 using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
+using Microsoft.Identity.Client;
 using Newtonsoft.Json.Linq;
 
 public class AuthenticationHelper : IAuthenticationHelper
@@ -62,57 +64,13 @@ public class AuthenticationHelper : IAuthenticationHelper
     }
 
     /// <summary>
-    /// Get the Azure AD Access Token
-    /// </summary>
-    /// <param name="clientId">Client Id</param>
-    /// <param name="appKey">Client Secret</param>
-    /// <param name="authority">AADInstanceName</param>
-    /// <param name="resource">Resource Uri</param>
-    /// <returns>AuthenticationResult token</returns>
-    public async Task<AuthenticationResult> AcquireOAuth2TokenAsync(string clientId, string appKey, string aadInstanceName, string resource, string tenant)
-    {
-        // Get an access token from Azure AD using client credentials.
-        // If the attempt to get a token fails because the server is unavailable, retry twice after 3 seconds each.
-
-        AuthenticationResult result = null;
-        var retryCount = 0;
-        string authority = String.Format(System.Globalization.CultureInfo.InvariantCulture, aadInstanceName, tenant);
-        AuthenticationContext authContext = new AuthenticationContext(authority);
-        ClientCredential clientCredential = new ClientCredential(clientId, appKey);
-
-        bool retry;
-        do
-        {
-            retry = false;
-            try
-            {
-                // ADAL includes an in memory cache, so this call will only send a message to the server if the cached token is expired.
-                result = await authContext.AcquireTokenAsync(resource, clientCredential);
-            }
-            catch (AdalException ex)
-            {
-                if (ex.ErrorCode == "temporarily_unavailable")
-                {
-                    retry = true;
-                    retryCount++;
-                    Thread.Sleep(3000);
-                }
-
-                Console.WriteLine($"An error occurred while acquiring a token\nTime: {DateTime.UtcNow.ToString(CultureInfo.InvariantCulture)}\nError: {ex}\nRetry: {retry}\n");
-            }
-        } while (retry && (retryCount < 3));
-
-        return result;
-    }
-
-    /// <summary>
-    /// Get the Azure AD Access Token
+    /// Get the OAuth 2.0 Access Token
     /// </summary>
     /// <param name="clientId">Client Id</param>
     /// <param name="appKey">Client Secret</param>
     /// <param name="authority">Authority</param>
     /// <param name="resource">Resource Uri</param>
-    /// <param name="resource">Scope</param>
+    /// <param name="scope">Scope</param>
     /// <returns>AuthenticationResult token</returns>
     public async Task<Identity.Client.AuthenticationResult> AcquireOAuth2TokenByScopeAsync(string clientId, string appKey, string authority, string resource, string scope)
     {
@@ -132,7 +90,7 @@ public class AuthenticationHelper : IAuthenticationHelper
                 var scopes = new[] { resource + scope };
                 result = await app.AcquireTokenForClient(scopes).ExecuteAsync();
             }
-            catch (AdalException ex)
+            catch (MsalException ex)
             {
                 if (ex.ErrorCode == "temporarily_unavailable")
                 {
@@ -149,7 +107,7 @@ public class AuthenticationHelper : IAuthenticationHelper
     }
 
     /// <summary>
-    /// Generate AAD User token from ClientId and Client Secret for the specified resource using the ClaimsIdentity
+    /// Generate OAuth 2.0 User token from ClientId and Client Secret for the specified resource using the ClaimsIdentity
     /// </summary>
     /// <param name="identity"></param>
     /// <param name="parameterObject"></param>
@@ -163,18 +121,17 @@ public class AuthenticationHelper : IAuthenticationHelper
 
         try
         {
-            string aadInstanceName = parameterObject["AADInstanceName"].ToString();
-            string tenant = parameterObject["TenantID"].ToString();
             string clientId = parameterObject["ClientID"].ToString();
             string appKey = parameterObject["AuthKey"].ToString();
             string resourceUrl = parameterObject["ResourceURL"].ToString();
+            string authority = parameterObject["Authority"].ToString();
 
-            logData.Add(LogDataKey.AADClientID, clientId);
+            logData.Add(LogDataKey.IdentityProviderClientID, clientId);
             logData.Add(LogDataKey.Uri, resourceUrl);
 
             if (identity?.BootstrapContext == null)
             {
-                throw new InvalidOperationException("Aad_Flow:: Not able to find BootstrapContext");
+                throw new InvalidOperationException("IdentityProvider_Flow:: Not able to find BootstrapContext");
             }
 
             string bearerAccessToken = string.Empty;
@@ -185,9 +142,13 @@ public class AuthenticationHelper : IAuthenticationHelper
             logData.Add(LogDataKey.UserAlias, !string.IsNullOrWhiteSpace(userName) ? new MailAddress(userName).User : string.Empty);
             logData.Add(LogDataKey.UserEmail, userName);
 
-            UserAssertion userAssertion = new UserAssertion(userAccessToken, _assertionType, userName);
-            ClientCredential clientCred = new ClientCredential(clientId, appKey);
-            var authContext = new AuthenticationContext(string.Format(aadInstanceName, tenant));
+            UserAssertion userAssertion = new UserAssertion(userAccessToken, _assertionType);
+            IConfidentialClientApplication app = ConfidentialClientApplicationBuilder.
+                    Create(clientId).
+                    WithClientSecret(appKey).
+                    WithAuthority(new Uri(authority)).
+                    Build();
+            var scopes = new[] { resourceUrl + "/.default" };
 
             bool retry;
             int retryCount = 0;
@@ -197,10 +158,10 @@ public class AuthenticationHelper : IAuthenticationHelper
                 retry = false;
                 try
                 {
-                    var result = await authContext.AcquireTokenAsync(resourceUrl, clientCred, userAssertion);
+                    var result = await app.AcquireTokenOnBehalfOf(scopes, userAssertion).ExecuteAsync();
                     bearerAccessToken = result.AccessToken;
                 }
-                catch (AdalException ex)
+                catch (MsalException ex)
                 {
                     if (ex.ErrorCode == _serviceUnavailable)
                     {
@@ -216,17 +177,17 @@ public class AuthenticationHelper : IAuthenticationHelper
         }
         catch (Exception ex)
         {
-            _logger?.LogError(TrackingEvent.AADTokenGenerationError, ex, logData);
+            _logger?.LogError(TrackingEvent.OAuth2TokenGenerationError, ex, logData);
             throw;
         }
     }
 
     /// <summary>
-    /// Get the On Behalf AAD User token
+    /// Get the On Behalf OAuth 2.0 User token
     /// </summary>
-    /// <param name="userAccessToken">current AAD user token</param>
-    /// <param name="parameterObject">AAD token generation parameters</param>
-    /// <returns>AAD User token with changed resource URL</returns>
+    /// <param name="userAccessToken">current OAuth 2.0 user token</param>
+    /// <param name="parameterObject">OAuth 2.0 token generation parameters</param>
+    /// <returns>OAuth 2.0 User token with changed resource URL</returns>
     public async Task<string> GetOnBehalfUserToken(string userAccessToken, JObject parameterObject)
     {
         var logData = new Dictionary<LogDataKey, object>
@@ -236,19 +197,23 @@ public class AuthenticationHelper : IAuthenticationHelper
 
         try
         {
-            string aadInstanceName = parameterObject["AADInstanceName"].ToString();
-            string tenant = parameterObject["TenantID"].ToString();
             string clientId = parameterObject["ClientID"].ToString();
             string appKey = parameterObject["AuthKey"].ToString();
             string resourceUrl = parameterObject["ResourceURL"].ToString();
+            string authority = parameterObject["Authority"].ToString();
 
-            logData.Add(LogDataKey.AADClientID, clientId);
+            logData.Add(LogDataKey.IdentityProviderClientID, clientId);
             logData.Add(LogDataKey.Uri, resourceUrl);
 
             string bearerAccessToken = string.Empty;
             UserAssertion userAssertion = new UserAssertion(userAccessToken, _assertionType);
-            ClientCredential clientCred = new ClientCredential(clientId, appKey);
-            var authContext = new AuthenticationContext(string.Format(aadInstanceName, tenant));
+
+            IConfidentialClientApplication app = ConfidentialClientApplicationBuilder.
+                    Create(clientId).
+                    WithClientSecret(appKey).
+                    WithAuthority(new Uri(authority)).
+                    Build();
+            var scopes = new[] { resourceUrl + "/.default" };
 
             bool retry;
             int retryCount = 0;
@@ -258,10 +223,10 @@ public class AuthenticationHelper : IAuthenticationHelper
                 retry = false;
                 try
                 {
-                    var result = await authContext.AcquireTokenAsync(resourceUrl, clientCred, userAssertion);
+                    var result = await app.AcquireTokenOnBehalfOf(scopes, userAssertion).ExecuteAsync();
                     bearerAccessToken = result.AccessToken;
                 }
-                catch (AdalException ex)
+                catch (MsalException ex)
                 {
                     if (ex.ErrorCode == _serviceUnavailable)
                     {
@@ -277,7 +242,7 @@ public class AuthenticationHelper : IAuthenticationHelper
         }
         catch (Exception ex)
         {
-            _logger?.LogError(TrackingEvent.AADTokenGenerationError, ex, logData);
+            _logger?.LogError(TrackingEvent.OAuth2TokenGenerationError, ex, logData);
             throw;
         }
     }
@@ -396,6 +361,54 @@ public class AuthenticationHelper : IAuthenticationHelper
             {
                 _logger.LogError(TrackingEvent.AcsSimpleWebToken, ex, logData);
             }
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Get OAuth 2.0 token generated using Managed Identity
+    /// </summary>
+    /// <param name="scope"></param>
+    /// <returns>Managed Identity OAuth 2.0 Token</returns>
+    public async Task<string> GetManagedIdentityToken(string scope)
+    {
+        var logData = new Dictionary<LogDataKey, object>
+        {
+            { LogDataKey.EventType, Constants.FeatureUsageEvent },
+            { LogDataKey.Scope, scope }
+        };
+        try
+        {
+            string accessToken = string.Empty;
+            var retryCount = 0;
+            bool retry;
+            do
+            {
+                retry = false;
+                try
+                {
+                    // ADAL includes an in memory cache, so this call will only send a message to the server if the cached token is expired.
+                    var tokenCredential = new DefaultAzureCredential();
+                    var tokenResponse = await tokenCredential.GetTokenAsync(new TokenRequestContext(new[] { string.Format(scope, ".default") }));
+                    accessToken = tokenResponse.Token;
+                }
+                catch (MsalException ex)
+                {
+                    if (ex.ErrorCode == _serviceUnavailable)
+                    {
+                        retry = true;
+                        retryCount++;
+                        Thread.Sleep(3000);
+                    }
+
+                    Console.WriteLine($"An error occurred while acquiring a token\nTime: {DateTime.UtcNow.ToString(CultureInfo.InvariantCulture)}\nError: {ex}\nRetry: {retry}\n");
+                }
+            } while (retry && (retryCount < 3));
+            return accessToken;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(TrackingEvent.ManagedIdentityTokenGenerationError, ex, logData);
             throw;
         }
     }
