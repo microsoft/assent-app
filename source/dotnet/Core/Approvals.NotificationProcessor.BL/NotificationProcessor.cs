@@ -253,7 +253,7 @@ public class NotificationProcessor : INotificationProcessor
 
                 TeamsNotificationControllerInput teamsNotificationInput = new TeamsNotificationControllerInput()
                 {
-                    NotificationReceiverObjectId = new string[approvers.Count],
+                    NotificationReceiverAadId = new string[approvers.Count],
                     NotificationSender = string.Empty,
                     Provider = ApprovalProviderType.Extensibility,
                     EventType = ApprovalEventType.Creation,
@@ -278,7 +278,7 @@ public class NotificationProcessor : INotificationProcessor
 
                 for (int i = 0; i < approvers.Count; i++)
                 {
-                    teamsNotificationInput.NotificationReceiverObjectId[i] = _nameResolutionHelper?.GetUser(approvers[i])?.Result?.Id;
+                    teamsNotificationInput.NotificationReceiverAadId[i] = _nameResolutionHelper?.GetUser(approvers[i])?.Result?.Id;
                 }
 
                 teamsNotificationInput.Title = "Approvals - " + requestExpressions?.ApprovalIdentifier?.DisplayDocumentNumber + ": " + (string.IsNullOrWhiteSpace(summaryJson?.Title) ? string.Empty : summaryJson.Title);

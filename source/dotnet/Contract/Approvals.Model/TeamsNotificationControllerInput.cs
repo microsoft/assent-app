@@ -16,7 +16,7 @@ public class TeamsNotificationControllerInput
     /// Gets or sets the user objectId for the notification receiver for the approval.
     /// </summary>
     [JsonProperty(Required = Required.Always)]
-    public string[] NotificationReceiverObjectId { get; set; }
+    public string[] NotificationReceiverAadId { get; set; }
 
     /// <summary>
     /// Gets or sets the user objectId for the creator of the approval.

@@ -100,6 +100,7 @@ Step 2: Add/update the values for the following keys in the JSON
 | ApprovalsAudienceUrl | ```Microsoft Entra ID Resource (APP ID URL)``` | No |
 | ApprovalsBaseUrl | ```Approvals Website Base URL``` | No |
 | ApprovalsCoreServicesURL | ```Approvals API's Base URL``` | No |
+| Authority | ```URL that indicates a directory that MSAL can request tokens from``` | No |
 | AzureSearchServiceName | ```Azure Search``` | No |
 | AzureSearchServiceQueryApiKey | ```Azure Search``` | Yes |
 | CosmosDbAuthKey | ```Azure Cosmos DB``` | Yes |
