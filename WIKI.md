@@ -54,7 +54,7 @@ Microsoft Assent (*a.k.a Approvals*) as a platform provides the “one stop shop
   - **Attachments API**: This is to fetch attachment details related to the request. Its HTTP method type is GET. This is only required if tenant has attachments as part of the approval request.
   - **ClientID/APP ID**: This is tenant’s APP ID which is used by tenant to acquire token on behalf of Approvals while sending payloads to Approvals. This APP ID needs to be whitelisted on Approvals end, so that incoming tenant’s request are accepted by Approvals.
   - **Resource URL**: This is the resource URL for which Approvals needs to acquire token for, while calling tenant’s summary and details API.
-  - **API Client ID/AAD App name**: This is the tenant’s AAD App ID for which Approvals will take delegation of, so as to acquire token for the above Resource URL.
+  - **API Client ID/Microsoft Entra ID App name**: This is the tenant’s Microsoft Entra ID App ID for which Approvals will take delegation of, so as to acquire token for the above Resource URL.
 - Other integration details to be exchanged:
   - All html email templates (in case of subscribing to emails functionality) should be designed by tenant as per business requirements and shared with Approvals so that they are configured accordingly on Approvals end.
   - Tenant’s icons which will be displayed as application icon in Approvals, need to be designed and shared with Approvals for configurations. Icons need to be in transparent background and of below size:
@@ -78,7 +78,7 @@ To create an approval request gets within Approvals, a tenant will need to send 
 
 ### Details of Approval creation process
 
-The tenant system needs to make HTTP POST call to Approvals payload receiver service to send the payloads (also known as ApprovalRequestExpression) using AAD authentication token. Example of an endpoint: https://payload.contoso.com/api/v1/PayloadReceiver?TenantId=DocumentTypeId
+The tenant system needs to make HTTP POST call to Approvals payload receiver service to send the payloads (also known as ApprovalRequestExpression) using Microsoft Entra ID authentication token. Example of an endpoint: https://payload.contoso.com/api/v1/PayloadReceiver?TenantId=DocumentTypeId
 *where DocumentTypeId a GUID in the form of a string provided by Approvals, It is unique for each tenant and is used to identify the tenant on Approvals end*.
 
 #### ApprovalRequestExpression

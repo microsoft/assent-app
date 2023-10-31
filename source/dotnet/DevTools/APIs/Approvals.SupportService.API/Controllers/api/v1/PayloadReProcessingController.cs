@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 namespace Microsoft.CFS.Approvals.SupportService.API.Controllers.api.v1;
+
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -53,9 +54,9 @@ public class PayloadReProcessingController : ControllerBase
         {
             var response = await _httpHelper.SendRequestAsync(
                 HttpMethod.Get,
-                _configurationHelper.appSettings[_environment]["AADClientID"],
-                _configurationHelper.appSettings[_environment]["AADSecrets"],
-                _configurationHelper.appSettings[_environment]["AADInstance"],
+                _configurationHelper.appSettings[_environment]["IdentityProviderClientID"],
+                _configurationHelper.appSettings[_environment]["IdentityProviderSecrets"],
+                _configurationHelper.appSettings[_environment]["IdentityProviderInstance"],
                 _configurationHelper.appSettings[_environment]["Resource"],
                 _configurationHelper.appSettings[_environment]["PayloadProcessingFunctionURL"],
                 null,
@@ -89,9 +90,9 @@ public class PayloadReProcessingController : ControllerBase
         {
             var response = await _httpHelper.SendRequestAsync(
                 HttpMethod.Post,
-                _configurationHelper.appSettings[_environment]["AADClientID"],
-                _configurationHelper.appSettings[_environment]["AADSecrets"],
-                _configurationHelper.appSettings[_environment]["AADInstance"],
+                _configurationHelper.appSettings[_environment]["IdentityProviderClientID"],
+                _configurationHelper.appSettings[_environment]["IdentityProviderSecrets"],
+                _configurationHelper.appSettings[_environment]["IdentityProviderInstance"],
                 _configurationHelper.appSettings[_environment]["Resource"],
                 _configurationHelper.appSettings[_environment]["PayloadProcessingFunctionURL"],
                 null,

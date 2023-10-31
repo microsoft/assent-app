@@ -4,25 +4,22 @@
 namespace Microsoft.CFS.Approvals.Model;
 
 using System;
-using System.Collections.Generic;
-using System.Text;
-
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
 /// <summary>
 /// Data object used to call the teams notification handler.
 /// </summary>
-public class MSApprovalsTeamsNotificationControllerInput
+public class TeamsNotificationControllerInput
 {
     /// <summary>
-    /// Gets or sets the user Aad Id for the notification receiver for the approval.
+    /// Gets or sets the user objectId for the notification receiver for the approval.
     /// </summary>
     [JsonProperty(Required = Required.Always)]
     public string[] NotificationReceiverAadId { get; set; }
 
     /// <summary>
-    /// Gets or sets the user Aad Id for the creator of the approval.
+    /// Gets or sets the user objectId for the creator of the approval.
     /// </summary>
     [JsonProperty(Required = Required.Always)]
     public string NotificationSender { get; set; }

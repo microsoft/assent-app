@@ -151,9 +151,9 @@ public class ApprovalTenantInfoHelper : IApprovalTenantInfoHelper
     /// <param name="sessionId">The sessionId.</param>
     /// <param name="xcv">The xcv.</param>
     /// <param name="tcv">The tcv.</param>
-    /// <param name="aadUserToken">AAD User Token</param>
+    /// <param name="oauth2UserToken">OAuth 2.0 User Token</param>
     /// <returns>Returns Approval tenant info with action details.</returns>
-    public async Task<ApprovalTenantInfo> GetTenantActionDetails(int tenantId, string loggedInAlias, string alias, string clientDevice, string sessionId, string xcv, string tcv, string aadUserToken)
+    public async Task<ApprovalTenantInfo> GetTenantActionDetails(int tenantId, string loggedInAlias, string alias, string clientDevice, string sessionId, string xcv, string tcv, string oauth2UserToken)
     {
         #region Logging
 
@@ -214,7 +214,7 @@ public class ApprovalTenantInfoHelper : IApprovalTenantInfoHelper
                 var tenantAdapter = _tenantFactory.GetTenant(tenant,
                     alias,
                     clientDevice,
-                    aadUserToken);
+                    oauth2UserToken);
 
                 // Get the TenantActionDetails for the user from tenant system.
                 var httpResponseMessage = await tenantAdapter.GetTenantActionDetails(alias, loggedInAlias, clientDevice, sessionId, xcv, tcv);

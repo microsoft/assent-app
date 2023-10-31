@@ -19,7 +19,7 @@ public interface IAdaptiveDetailsHelper
     /// <param name="userAlias">User Alias</param>
     /// <param name="loggedInAlias">Logged-in Alias</param>
     /// <param name="clientDevice">Client Device</param>
-    /// <param name="aadUserToken">AAD User Token</param>
+    /// <param name="oauth2UserToken">OAuth 2.0 User Token</param>
     /// <param name="sessionId">Session ID</param>
     /// <param name="xcv">X-correlation ID</param>
     /// <param name="tcv">T-Correlation ID</param>
@@ -30,7 +30,7 @@ public interface IAdaptiveDetailsHelper
         string userAlias,
         string loggedInAlias,
         string clientDevice,
-        string aadUserToken,
+        string oauth2UserToken,
         string sessionId,
         string xcv,
         string tcv,

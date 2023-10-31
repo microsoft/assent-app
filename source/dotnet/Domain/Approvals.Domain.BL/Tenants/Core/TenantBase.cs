@@ -51,7 +51,7 @@ public abstract class TenantBase : ITenant
         ApprovalTenantInfo tenantInfo,
         string alias,
         string clientDevice,
-        string aadToken,
+        string oauth2Token,
         ILogProvider logger,
         IPerformanceLogger performanceLogger,
         IApprovalSummaryProvider approvalSummaryProvider,
@@ -67,7 +67,7 @@ public abstract class TenantBase : ITenant
         approvalTenantInfo = tenantInfo;
         Alias = alias;
         ClientDevice = clientDevice;
-        UserToken = aadToken;
+        UserToken = oauth2Token;
         PerformanceLogger = performanceLogger;
         Logger = logger;
         ApprovalSummaryProvider = approvalSummaryProvider;
@@ -866,30 +866,35 @@ public abstract class TenantBase : ITenant
 
             if (serviceParameterObject != null)
             {
-                var specialServiceParameter = GetServiceParameter(serviceParameterObject);
-                serviceParameterObject[Constants.AuthKey] = specialServiceParameter[ConfigurationKey.ServiceParameterAuthKey.ToString()].ToString();
-                serviceParameterObject[Constants.ClientID] = specialServiceParameter[ConfigurationKey.ServiceParameterClientID.ToString()].ToString();
+                SetServiceParameter(serviceParameterObject);
             }
         }
         return serviceParameterObject;
     }
 
-    private Dictionary<string, object> GetServiceParameter(JObject serviceParameterObject)
+    /// <summary>
+    /// Set Service Parameter
+    /// </summary>
+    /// <param name="serviceParameterObject"></param>
+    private void SetServiceParameter(JObject serviceParameterObject)
     {
-        Dictionary<string, object> serviceParameter = new Dictionary<string, object>();
-
-        if (serviceParameterObject.ContainsKey(Constants.KeyVaultUri))
+        if (serviceParameterObject != null)
         {
-            serviceParameter.Add(ConfigurationKey.ServiceParameterAuthKey.ToString(), Config[ConfigurationKey.ServiceParameterAuthKey.ToString() + "-" + serviceParameterObject[Constants.KeyVaultUri].ToString()]);
-            serviceParameter.Add(ConfigurationKey.ServiceParameterClientID.ToString(), Config[ConfigurationKey.ServiceParameterClientID.ToString() + "-" + serviceParameterObject[Constants.KeyVaultUri].ToString()]);
+            if (!serviceParameterObject.ContainsKey(Constants.Authority))
+            {
+                serviceParameterObject[Constants.Authority] = Config[ConfigurationKey.Authority.ToString()].ToString();
+            }
+            if (serviceParameterObject.ContainsKey(Constants.KeyVaultUri))
+            {
+                serviceParameterObject[Constants.AuthKey] = Config[ConfigurationKey.ServiceParameterAuthKey.ToString() + "-" + serviceParameterObject[Constants.KeyVaultUri].ToString()].ToString();
+                serviceParameterObject[Constants.ClientID] = Config[ConfigurationKey.ServiceParameterClientID.ToString() + "-" + serviceParameterObject[Constants.KeyVaultUri].ToString()].ToString();
+            }
+            else
+            {
+                serviceParameterObject[Constants.AuthKey] = Config[ConfigurationKey.ServiceParameterAuthKey.ToString()].ToString();
+                serviceParameterObject[Constants.ClientID] = Config[ConfigurationKey.ServiceParameterClientID.ToString()].ToString();
+            }
         }
-        else
-        {
-            serviceParameter.Add(ConfigurationKey.ServiceParameterAuthKey.ToString(), Config[ConfigurationKey.ServiceParameterAuthKey.ToString()]);
-            serviceParameter.Add(ConfigurationKey.ServiceParameterClientID.ToString(), Config[ConfigurationKey.ServiceParameterClientID.ToString()]);
-        }
-
-        return serviceParameter;
     }
 
     #endregion TenantBase Methods
@@ -1513,9 +1518,9 @@ public abstract class TenantBase : ITenant
                 logData.Add(LogDataKey.EventId, GetEventId(OperationType.ActionInitiated));
                 logData.Add(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.ActionInitiated);
                 Logger.LogInformation(GetEventId(OperationType.ActionInitiated), logData);
-                
+
                 lobResponse = await SendRequestAsync(reqMessage, logData, clientDevice);
-                
+
                 logData.Modify(LogDataKey.EventId, GetEventId(OperationType.ActionComplete));
                 logData.Modify(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.ActionComplete);
                 logData.Add(LogDataKey.ResponseStatusCode, lobResponse.StatusCode);
@@ -2399,7 +2404,7 @@ public abstract class TenantBase : ITenant
 
         if (approvalDetails != null && approvalDetails.Any())
         {
-            // Filter to get only the row which has TransactionalDetails 
+            // Filter to get only the row which has TransactionalDetails
             var existingAttachmentsRecord = approvalDetails.FirstOrDefault(x => x.RowKey.Equals(Constants.AttachmentsOperationType, StringComparison.InvariantCultureIgnoreCase));
 
             if (existingAttachmentsRecord != null)
@@ -3215,9 +3220,7 @@ public abstract class TenantBase : ITenant
         if (serviceParameterObject == null)
         {
             serviceParameterObject = approvalTenantInfo.ServiceParameter.ToJObject();
-            var specialServiceParameter = GetServiceParameter(serviceParameterObject);
-            serviceParameterObject[Constants.AuthKey] = specialServiceParameter[ConfigurationKey.ServiceParameterAuthKey.ToString()].ToString();
-            serviceParameterObject[Constants.ClientID] = specialServiceParameter[ConfigurationKey.ServiceParameterClientID.ToString()].ToString();
+            SetServiceParameter(serviceParameterObject);
         }
 
         AuthenticationModelType authType = (AuthenticationModelType)Enum.Parse(typeof(AuthenticationModelType), Convert.ToString(serviceParameterObject[Constants.AuthenticationType]));
@@ -3241,17 +3244,17 @@ public abstract class TenantBase : ITenant
                 requestMessage.Headers.Add(Constants.AuthorizationHeader, accessToken);
                 break;
 
-            case AuthenticationModelType.AAD:
+            case AuthenticationModelType.OAuth2:
                 // accessToken variable contains the App token generated using the ClientId and Client Secret which is passed in the AuthorizationHeader
 
                 // There is no need for a user token be passed, like the ACS token in past, because AAD based authentication is only based on app tokens for now.
                 // If user tokens are supported in future, they should be added here.
-                accessToken = (await AuthenticationHelper.AcquireOAuth2TokenAsync(
-                                serviceParameterObject[Constants.ClientID].ToString(),
-                                serviceParameterObject[Constants.AuthKey].ToString(),
-                                serviceParameterObject[Constants.AADInstanceName].ToString(),
-                                serviceParameterObject[Constants.ResourceURL].ToString(),
-                                serviceParameterObject[Constants.TenantID].ToString())).AccessToken;
+                accessToken = (await AuthenticationHelper.AcquireOAuth2TokenByScopeAsync(
+                                                serviceParameterObject[Constants.ClientID].ToString(),
+                                                serviceParameterObject[Constants.AuthKey].ToString(),
+                                                serviceParameterObject[Constants.Authority].ToString(),
+                                                serviceParameterObject[Constants.ResourceURL].ToString(),
+                                                "/.default")).AccessToken;
                 requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Constants.AuthorizationHeaderScheme, accessToken);
                 break;
 
@@ -3271,7 +3274,7 @@ public abstract class TenantBase : ITenant
                 requestMessage.Headers.Add("AuthorizationToken", accessToken2);
                 break;
 
-            case AuthenticationModelType.AADOnBehalf:
+            case AuthenticationModelType.OAuth2OnBehalf:
                 // get the On behalf AAD Token containing the User Claims and specific scope
                 accessToken = await AuthenticationHelper.GetOnBehalfBearerToken((ClaimsIdentity)ClaimsPrincipal.Current?.Identity, serviceParameterObject);
                 requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Constants.AuthorizationHeaderScheme, accessToken);
@@ -3282,25 +3285,30 @@ public abstract class TenantBase : ITenant
                 {
                     accessToken = await AuthenticationHelper.GetOnBehalfUserToken(UserToken.Replace("Bearer ", string.Empty).Replace("bearer ", string.Empty),
                         serviceParameterObject);
-                    logData.Add(LogDataKey.AADTokenType, "OnBehalfUserToken");
+                    logData.Add(LogDataKey.IdentityProviderTokenType, "OnBehalfUserToken");
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(TrackingEvent.AADTokenGenerationError, ex, logData);
-                    accessToken = (await AuthenticationHelper.AcquireOAuth2TokenAsync(
-                              serviceParameterObject[Constants.ClientID].ToString(),
-                              serviceParameterObject[Constants.AuthKey].ToString(),
-                              serviceParameterObject[Constants.AADInstanceName].ToString(),
-                              serviceParameterObject[Constants.ResourceURL].ToString(),
-                              serviceParameterObject[Constants.TenantID].ToString())).AccessToken;
-                    logData.Add(LogDataKey.AADTokenType, "AADAppTokenFallback");
+                    Logger.LogError(TrackingEvent.OAuth2TokenGenerationError, ex, logData);
+                    accessToken = (await AuthenticationHelper.AcquireOAuth2TokenByScopeAsync(
+                                    serviceParameterObject[Constants.ClientID].ToString(),
+                                    serviceParameterObject[Constants.AuthKey].ToString(),
+                                    serviceParameterObject[Constants.Authority].ToString(),
+                                    serviceParameterObject[Constants.ResourceURL].ToString(),
+                                    "/.default")).AccessToken;
+                    logData.Add(LogDataKey.IdentityProviderTokenType, "AADAppTokenFallback");
                 }
 
                 requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Constants.AuthorizationHeaderScheme, accessToken);
                 break;
+
+            case AuthenticationModelType.ManagedIdentityToken:
+                accessToken = await AuthenticationHelper.GetManagedIdentityToken(serviceParameterObject[Constants.Scope].ToString());
+                requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Constants.AuthorizationHeaderScheme, accessToken);
+                break;
         }
 
-        Logger.LogInformation(TrackingEvent.AADTokenGenerationSuccessful, logData);
+        Logger.LogInformation(TrackingEvent.OAuth2TokenGenerationSuccessful, logData);
         // Add additional items to Request Headers
         if (serviceParameterObject[Constants.AdditionalData] != null)
         {
@@ -3605,8 +3613,7 @@ public abstract class TenantBase : ITenant
         HttpRequestMessage reqMessage = new HttpRequestMessage(method, uri);
         JObject serviceParameter = new JObject
         {
-            { "AADInstanceName", Config[ConfigurationKey.AADInstance.ToString()] },
-            { "TenantID", Config[ConfigurationKey.AADTenantId.ToString()] },
+            { "Authority", Config[ConfigurationKey.Authority.ToString()] },
             { "ClientID", Config[ConfigurationKey.NotificationFrameworkClientId.ToString()] },
             { "AuthKey", Config[ConfigurationKey.NotificationFrameworkAuthKey.ToString()] }
         };

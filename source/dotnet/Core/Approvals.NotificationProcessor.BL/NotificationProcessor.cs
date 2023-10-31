@@ -251,7 +251,7 @@ public class NotificationProcessor : INotificationProcessor
                 if (approvers == null || approvers.Count <= 0)
                     approvers = requestExpressions.SummaryRows.Select(s => s.Approver).ToList();
 
-                MSApprovalsTeamsNotificationControllerInput teamsNotificationInput = new MSApprovalsTeamsNotificationControllerInput()
+                TeamsNotificationControllerInput teamsNotificationInput = new TeamsNotificationControllerInput()
                 {
                     NotificationReceiverAadId = new string[approvers.Count],
                     NotificationSender = string.Empty,
@@ -262,33 +262,33 @@ public class NotificationProcessor : INotificationProcessor
                     TemplateUri = new Uri(string.Format(AdaptiveTemplateUrl, requestExpressions.ApprovalTenantInfo.TenantId))
                 };
 
-                    string senderAadId = string.Empty;
-                    if (summaryJson != null)
+                string senderObjectId = string.Empty;
+                if (summaryJson != null)
+                {
+                    var id = _nameResolutionHelper?.GetUser(summaryJson.Submitter.Alias)?.Result?.Id;
+                    if (string.IsNullOrWhiteSpace(id))
                     {
-                        var id = _nameResolutionHelper?.GetUser(summaryJson.Submitter.Alias)?.Result?.Id;
-                        if (string.IsNullOrWhiteSpace(id))
-                        {
-                            senderAadId = string.IsNullOrWhiteSpace(summaryJson.Submitter?.Alias) ? summaryJson.Submitter?.Name : summaryJson.Submitter?.Alias;
-                        }
-                        else
-                            senderAadId = id;
+                        senderObjectId = string.IsNullOrWhiteSpace(summaryJson.Submitter?.Alias) ? summaryJson.Submitter?.Name : summaryJson.Submitter?.Alias;
                     }
+                    else
+                        senderObjectId = id;
+                }
 
-                teamsNotificationInput.NotificationSender = senderAadId;
+                teamsNotificationInput.NotificationSender = senderObjectId;
 
                 for (int i = 0; i < approvers.Count; i++)
                 {
                     teamsNotificationInput.NotificationReceiverAadId[i] = _nameResolutionHelper?.GetUser(approvers[i])?.Result?.Id;
                 }
 
-                teamsNotificationInput.Title = "MSApprovals - " + requestExpressions?.ApprovalIdentifier?.DisplayDocumentNumber + ": " + (string.IsNullOrWhiteSpace(summaryJson?.Title) ? string.Empty : summaryJson.Title);
+                teamsNotificationInput.Title = "Approvals - " + requestExpressions?.ApprovalIdentifier?.DisplayDocumentNumber + ": " + (string.IsNullOrWhiteSpace(summaryJson?.Title) ? string.Empty : summaryJson.Title);
 
                 logData.Add(LogDataKey.TeamsNotificationJson, JsonConvert.SerializeObject(teamsNotificationInput));
 
                 var lobResponse = await _httpHelper.SendRequestAsync(HttpMethod.Post,
                     _config[ConfigurationKey.TeamsClientId.ToString()],
                     _config[ConfigurationKey.TeamsAppKey.ToString()],
-                    String.Format(_config[ConfigurationKey.AADInstance.ToString()], _config[ConfigurationKey.AADTenantId.ToString()]),
+                    _config[ConfigurationKey.Authority.ToString()],
                     _config[ConfigurationKey.TeamsResourceUrl.ToString()],
                     postUrl,
                     new Dictionary<string, string>() { { Constants.TeamsNotificationCorrelationHeader, teamsNotificationCorrelationId } },

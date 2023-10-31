@@ -33,7 +33,7 @@ public class NotificationTemplateFactory
     /// </summary>
     /// <param name="data">Instance of notification data</param>
     /// <returns>Returns email template</returns>
-    public string GetEmailTemplate(NotificationData data)
+    public string GetEmailTemplate(NotificationItem data)
     {
         string templateBody = string.Empty;
         if (!string.IsNullOrWhiteSpace(data?.TemplateRowExp))

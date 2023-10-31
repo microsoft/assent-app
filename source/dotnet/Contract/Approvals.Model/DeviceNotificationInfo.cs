@@ -106,7 +106,7 @@ public class DeviceNotificationInfo// : IExtensibleDataObject
     public bool ForFirstTimeUser { get; set; }
 
     [DataMember]
-    public NotificationType NotificationType { get; set; }
+    public Contracts.NotificationType NotificationType { get; set; }
 
     [DataMember]
     public string BlobID { get; set; }

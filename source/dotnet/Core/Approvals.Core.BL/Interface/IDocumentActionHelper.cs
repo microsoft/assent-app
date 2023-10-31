@@ -16,7 +16,7 @@ public interface IDocumentActionHelper
     /// <param name="clientDevice"></param>
     /// <param name="userAlias"></param>
     /// <param name="loggedInUser"></param>
-    /// <param name="aadUserToken"></param>
+    /// <param name="oauth2UserToken"></param>
     /// <param name="xcv"></param>
     /// <param name="tcv"></param>
     /// <param name="sessionId"></param>
@@ -28,7 +28,7 @@ public interface IDocumentActionHelper
             string clientDevice,
             string userAlias,
             string loggedInUser,
-            string aadUserToken,
+            string oauth2UserToken,
             string xcv,
             string tcv,
             string sessionId

@@ -63,18 +63,6 @@ public class GenericNotificationProvider : INotificationProvider
     }
 
     /// <summary>
-    /// This is overloaded method to send email based on To, Subject, body and priority
-    /// </summary>
-    /// <param name="to">To parameter</param>
-    /// <param name="subject">subject parameter</param>
-    /// <param name="body">body parameter</param>
-    /// <param name="priority">priority parameter</param>
-    public async Task SendEmail(string to, string subject, string body, string priority)
-    {
-        await _notificationProvider.SendEmail(to, subject, body, priority);
-    }
-
-    /// <summary>
     /// This is overloaded method to send email based on template and template data
     /// </summary>
     /// <param name="to">To parameter</param>
@@ -89,7 +77,7 @@ public class GenericNotificationProvider : INotificationProvider
     /// This is overloaded method to send email based on notification data.
     /// </summary>
     /// <param name="data">data parameter</param>
-    public async Task SendEmail(NotificationData data)
+    public async Task SendEmail(NotificationItem data)
     {
         await _notificationProvider.SendEmail(data);
     }
@@ -98,7 +86,7 @@ public class GenericNotificationProvider : INotificationProvider
     /// This method will send email based on list of notification objects
     /// </summary>
     /// <param name="data">List of NotificationData</param>
-    public async Task SendEmails(IEnumerable<NotificationData> data)
+    public async Task SendEmails(IEnumerable<NotificationItem> data)
     {
         await _notificationProvider.SendEmails(data);
     }
@@ -117,7 +105,7 @@ public class GenericNotificationProvider : INotificationProvider
     /// This method will send email based on data.
     /// </summary>
     /// <param name="data">instance of NotificationData</param>
-    public async Task SendDeviceNotification(NotificationData data)
+    public async Task SendDeviceNotification(NotificationItem data)
     {
         await _notificationProvider.SendDeviceNotification(data);
     }

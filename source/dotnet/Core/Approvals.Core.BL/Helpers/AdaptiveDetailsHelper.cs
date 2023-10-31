@@ -99,13 +99,13 @@ public class AdaptiveDetailsHelper : IAdaptiveDetailsHelper
     /// <param name="userAlias">User Alias</param>
     /// <param name="loggedInAlias">Logged-in Alias</param>
     /// <param name="clientDevice">Client Device</param>
-    /// <param name="aadUserToken">AAD User Token</param>
+    /// <param name="oauth2UserToken">OAuth 2.0 User Token</param>
     /// <param name="sessionId">Session ID</param>
     /// <param name="xcv">X-correlation ID</param>
     /// <param name="tcv">T-Correlation ID</param>
     /// <param name="templateType">Template Type</param>
     /// <returns>Adaptive Card Payload JObject</returns>
-    public async Task<Dictionary<string, JObject>> GetAdaptiveTemplate(int tenantId, string userAlias, string loggedInAlias, string clientDevice, string aadUserToken,
+    public async Task<Dictionary<string, JObject>> GetAdaptiveTemplate(int tenantId, string userAlias, string loggedInAlias, string clientDevice, string oauth2UserToken,
                                                                         string sessionId, string xcv, string tcv, int templateType)
     {
         #region Logging Prep
@@ -154,6 +154,7 @@ public class AdaptiveDetailsHelper : IAdaptiveDetailsHelper
             logData[LogDataKey.DocumentTypeId] = tenantInfo.DocTypeId;
 
             #endregion Getting the Tenant ID
+
             using (_performanceLogger.StartPerformanceLogger("PerfLog", string.IsNullOrWhiteSpace(clientDevice) ? Constants.WebClient : clientDevice, string.Format(Constants.PerfLogAction, "AdaptiveDetail", "Get Adaptive Templates for the tenant"), logData))
             {
                 var isModernAdaptiveUI = tenantInfo.EnableModernAdaptiveUI switch
@@ -172,7 +173,7 @@ public class AdaptiveDetailsHelper : IAdaptiveDetailsHelper
                             tenantInfo,
                             userAlias,
                             clientDevice,
-                            aadUserToken);
+                            oauth2UserToken);
 
                     #endregion Get Tenant Type
 
@@ -503,6 +504,7 @@ public class AdaptiveDetailsHelper : IAdaptiveDetailsHelper
             case Constants.TeamsClient:
                 obj["$when"] = "${and(or(not(exists(Message)), Message == ''), or(not(exists(ActionTakeOnMessage)), ActionTakeOnMessage == ''))}";
                 break;
+
             default:
                 obj["$when"] = "${or(not(exists(Message)), Message == '')}";
                 break;

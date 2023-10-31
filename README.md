@@ -19,18 +19,18 @@ These instructions will get the project up and running in Azure.
 
 Before running the project on local machine/ or deploy the following things needs to be setup on Azure:
 - Azure Subscription
-- Azure Active Directory (AAD) App (along with secret)
+- Microsoft Entra ID App (along with secret)
 
 Apart from these keep the following items handy as it would be required during deployment:
-- AAD App's ClientId for Authentication in case of API
-- AAD App's Secret for Authentication in case of API
-- Assign a default `user_impersonation` scope for the AAD app (with Admin Consent only)
-- AAD App's resource/AAP ID URI used for generating token (audience)
+- Microsoft Entra ID App's ClientId for Authentication in case of API
+- Microsoft Entra ID App's Secret for Authentication in case of API
+- Assign a default `user_impersonation` scope for the Microsoft Entra ID app (with Admin Consent only)
+- Microsoft Entra ID App's resource/AAP ID URI used for generating token (audience)
 - TenantId for Authentication in case of API
-- Issuer Url for Authentication : https://sts.windows.net/{AADTenantId}
+- Issuer Url for Authentication : https://sts.windows.net/{IdentityProviderTenantId}
 - Custom Application Name which would be used to create AppServices/Functions (resource_name_prefix)
 - Custom Resource Group Name where all the resources will be deployed
-- Location/code to deploy the Azure Resources (e.g. Central US/centralus. Powershell Command: Get-AzureRmLocation)
+- Location/code to deploy the Azure Resources (e.g. Central US/centralus. Powershell Command: Get-AzureRmLocation |Format-Table)
 
 
 ### Installing
@@ -96,39 +96,39 @@ Step 2: Add/update the values for the following keys in the JSON
 ```
 | Key Name | Source | In KeyVault ? |
 |--------|------|--------|
-| AADTenantId | Azure Active Directory (AAD) Tenant ID | No |
-| AntiCorruptionMessage | Message to be shown on the UI while taking action (if applicable) | No |
-| ApprovalsAudienceUrl | AAD Resource (APP ID URL) | No |
-| ApprovalsBaseUrl | Approvals Website Base URL | No |
-| ApprovalsCoreServicesURL | Approvals API's Base URL | No |
-| AzureSearchServiceName | Azure Search | No |
-| AzureSearchServiceQueryApiKey | Azure Search | Yes |
-| CosmosDbAuthKey | Azure Cosmos DB | Yes |
-| CosmosDbEndPoint | Azure Cosmos DB | No |
-| DetailControllerExceptionMessage | Error message to be shown on the UI when details loading fails  | No |
-| EnvironmentName |  Environment Name where this solution is getting deployed (e.g., DEV/ TEST etc.) | No |
-| GraphAPIAuthString | AAD Authority URL with {0} replaced with the TenantID - https://login.windows.net/{0} | No |
-| GraphAPIClientId | AAD Client ID which has permissions to Access Microsoft Graph to get user data | No |
-| GraphAPIClientSecret | AAD Client Secret - used to access Microsoft Graph | Yes |
-| NotificationBroadcastUri | Notification Service's REST endpoint | No |
-| NotificationFrameworkAuthKey | AAD Client Secret - used for Authentication with Notification Framework/service  | Yes |
-| NotificationFrameworkClientId | AAD Client ID - used for Authentication with Notification Framework/service  | No |
-| ReceiptAcknowledgmentMessage | Message to be shown on the UI while taking action (if applicable | No |
-| ServiceBusConnectionString | Azure Service Bus | Yes |
-| ServiceBusIssuerSecret | Azure Service Bus | Yes |
-| ServiceBusNamespace | Azure Service Bus | No |
-| ServiceComponentId | [Optional] Used for Logging | No |
-| ServiceLineName | [Optional] Used for Logging | No |
-| ServiceName | [Optional] Used for Logging | No |
-| ServiceOfferingName | [Optional] Used for Logging | No |
-| ServiceParameterAuthKey | AAD Client Secret - used for Authentication with LoB apps endpoints/service | Yes |
-| ServiceParameterClientID | AAD Client ID - used for Authentication with LoB apps endpoints/service | No |
-| StorageAccountKey | Azure Storage | Yes |
-| StorageAccountName | Azure Storage | No |
-| SupportEmailId | e.g., mailto:help@contoso.com | No |
-| SyntheticTransactionsApproverAliasList | [Optional] (;) separated list of aliases which would be the allowed approvers for creating synthetic transaction requests | No |
-| UrlPlaceholderTenants | [Optional] Int32 identifiers for simulating LoB apps in self-server portal | No |
-| WhitelistDomains | Domains which will be allowed to access Assent | No |
+| AntiCorruptionMessage | ```Message to be shown on the UI while taking action (if applicable)``` | No |
+| ApprovalsAudienceUrl | ```Microsoft Entra ID Resource (APP ID URL)``` | No |
+| ApprovalsBaseUrl | ```Approvals Website Base URL``` | No |
+| ApprovalsCoreServicesURL | ```Approvals API's Base URL``` | No |
+| Authority | ```URL that indicates a directory that MSAL can request tokens from``` | No |
+| AzureSearchServiceName | ```Azure Search``` | No |
+| AzureSearchServiceQueryApiKey | ```Azure Search``` | Yes |
+| CosmosDbAuthKey | ```Azure Cosmos DB``` | Yes |
+| CosmosDbEndPoint | ```Azure Cosmos DB``` | No |
+| DetailControllerExceptionMessage | ```Error message to be shown on the UI when details loading fails```  | No |
+| EnvironmentName | ``` Environment Name where this solution is getting deployed (e.g., DEV/ TEST etc.)``` | No |
+| GraphAPIAuthString | ```Microsoft Entra ID Authority URL with {0} replaced with the TenantID - https://login.windows.net/{0}``` | No |
+| GraphAPIClientId | ```Microsoft Entra ID Client ID which has permissions to Access Microsoft Graph to get user data``` | No |
+| GraphAPIClientSecret | ```Microsoft Entra ID Client Secret - used to access Microsoft Graph``` | Yes |
+| NotificationBroadcastUri | ```Notification Service's REST endpoint``` | No |
+| NotificationFrameworkAuthKey | ```Microsoft Entra ID Client Secret - used for Authentication with Notification Framework/service```  | Yes |
+| NotificationFrameworkClientId | ```Microsoft Entra ID Client ID - used for Authentication with Notification Framework/service```  | No |
+| ReceiptAcknowledgmentMessage | ```Message to be shown on the UI while taking action (if applicable)``` | No |
+| ServiceBusConnectionString | ```Azure Service Bus``` | Yes |
+| ServiceBusIssuerSecret | ```Azure Service Bus``` | Yes |
+| ServiceBusNamespace | ```Azure Service Bus``` | No |
+| ServiceComponentId | ```[Optional] Used for Logging``` | No |
+| ServiceLineName | ```[Optional] Used for Logging``` | No |
+| ServiceName | ```[Optional] Used for Logging``` | No |
+| ServiceOfferingName | ```[Optional] Used for Logging``` | No |
+| ServiceParameterAuthKey | ```Microsoft Entra ID Client Secret - used for Authentication with LoB apps endpoints/service``` | Yes |
+| ServiceParameterClientID | ```Microsoft Entra ID Client ID - used for Authentication with LoB apps endpoints/service``` | No |
+| StorageAccountKey | ```Azure Storage``` | Yes |
+| StorageAccountName | ```Azure Storage``` | No |
+| SupportEmailId | ```e.g., mailto:help@contoso.com``` | No |
+| SyntheticTransactionsApproverAliasList | ```[Optional](;) separated list of aliases which would be the allowed approvers for creating synthetic transaction requests``` | No |
+| UrlPlaceholderTenants | ```[Optional] Int32 identifiers for simulating LoB apps in self-server portal``` | No |
+| WhitelistDomains | ```Domains which will be allowed to access Assent``` | No |
 
 ```
 Step 3: Go to the App Configuration service on Azure Portal and select the resource
@@ -195,7 +195,7 @@ Select the 'Label' under which the configurations needs to be added (e.g., DEV) 
   > > Name of the component which could be name of the component like *ApprovalsCoreServicesAPI or ApprovalsPayloadServiceAPI*.
   >
   > ValidAppIds
-  > > This is AzureAD App's ClientIds which are authorized to access this component (; separated).
+  > This is Microsoft Entra ID App's ClientIds which are authorized to access this component (; separated).
   >
 	```
     Note: The connection string should be the KeyVault url
@@ -204,10 +204,10 @@ Select the 'Label' under which the configurations needs to be added (e.g., DEV) 
 #### Setup Authentication/Access Permission
 
 * Setup Authentication for APIs and Function Apps
-  * Update the Reply Urls section of the AzureAD App created earlier with the URLs of the App Services and FunctionApps (HttpTriggered) URLs suffixed with '/auth/login/aad/callback'
+  * Update the Reply Urls section of the Microsoft Entra ID App created earlier with the URLs of the App Services and FunctionApps (HttpTriggered) URLs suffixed with '/auth/login/aad/callback'
   * In the 'Authentication' section of the AppServices / FunctionApps (HttpTriggered),
     * Add or update the Authentication values (ClientId/Secret/Issuer/Audience)
-    * Select 'Login with Azure Active Directory' for the option 'Action to take when the request is not authenticated'
+    * Select 'Return HTTP 302 Found (Redirect to identity provider)' for the option 'Unauthenticated requests'
 
 * Permissions needed needed for System assigned Managed Identity of below Azure Components
     * Payload Receiver Service API:

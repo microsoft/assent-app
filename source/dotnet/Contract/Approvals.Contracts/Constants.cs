@@ -195,11 +195,11 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string StorageAccountKey = "StorageAccountKey";
         public const string AuthKey = "AuthKey";
         public const string ClientID = "ClientID";
-        public const string AADInstanceName = "AADInstanceName";
         public const string ResourceURL = "ResourceURL";
-        public const string TenantID = "TenantID";
+        public const string Scope = "Scope";
         public const string KeyVaultUri = "KeyVaultUri";
         public const string AppConfigurationSecrets = "AppConfigurationSecrets";
+        public const string Authority = "Authority";
 
         public const string PullModelURLPlaceHolderStart = "\\|#";
         public const string PullModelURLPlaceHolderEnd = "#\\|";

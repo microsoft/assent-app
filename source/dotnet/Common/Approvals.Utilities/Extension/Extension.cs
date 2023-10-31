@@ -58,7 +58,7 @@ public static class Extension
             OriginalApprover = approvalRequestExpression.ActionDetail != null ? approvalRequestExpression.ActionDetail.ActionBy?.Alias : string.Empty,
             NotificationApprover = approvalRequestExpression.ActionDetail != null && approvalRequestExpression.ActionDetail.NewApprover != null ? approvalRequestExpression.ActionDetail.NewApprover.Alias : string.Empty,
             NotificationRequestQueuingByClientUtcDateTime = DateTime.UtcNow,
-            NotificationType = NotificationType.None,
+            NotificationType = Contracts.NotificationType.None,
             ForFirstTimeUser = false,
             SendNotification = approvalRequestExpression.NotificationDetail != null && approvalRequestExpression.NotificationDetail.SendNotification,
             ActionTaken = approvalRequestExpression.ActionDetail != null ? approvalRequestExpression.ActionDetail.Name : string.Empty,

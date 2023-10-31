@@ -44,8 +44,6 @@ namespace Microsoft.CFS.Approvals.Contracts
     {
         #region Common
 
-        AADInstance,
-        AADTenantId,
         AcceptsTerms,
         ActionAlreadyTakenFromApprovalsMessage,
         ActionAlreadyTakenMessage,
@@ -63,6 +61,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         ARConverterClass,
         ArxQueueWaitTime,
         AttachmentSizeLimit, // AttachmentSizeLimit beyond which, it will send normal email without attachment.
+        Authority,
         AzureSearchServiceName,
         AzureSearchServiceQueryApiKey,
         AzureSearchTransactionHistoryIndexName,
@@ -129,18 +128,6 @@ namespace Microsoft.CFS.Approvals.Contracts
         SupportEmailId,
         SyntheticTransactionsApproverAliasList,
         SyntheticTransactionsLoadBatchDelay,
-        TenantAPICallTimeoutValueInMins, // TenantAPICallTimeoutValueInMins
-        TenantDownTimeMessagesAzureTableName,
-        TopicNameMain,
-        TopicNameNotification,
-        TopicNameRetry,
-        UnAuthorizedException,
-        UrlPlaceholderTenants, // TenantIDs for which summary and detail URL contains placeholders with actual property names.
-        UserMessageForComplianceAndAction,
-        UserPreferenceAzureTableName,
-        ValidateAliasUsingPayloadValidator,
-        WatchDogBatchSize,
-        WatchDogMaxFailureCount,
 
         /// <summary>
         /// Teams AppKey which will be used to generate token
@@ -163,9 +150,22 @@ namespace Microsoft.CFS.Approvals.Contracts
         TeamsResourceUrl,
 
         /// <summary>
-        /// Teams Tenant to generate AAD Token
+        /// Teams Tenant to generate OAuth 2.0 Toke
         /// </summary>
         TeamsTenant,
+
+        TenantAPICallTimeoutValueInMins, // TenantAPICallTimeoutValueInMins
+        TenantDownTimeMessagesAzureTableName,
+        TopicNameMain,
+        TopicNameNotification,
+        TopicNameRetry,
+        UnAuthorizedException,
+        UrlPlaceholderTenants, // TenantIDs for which summary and detail URL contains placeholders with actual property names.
+        UserMessageForComplianceAndAction,
+        UserPreferenceAzureTableName,
+        ValidateAliasUsingPayloadValidator,
+        WatchDogBatchSize,
+        WatchDogMaxFailureCount
 
         #endregion Common
     }
@@ -271,10 +271,11 @@ namespace Microsoft.CFS.Approvals.Contracts
     public enum AuthenticationModelType : int
     {
         SAS = 0,
-        AAD = 1,
+        OAuth2 = 1,
         CorpSTS = 2,
-        AADOnBehalf = 3,
-        UserOnBehalf = 4
+        OAuth2OnBehalf = 3,
+        UserOnBehalf = 4,
+        ManagedIdentityToken = 5
     }
 
     public enum DataCallType
@@ -351,22 +352,27 @@ namespace Microsoft.CFS.Approvals.Contracts
         // Summary:
         //     Represents the Equal operator.
         public static string Equal = "eq";
+
         //
         // Summary:
         //     Represents the Not Equal operator.
         public static string NotEqual = "ne";
+
         //
         // Summary:
         //     Represents the Greater Than operator.
         public static string GreaterThan = "gt";
+
         //
         // Summary:
         //     Represents the Greater Than or Equal operator.
         public static string GreaterThanOrEqual = "ge";
+
         //
         // Summary:
         //     Represents the Less Than operator.
         public static string LessThan = "lt";
+
         //
         // Summary:
         //     Represents the Less Than or Equal operator.
