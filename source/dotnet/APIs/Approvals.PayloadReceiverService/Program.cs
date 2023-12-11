@@ -152,12 +152,6 @@ app.UseSwagger(c =>
         swagger.Servers = new List<OpenApiServer> { new OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host.Value}" } };
     });
 });
-app.UseSwaggerUI(c =>
-{
-    c.RoutePrefix = "";
-    c.SwaggerEndpoint("../swagger/v1/swagger.json", "PayloadService v1");
-    c.DefaultModelsExpandDepth(-1);
-});
 
 app.UseHttpsRedirection();
 
