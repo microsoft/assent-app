@@ -6,9 +6,12 @@ namespace Microsoft.CFS.Approvals.Common.DL;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.Cosmos;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Data.Azure.CosmosDb.Interface;
 using Microsoft.CFS.Approvals.Model;
+using Microsoft.Graph;
 
 /// <summary>
 /// The History DocumentDb provider
@@ -61,12 +64,15 @@ public class HistoryDocumentDbProvider : IHistoryStorageProvider
     /// <returns></returns>
     public async Task<List<TransactionHistory>> GetHistoryDataAsync(string alias, string actionDate, string documentNumber, string actionTaken)
     {
-        var sqlQuery = "select * from c where c.DocumentNumber = '" + documentNumber + "' and (c.Approver = '" +
-                       alias.ToLowerInvariant() + "' or c.Approver = '" +
-                       alias.ToUpperInvariant() + "' or c.Approver = '" +
-                       alias + "') and c.ActionTaken = '" + actionTaken + "'";
+        var query = "select * from c where c.DocumentNumber = @documentNumber and LOWER(c.Approver) = LOWER(@approver) and c.ActionTaken = @actionTaken";
 
-        return await _cosmosDbHelper.GetAllDocumentsAsync<TransactionHistory>(sqlQuery);
+        var queryDefinition = new QueryDefinition(query)
+            .WithParameter("@documentNumber", documentNumber)
+            .WithParameter("@approver", alias)
+        .WithParameter("@actionTaken", actionTaken);
+
+        var historyList = await _cosmosDbHelper.GetAllDocumentsAsync<TransactionHistory>(queryDefinition);
+        return historyList;
     }
 
     /// <summary>
@@ -89,17 +95,31 @@ public class HistoryDocumentDbProvider : IHistoryStorageProvider
     /// <returns></returns>
     public async Task<List<TransactionHistory>> GetHistoryDataAsync(string tenantId, string documentNumber, string approver)
     {
-        var sqlQuery = "select * from c where c.DocumentNumber = '" + documentNumber + "'";
+        var query = "select * from c where c.DocumentNumber = @documentNumber";
+        var parameters = new Dictionary<string, string>
+        {
+            { "@documentNumber", documentNumber }
+        };
+
         if (!string.IsNullOrWhiteSpace(tenantId))
         {
-            sqlQuery += " and c.TenantId = '" + tenantId + "'";
-        }
-        if (!string.IsNullOrWhiteSpace(approver))
-        {
-            sqlQuery += " and (c.Approver = '" + approver.ToLowerInvariant() + "' or c.Approver = '" + approver.ToUpperInvariant() + "' or c.Approver = '" + approver + "')";
+            query += " and c.TenantId = @tenantId";
+            parameters.Add("@tenantId", tenantId);
         }
 
-        return await _cosmosDbHelper.GetAllDocumentsAsync<TransactionHistory>(sqlQuery);
+        if (!string.IsNullOrWhiteSpace(approver))
+        {
+            query += " and LOWER(c.Approver) = LOWER(@approver)";
+            parameters.Add("@approver", approver);
+        }
+
+        var queryDefinition = new QueryDefinition(query);
+        foreach (var param in parameters)
+        {
+            queryDefinition.WithParameter(param.Key, param.Value);
+        }
+
+        return await _cosmosDbHelper.GetAllDocumentsAsync<TransactionHistory>(queryDefinition);
     }
 
     /// <summary>
@@ -110,7 +130,13 @@ public class HistoryDocumentDbProvider : IHistoryStorageProvider
     /// <returns></returns>
     public async Task<List<TransactionHistory>> GetHistoryDataAsync(string alias, int timePeriod)
     {
-        var sqlQuery = "select * from c where (c.Approver = '" + alias.ToLowerInvariant() + "' or c.Approver = '" + alias.ToUpperInvariant() + "' or c.Approver = '" + alias + "') and c.ActionDate >= '" + DateTime.Now.AddMonths(timePeriod * -1).ToString("o") + "'";
-        return await _cosmosDbHelper.GetAllDocumentsAsync<TransactionHistory>(sqlQuery);
+        var query = "select * from c where LOWER(c.Approver) = LOWER(@approver) and c.ActionDate >= @actionDate";
+
+        var queryDefinition = new QueryDefinition(query)
+            .WithParameter("@approver", alias)
+            .WithParameter("@actionDate", DateTime.Now.AddMonths(timePeriod * -1).ToString("o"));
+
+        var historyList = await _cosmosDbHelper.GetAllDocumentsAsync<TransactionHistory>(queryDefinition);
+        return historyList;
     }
 }

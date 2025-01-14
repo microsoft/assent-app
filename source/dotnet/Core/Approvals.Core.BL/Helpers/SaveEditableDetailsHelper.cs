@@ -97,17 +97,17 @@ public class SaveEditableDetailsHelper : ISaveEditableDetailsHelper
     /// <returns></returns>
     public List<string> SaveEditedDetails(string detailsString, int tenantId, string userAlias, string Xcv, string Tcv, string loggedInUser)
     {
-        var detailsDataObj = JObject.Parse(detailsString);
+        var detailsDataObj = detailsString.ToJToken();
 
         #region Validate the edited fields
 
         bool isValid = false;
         string propertyEditable = "EditableField";
         JArray editableFields = new JArray();
-        AddEditableFieldsToRequest(JToken.Parse(detailsDataObj.ToString()), propertyEditable, ref editableFields);
+        AddEditableFieldsToRequest(detailsDataObj, propertyEditable, ref editableFields);
         if (detailsDataObj["LineItems"] != null)
         {
-            AddEditableFieldsToRequest(JToken.Parse(detailsDataObj["LineItems"].ToString()), propertyEditable, ref editableFields);
+            AddEditableFieldsToRequest(detailsDataObj["LineItems"], propertyEditable, ref editableFields);
         }
         List<string> validationFailMessages = ValidateEditableFields(editableFields);
         if (validationFailMessages.Count == 0)

@@ -63,23 +63,6 @@ public interface ICosmosDbHelper
     Task<ItemResponse<T>> InsertDocumentAsync<T>(T data, PartitionKey partitionKey, string databaseName = "", string collectionName = "", string partitionKeyPath = "");
 
     /// <summary>
-    /// Fetch all documents matched based on sql query
-    /// </summary>
-    /// <typeparam name="T">Type to return</typeparam>
-    /// <param name="sqlQuery">Sql query</param>
-    /// <param name="partitionKey"></param>
-    /// <param name="client">Document client</param>
-    /// <param name="databaseName">Name of the database.</param>
-    /// <param name="collectionName">Name of the collection.</param>
-    /// <returns>Returns List of type</returns>
-    Task<List<T>> GetAllDocumentsAsync<T>(string sqlQuery,
-        string partitionKey = "",
-        CosmosClient client = null,
-        string databaseName = "",
-        string collectionName = "",
-        string partitionKeyPath = "") where T : class;
-
-    /// <summary>
     /// Fetch all documents matched based on sql query definition
     /// </summary>
     /// <typeparam name="T">Type to return</typeparam>

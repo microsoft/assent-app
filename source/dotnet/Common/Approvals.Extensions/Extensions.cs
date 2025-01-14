@@ -161,8 +161,8 @@ private static bool IsValidJson(this string strInput)
     {
         try
         {
-            JContainer.Parse(strInput);
-            return true;
+                strInput.ToJToken();
+                return true;
         }
         catch
         {
@@ -225,7 +225,11 @@ public static JArray ToJArray(this string value)
 /// <returns></returns>
 public static JToken ToJToken(this string value)
 {
-    return JToken.Parse(value);
+    var settings = new JsonLoadSettings
+    {
+        DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error
+    };
+    return JToken.Parse(value, settings);
 }
 
 /// <summary>

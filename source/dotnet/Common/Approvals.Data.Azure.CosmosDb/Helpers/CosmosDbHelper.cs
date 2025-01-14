@@ -155,50 +155,6 @@ public class CosmosDbHelper : ICosmosDbHelper
     }
 
     /// <summary>
-    /// Get All Documents Async by query
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="sqlQuery"></param>
-    /// <param name="partitionKey"></param>
-    /// <param name="client"></param>
-    /// <param name="databaseName"></param>
-    /// <param name="collectionName"></param>
-    /// <returns></returns>
-    public async Task<List<T>> GetAllDocumentsAsync<T>(string sqlQuery, string partitionKey = "",
-        CosmosClient client = null, string databaseName = "", string collectionName = "", string partitionKeyPath = "") where T : class
-    {
-        if (client == null)
-        {
-            client = _client;
-        }
-
-        var collection = _collection;
-        if (!string.IsNullOrWhiteSpace(databaseName) && !string.IsNullOrWhiteSpace(collectionName))
-        {
-            collection = GetCollection(client, databaseName, collectionName, partitionKeyPath);
-        }
-
-        List<T> results = new List<T>();
-
-        QueryRequestOptions requestOptions = new QueryRequestOptions();
-        if (!string.IsNullOrWhiteSpace(partitionKey))
-        {
-            requestOptions.PartitionKey = new PartitionKey(partitionKey);
-        }
-
-        string continuationToken = null;
-
-
-        var query = collection.GetItemQueryIterator<T>(sqlQuery, continuationToken, requestOptions);
-        while (query.HasMoreResults)
-        {
-            var result = await query.ReadNextAsync();
-            results.AddRange(result.Resource.ToList());
-        }
-        return results;
-    }
-
-    /// <summary>
     /// Get All Documents Async by  sql query definition
     /// </summary>
     /// <typeparam name="T"></typeparam>

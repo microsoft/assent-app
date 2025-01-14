@@ -6,6 +6,7 @@ namespace Microsoft.CFS.Approvals.Common.DL;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.Cosmos;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
@@ -65,10 +66,13 @@ public class ActionAuditLogger : IActionAuditLogger
     /// <returns>List of ActionAuditLogTableRow as per the query results.</returns>
     public async Task<List<ActionAuditLogInfo>> GetActionAuditLogsByDocumentNumberAndApprover(string documentNumber, string actualApprover)
     {
-        var sqlQuery = "select * from c where c.DisplayDocumentNumber = '" + documentNumber + "' and c.Approver = '" +
-                       actualApprover.ToLowerInvariant() + "'";
+        var query = "select * from c where c.DisplayDocumentNumber = @documentNumber and c.Approver = LOWER(@actualApprover)";
 
-        return await _cosmosDbHelper.GetAllDocumentsAsync<ActionAuditLogInfo>(sqlQuery);
+        var queryDefinition = new QueryDefinition(query)
+            .WithParameter("@documentNumber", documentNumber)
+            .WithParameter("@actualApprover", actualApprover.ToLowerInvariant());
+
+        return await _cosmosDbHelper.GetAllDocumentsAsync<ActionAuditLogInfo>(queryDefinition);
     }
 
     /// <summary>
