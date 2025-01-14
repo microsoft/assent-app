@@ -34,31 +34,23 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
     /// <returns></returns>
     public virtual List<dynamic> GetDocuments(List<string[]> parameters, string partitionKeyValue, string collectionName = "")
     {
-        string documents = null;
         string queryText;
         QueryDefinition query;
         List<string[]> parametersToPass = new List<string[]>();
         if (!parameters[0][2].Contains(','))    //if the parameter name is document number and multiple documents enetred
         {
-            queryText =  "SELECT * " +
-                        "FROM ApprovalsTenantNotifications f " +
-                        "WHERE f." + parameters[0][0] + "='" + parameters[0][2] + "'";
+            queryText = $"SELECT * FROM ApprovalsTenantNotifications f WHERE f.{parameters[0][0]} = {parameters[0][1]}";
             parametersToPass.Add(parameters[0]);
         }
         else
         {
-            string[] DocList = parameters[0][2].Split(',');
-            for (int j = 0; j < DocList.Length; j++)
-                DocList[j] = DocList[j].Trim();
-            List<string> DocNumbers = new List<string>(DocList);
-            foreach (string docNumber in DocNumbers)
+            List<string> docNumbers = parameters[0][2].Split(',').Select(doc => doc.Trim()).ToList();
+            string documentsParam = string.Join(", ", docNumbers.Select((doc, index) => $"@doc{index}"));
+            queryText = $"SELECT * FROM ApprovalsTenantNotifications f WHERE f.{parameters[0][0]} IN ({documentsParam})";
+            for (int i = 0; i < docNumbers.Count; i++)
             {
-                documents += ("'" + docNumber + "', ");
+                parametersToPass.Add(new string[3] { parameters[0][0], $"@doc{i}", docNumbers[i] });
             }
-            documents = documents.Remove(documents.Length - 2, 2);
-            queryText = "SELECT * " +
-                        "FROM ApprovalsTenantNotifications f " +
-                        "WHERE f." + parameters[0][0] + " IN(" + documents + ")";
         }
         for (int i = 1; i < parameters.Count; i++)
         {
