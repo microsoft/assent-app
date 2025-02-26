@@ -39,8 +39,8 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
         List<string[]> parametersToPass = new List<string[]>();
         if (!parameters[0][2].Contains(','))    //if the parameter name is document number and multiple documents enetred
         {
-            queryText = $"SELECT * FROM ApprovalsTenantNotifications f WHERE f.{parameters[0][0]} = {parameters[0][1]}";
-            parametersToPass.Add(parameters[0]);
+            queryText = $"SELECT * FROM ApprovalsTenantNotifications f WHERE f.{parameters[0][0]} = @docNumber";
+            parametersToPass.Add(new string[] { parameters[0][0], "@docNumber", parameters[0][2] });
         }
         else
         {
@@ -54,8 +54,8 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
         }
         for (int i = 1; i < parameters.Count; i++)
         {
-            queryText += " AND f." + parameters[i][0] + "=" + parameters[i][1] + "";
-            parametersToPass.Add(parameters[i]);
+            queryText += $" AND f.{parameters[i][0]} = @param{i}";
+            parametersToPass.Add(new string[] { parameters[i][0], $"@param{i}", parameters[i][2] });
         }
 
         query = new QueryDefinition(queryText);
@@ -73,7 +73,6 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
             _cosmosDbHelper.SetTarget(this._configuration[ConfigurationKey.CosmosDbNameAuditAgent.ToString()], collectionName, this._configuration[ConfigurationKey.CosmosDbPartitionKeyPathAuditAgent.ToString()]);
             return _cosmosDbHelper.GetAllDocumentsAsync<dynamic>(query, partitionKeyValue).Result.ToList();
         }
-
     }
 
     public List<dynamic> GetReceivedRequests(List<string[]> parameters, string partitionKeyValue, string collectionName = "")
@@ -88,17 +87,17 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
                 queryText =
                     "SELECT * " +
                     "FROM ApprovalsTenantNotifications f " +
-                    "WHERE f." + parameters[0][0] + " = " + parameters[0][1];
-                parametersToPass.Add(parameters[0]);
+                    "WHERE f." + parameters[0][0] + " = @docTypeId";
+                parametersToPass.Add(new string[] { parameters[0][0], "@docTypeId", parameters[0][2] });
                 if (!String.IsNullOrEmpty(parameters[1][1]))
                 {
-                    queryText += " AND f." + parameters[1][0] + " >= " + parameters[1][1];
-                    parametersToPass.Add(parameters[1]);
+                    queryText += " AND f." + parameters[1][0] + " >= @fromDate";
+                    parametersToPass.Add(new string[] { parameters[1][0], "@fromDate", parameters[1][2] });
                 }
                 if (!String.IsNullOrEmpty(parameters[2][1]))
                 {
-                    queryText += " AND f." + parameters[2][0] + " <= " + parameters[2][1];
-                    parametersToPass.Add(parameters[2]);
+                    queryText += " AND f." + parameters[2][0] + " <= @toDate";
+                    parametersToPass.Add(new string[] { parameters[2][0], "@toDate", parameters[2][2] });
                 }
             }
             else
@@ -109,13 +108,13 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
 
                 if (!String.IsNullOrEmpty(parameters[0][1]))
                 {
-                    queryText += " WHERE f." + parameters[0][0] + " >= " + parameters[0][1];
-                    parametersToPass.Add(parameters[0]);
+                    queryText += " WHERE f." + parameters[0][0] + " >= @fromDate";
+                    parametersToPass.Add(new string[] { parameters[0][0], "@fromDate", parameters[0][2] });
                 }
                 if (!String.IsNullOrEmpty(parameters[1][1]))
                 {
-                    queryText += " AND f." + parameters[1][0] + " <= " + parameters[1][1];
-                    parametersToPass.Add(parameters[1]);
+                    queryText += " AND f." + parameters[1][0] + " <= @toDate";
+                    parametersToPass.Add(new string[] { parameters[1][0], "@toDate", parameters[1][2] });
                 }
             }
 
@@ -153,10 +152,10 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
                 queryText =
                     "SELECT * " +
                     "FROM ApprovalsTenantNotifications f " +
-                    "WHERE f." + parameters[0][0] + " = " + parameters[0][1];
-                parametersToPass.Add(parameters[0]);
+                    "WHERE f." + parameters[0][0] + " = @docTypeId";
+                parametersToPass.Add(new string[] { parameters[0][0], "@docTypeId", parameters[0][2] });
 
-                queryText += " AND f." + parameters[1][0] + " IN({0})";
+                queryText += " AND f." + parameters[1][0] + " IN ({0})";
                 var listOfDocumentNumbers = parameters[1][2].Split(',').ToList();
 
                 // IN clause: with list of parameters:
@@ -192,7 +191,7 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
             }
             else
             {
-                _cosmosDbHelper.SetTarget(this._configuration[ConfigurationKey.CosmosDbNameAuditAgent.ToString()], 
+                _cosmosDbHelper.SetTarget(this._configuration[ConfigurationKey.CosmosDbNameAuditAgent.ToString()],
                     collectionName, this._configuration[ConfigurationKey.CosmosDbPartitionKeyPathAuditAgent.ToString()]);
                 return _cosmosDbHelper.GetAllDocumentsAsync<dynamic>(query, partitionKeyValue).Result.ToList();
 
