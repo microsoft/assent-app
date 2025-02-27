@@ -32,36 +32,63 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
     /// <param name="partitionKeyValue"></param>
     /// <param name="collectionName"></param>
     /// <returns></returns>
-    public virtual List<dynamic> GetDocuments(List<string[]> parameters, string partitionKeyValue, string collectionName = "")
+    public virtual List<dynamic> GetDocuments(Dictionary<string, string> parameters, string partitionKeyValue, string collectionName = "")
     {
         string queryText;
         QueryDefinition query;
         List<string[]> parametersToPass = new List<string[]>();
-        if (!parameters[0][2].Contains(','))    //if the parameter name is document number and multiple documents enetred
+
+        string documentNumber = parameters.ContainsKey("@docNumber") ? parameters["@docNumber"] : null;
+        string fiscalYear = parameters.ContainsKey("@fiscalYear") ? parameters["@fiscalYear"] : null;
+        string payloadId = parameters.ContainsKey("@activityId") ? parameters["@activityId"] : null;
+        string docTypeId = parameters.ContainsKey("@docTypeId") ? parameters["@docTypeId"] : null;
+        string alias = parameters.ContainsKey("@alias") ? parameters["@alias"] : null;
+
+        if (string.IsNullOrEmpty(documentNumber))
         {
-            queryText = $"SELECT * FROM ApprovalsTenantNotifications f WHERE f.{parameters[0][0]} = @docNumber";
-            parametersToPass.Add(new string[] { parameters[0][0], "@docNumber", parameters[0][2] });
+            throw new ArgumentException("Document number cannot be null or empty", nameof(parameters));
         }
-        else
+
+        if (!documentNumber.Contains(','))
         {
-            List<string> docNumbers = parameters[0][2].Split(',').Select(doc => doc.Trim()).ToList();
+            queryText = $"SELECT * FROM ApprovalsTenantNotifications f WHERE f.ApprovalRequest.ApprovalIdentifier.DisplayDocumentNumber = @docNumber";
+            parametersToPass.Add(new string[] { "@docNumber", documentNumber });
+        }
+        else //if the parameter name is document number and multiple documents entered
+        {
+            List<string> docNumbers = documentNumber.Split(',').Select(doc => doc.Trim()).ToList();
             string documentsParam = string.Join(", ", docNumbers.Select((doc, index) => $"@doc{index}"));
-            queryText = $"SELECT * FROM ApprovalsTenantNotifications f WHERE f.{parameters[0][0]} IN ({documentsParam})";
+            queryText = $"SELECT * FROM ApprovalsTenantNotifications f WHERE f.ApprovalRequest.ApprovalIdentifier.DisplayDocumentNumber IN ({documentsParam})";
             for (int i = 0; i < docNumbers.Count; i++)
             {
-                parametersToPass.Add(new string[3] { parameters[0][0], $"@doc{i}", docNumbers[i] });
+                parametersToPass.Add(new string[] { $"@doc{i}", docNumbers[i] });
             }
         }
-        for (int i = 1; i < parameters.Count; i++)
+        if (!string.IsNullOrEmpty(fiscalYear))
         {
-            queryText += $" AND f.{parameters[i][0]} = @param{i}";
-            parametersToPass.Add(new string[] { parameters[i][0], $"@param{i}", parameters[i][2] });
+            queryText += " AND f.ApprovalRequest.ApprovalIdentifier.FiscalYear = @fiscalYear";
+            parametersToPass.Add(new string[] { "@fiscalYear", fiscalYear });
+        }
+        if (!string.IsNullOrEmpty(payloadId))
+        {
+            queryText += " AND f.BrokeredMsgId = @activityId";
+            parametersToPass.Add(new string[] { "@activityId", payloadId });
+        }
+        if (!string.IsNullOrEmpty(docTypeId))
+        {
+            queryText += " AND f.ApprovalRequest.DocumentTypeId = @docTypeId";
+            parametersToPass.Add(new string[] { "@docTypeId", docTypeId });
+        }
+        if (!string.IsNullOrEmpty(alias))
+        {
+            queryText += " AND f.ApprovalRequest.Approvers[x].Alias = @alias";
+            parametersToPass.Add(new string[] { "@alias", alias });
         }
 
         query = new QueryDefinition(queryText);
         for (int i = 0; i < parametersToPass.Count; i++)
         {
-            query.WithParameter(parametersToPass[i][1], parametersToPass[i][2]);
+            query.WithParameter(parametersToPass[i][0], parametersToPass[i][1]);
         }
 
         if (string.IsNullOrEmpty(collectionName))
@@ -75,29 +102,34 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
         }
     }
 
-    public List<dynamic> GetReceivedRequests(List<string[]> parameters, string partitionKeyValue, string collectionName = "")
+    public List<dynamic> GetReceivedRequests(Dictionary<string, string> parameters, string partitionKeyValue, string collectionName = "")
     {
         try
         {
             string queryText = "";
             QueryDefinition query;
             List<string[]> parametersToPass = new List<string[]>();
-            if (parameters[0][0].Equals("ApprovalRequest.DocumentTypeId"))
+
+            string docTypeId = parameters.ContainsKey("@docTypeId") ? parameters["@docTypeId"] : null;
+            string fromDate = parameters.ContainsKey("@fromDate") ? parameters["@fromDate"] : null;
+            string toDate = parameters.ContainsKey("@toDate") ? parameters["@toDate"] : null;
+
+            if (!string.IsNullOrEmpty(docTypeId))
             {
                 queryText =
                     "SELECT * " +
                     "FROM ApprovalsTenantNotifications f " +
-                    "WHERE f." + parameters[0][0] + " = @docTypeId";
-                parametersToPass.Add(new string[] { parameters[0][0], "@docTypeId", parameters[0][2] });
-                if (!String.IsNullOrEmpty(parameters[1][1]))
+                    "WHERE f.ApprovalRequest.DocumentTypeId = @docTypeId";
+                parametersToPass.Add(new string[] { "@docTypeId", docTypeId });
+                if (!string.IsNullOrEmpty(fromDate))
                 {
-                    queryText += " AND f." + parameters[1][0] + " >= @fromDate";
-                    parametersToPass.Add(new string[] { parameters[1][0], "@fromDate", parameters[1][2] });
+                    queryText += " AND f.EnqueuedTimeUtc >= @fromDate";
+                    parametersToPass.Add(new string[] { "@fromDate", fromDate });
                 }
-                if (!String.IsNullOrEmpty(parameters[2][1]))
+                if (!string.IsNullOrEmpty(toDate))
                 {
-                    queryText += " AND f." + parameters[2][0] + " <= @toDate";
-                    parametersToPass.Add(new string[] { parameters[2][0], "@toDate", parameters[2][2] });
+                    queryText += " AND f.EnqueuedTimeUtc <= @toDate";
+                    parametersToPass.Add(new string[] { "@toDate", toDate });
                 }
             }
             else
@@ -106,22 +138,22 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
                 "SELECT f.id " +
                 "FROM ApprovalsTenantNotifications f";
 
-                if (!String.IsNullOrEmpty(parameters[0][1]))
+                if (!string.IsNullOrEmpty(fromDate))
                 {
-                    queryText += " WHERE f." + parameters[0][0] + " >= @fromDate";
-                    parametersToPass.Add(new string[] { parameters[0][0], "@fromDate", parameters[0][2] });
+                    queryText += " WHERE f.EnqueuedTimeUtc >= @fromDate";
+                    parametersToPass.Add(new string[] { "@fromDate", fromDate });
                 }
-                if (!String.IsNullOrEmpty(parameters[1][1]))
+                if (!string.IsNullOrEmpty(toDate))
                 {
-                    queryText += " AND f." + parameters[1][0] + " <= @toDate";
-                    parametersToPass.Add(new string[] { parameters[1][0], "@toDate", parameters[1][2] });
+                    queryText += " AND f.EnqueuedTimeUtc <= @toDate";
+                    parametersToPass.Add(new string[] { "@toDate", toDate });
                 }
             }
 
             query = new QueryDefinition(queryText);
             for (int i = 0; i < parametersToPass.Count; i++)
             {
-                query.WithParameter(parametersToPass[i][1], parametersToPass[i][2]);
+                query.WithParameter(parametersToPass[i][0], parametersToPass[i][1]);
             }
 
             if (string.IsNullOrEmpty(collectionName))
@@ -140,48 +172,54 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
         }
     }
 
-    public List<dynamic> GetReceivedRequestsByDocumentNumbers(List<string[]> parameters, string partitionKeyValue, string collectionName = "")
+    public List<dynamic> GetReceivedRequestsByDocumentNumbers(Dictionary<string, string> parameters, string partitionKeyValue, string collectionName = "")
     {
         try
         {
             string queryText = "";
             QueryDefinition query = null;
             List<string[]> parametersToPass = new List<string[]>();
-            if (parameters[0][0].Equals("ApprovalRequest.DocumentTypeId"))
+
+            string docTypeId = parameters.ContainsKey("@docTypeId") ? parameters["@docTypeId"] : null;
+            string documentNumbers = parameters.ContainsKey("@docNumbers") ? parameters["@docNumbers"] : null;
+
+            if (!string.IsNullOrEmpty(docTypeId))
             {
                 queryText =
                     "SELECT * " +
                     "FROM ApprovalsTenantNotifications f " +
-                    "WHERE f." + parameters[0][0] + " = @docTypeId";
-                parametersToPass.Add(new string[] { parameters[0][0], "@docTypeId", parameters[0][2] });
+                    "WHERE f.ApprovalRequest.DocumentTypeId = @docTypeId";
+                parametersToPass.Add(new string[] { "@docTypeId", docTypeId });
 
-                queryText += " AND f." + parameters[1][0] + " IN ({0})";
-                var listOfDocumentNumbers = parameters[1][2].Split(',').ToList();
-
-                // IN clause: with list of parameters:
-                // first: use a list (or array) of string, to keep  the names of parameter          
-                // second: loop through the list of input parameters ()
-                var namedParameters = new List<string>();
-                var loopIndex = 0;
-
-                foreach (var docNumber in listOfDocumentNumbers)
+                if (!string.IsNullOrEmpty(documentNumbers))
                 {
-                    var paramName = "@namedParam_" + loopIndex;
-                    namedParameters.Add(paramName);
+                    queryText += " AND f.ApprovalRequest.ApprovalIdentifier.DisplayDocumentNumber IN ({0})";
+                    var listOfDocumentNumbers = documentNumbers.Split(',').ToList();
 
-                    parametersToPass.Add(new string[] { "", paramName, docNumber.Trim() });
+                    // IN clause: with list of parameters:
+                    // first: use a list (or array) of string, to keep  the names of parameter          
+                    // second: loop through the list of input parameters ()
+                    var namedParameters = new List<string>();
+                    var loopIndex = 0;
 
-                    loopIndex++;
+                    foreach (var docNumber in listOfDocumentNumbers)
+                    {
+                        var paramName = "@namedParam_" + loopIndex;
+                        namedParameters.Add(paramName);
+
+                        parametersToPass.Add(new string[] { paramName, docNumber.Trim() });
+                        loopIndex++;
+                    }
+
+                    // now format the query, pass the list of parameter into that
+                    if (namedParameters.Count > 0)
+                        queryText = string.Format(queryText, string.Join(" , ", namedParameters));
                 }
-
-                // now format the query, pass the list of parameter into that
-                if (namedParameters.Count > 0)
-                    queryText = string.Format(queryText, string.Join(" , ", namedParameters));
 
                 query = new QueryDefinition(queryText);
                 for (int i = 0; i < parametersToPass.Count; i++)
                 {
-                    query.WithParameter(parametersToPass[i][1], parametersToPass[i][2]);
+                    query.WithParameter(parametersToPass[i][0], parametersToPass[i][1]);
                 }
             }
 

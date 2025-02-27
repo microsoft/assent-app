@@ -86,65 +86,65 @@ public class DocumentStatusAuditHelper : IDocumentStatusAuditHelper
     /// <summary>
     /// Build Parameters
     /// </summary>
-    /// <param name="PayloadId"></param>
-    /// <param name="TenantID"></param>
-    /// <param name="FiscalYear"></param>
-    /// <param name="DisplayDocNumber"></param>
-    /// <param name="DocTypeId"></param>
-    /// <param name="fromDate"></param>
-    /// <param name="toDate"></param>
-    /// <param name="isProcessedMsg"></param>
-    /// <param name="DocumentNumbers"></param>
-    /// <param name="userAlias"></param>
-    /// <returns></returns>
-    private static List<string[]> BuildParameters(string PayloadId, string TenantID = "", string FiscalYear = "", string DisplayDocNumber = "", string DocTypeId = "", string fromDate = "", string toDate = "", bool isProcessedMsg = false, string DocumentNumbers = "", string userAlias = "")
+    /// <param name="PayloadId">The payload identifier.</param>
+    /// <param name="TenantID">The tenant identifier.</param>
+    /// <param name="FiscalYear">The fiscal year.</param>
+    /// <param name="DisplayDocNumber">The display document number.</param>
+    /// <param name="DocTypeId">The document type identifier.</param>
+    /// <param name="fromDate">The start date for filtering.</param>
+    /// <param name="toDate">The end date for filtering.</param>
+    /// <param name="isProcessedMsg">Indicates if the message is processed.</param>
+    /// <param name="DocumentNumbers">The document numbers.</param>
+    /// <param name="userAlias">The user alias.</param>
+    /// <returns>dictionaries containing parameter name and value.</returns>
+    private static Dictionary<string, string> BuildParameters(string PayloadId, string TenantID = "", string FiscalYear = "", string DisplayDocNumber = "", string DocTypeId = "", string fromDate = "", string toDate = "", bool isProcessedMsg = false, string DocumentNumbers = "", string userAlias = "")
     {
-        var parameters = new List<string[]>();
-        //Note - Always keep the doc number first in sequence
+        var parameters = new Dictionary<string, string>();
+
         if (!isProcessedMsg)
         {
             if (!string.IsNullOrEmpty(DisplayDocNumber))
             {
-                parameters.Add(new string[3] { "ApprovalRequest.ApprovalIdentifier.DisplayDocumentNumber", "@docNumber", DisplayDocNumber });
+                parameters.Add("@docNumber", DisplayDocNumber);
             }
             if (!string.IsNullOrEmpty(FiscalYear))
             {
-                parameters.Add(new string[3] { "ApprovalRequest.ApprovalIdentifier.FiscalYear", "@fiscalYear", FiscalYear });
+                parameters.Add("@fiscalYear", FiscalYear);
             }
             if (!string.IsNullOrEmpty(PayloadId))
             {
-                parameters.Add(new string[3] { "BrokeredMsgId", "@activityId", PayloadId });
+                parameters.Add("@activityId", PayloadId);
             }
             if (!string.IsNullOrEmpty(DocTypeId))
             {
-                parameters.Add(new string[3] { "ApprovalRequest.DocumentTypeId", "@docTypeId", DocTypeId });
+                parameters.Add("@docTypeId", DocTypeId);
             }
             if (!string.IsNullOrEmpty(userAlias))
             {
-                parameters.Add(new string[3] { "ApprovalRequest.Approvers[x].Alias", "@alias", userAlias });
+                parameters.Add("@alias", userAlias);
             }
         }
         else
         {
             if (!string.IsNullOrEmpty(DocTypeId))
             {
-                parameters.Add(new string[3] { "ApprovalRequest.DocumentTypeId", "@docTypeId", DocTypeId });
+                parameters.Add("@docTypeId", DocTypeId);
             }
             if (!string.IsNullOrEmpty(fromDate))
             {
-                parameters.Add(new string[3] { "EnqueuedTimeUtc", "@fromDate", fromDate });
+                parameters.Add("@fromDate", fromDate);
             }
             if (!string.IsNullOrEmpty(toDate))
             {
-                parameters.Add(new string[3] { "EnqueuedTimeUtc", "@toDate", toDate });
+                parameters.Add("@toDate", toDate);
             }
             if (!string.IsNullOrEmpty(DocumentNumbers))
             {
-                parameters.Add(new string[3] { "ApprovalRequest.ApprovalIdentifier.DisplayDocumentNumber", "@docNumbers", DocumentNumbers });
+                parameters.Add("@docNumbers", DocumentNumbers);
             }
             if (!string.IsNullOrEmpty(userAlias))
             {
-                parameters.Add(new string[3] { "ApprovalRequest.Approvers[x].Alias", "@alias", userAlias });
+                parameters.Add("@alias", userAlias);
             }
         }
         return parameters;
