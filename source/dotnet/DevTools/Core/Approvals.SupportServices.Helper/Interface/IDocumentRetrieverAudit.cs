@@ -7,9 +7,9 @@ using System.Collections.Generic;
 
 public interface IDocumentRetrieverAudit
 {
-    List<dynamic> GetDocuments(List<string[]> parameters, string partitionKeyValue, string collectionName = "");
+    List<dynamic> GetDocuments(Dictionary<string, string> parameters, string partitionKeyValue, string collectionName = "");
 
-    List<dynamic> GetReceivedRequests(List<string[]> parameters, string partitionKeyValue, string collectionName = "");
+    List<dynamic> GetReceivedRequests(Dictionary<string, string> parameters, string partitionKeyValue, string collectionName = "");
 
-    List<dynamic> GetReceivedRequestsByDocumentNumbers(List<string[]> parameters, string partitionKeyValue, string collectionName = "");
+    List<dynamic> GetReceivedRequestsByDocumentNumbers(Dictionary<string, string> parameters, string partitionKeyValue, string collectionName = "");
 }
