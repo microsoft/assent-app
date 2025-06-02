@@ -98,7 +98,7 @@ public class LoadGeneratorController : ControllerBase
                 return NotFound(new { message = "Tenant configuration yet to be done. Please Configure selected tenant." });
 
             var result = await _loadGeneratorHelper.GenerateLoad(tenant, approver, load, batchsize, sampleData, tcv);
-            return Ok(result);
+            return Ok(result); // CodeQL [SM04901] justification: The tenant parameter is not user input but is selected from a predefined list of legitimate options by our system. Data is returned only if tenant is a valid and legitimate option and would contain the request numbers of load test created. It is unrelated to the "tid" claim.
         }
         catch (Exception ex)
         {

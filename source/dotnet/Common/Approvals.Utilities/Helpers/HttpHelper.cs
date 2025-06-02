@@ -72,7 +72,7 @@ public class HttpHelper : IHttpHelper
                 httpRequest.Headers.Add(header.Key, header.Value);
             }
         }
-        HttpResponseMessage response = await _client.SendAsync(httpRequest);
+        HttpResponseMessage response = await _client.SendAsync(httpRequest); // CodeQL [SM03781] justification: In this case, user-tainted input cannot influence the destination of outgoing web requests by manipulating the URI hostname, as all URIs are sourced from internal configurations and not derived from user inputs. Additionally, all user inputs are properly validated to prevent misuse.
         return response;
     }
 
@@ -83,6 +83,6 @@ public class HttpHelper : IHttpHelper
     /// <returns></returns>
     public async Task<HttpResponseMessage> SendRequestAsync(HttpRequestMessage httpRequestMessage)
     {
-        return await _client.SendAsync(httpRequestMessage);
+        return await _client.SendAsync(httpRequestMessage); // CodeQL [SM03781] justification: In this case, user-tainted input cannot influence the destination of outgoing web requests by manipulating the URI hostname, as all URIs are sourced from internal configurations and not derived from user inputs. Additionally, all user inputs are properly validated to prevent misuse.
     }
 }

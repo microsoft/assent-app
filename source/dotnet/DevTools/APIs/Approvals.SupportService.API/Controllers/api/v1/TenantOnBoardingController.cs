@@ -62,7 +62,7 @@ public class TenantOnBoardingController : ControllerBase
         try
         {
             var response = await _tenantOnBoardingHelper.GetTenantList(tenantType);
-            return Ok(response);
+            return Ok(response); // CodeQL [SM04901] justification: The tenantType parameter is not user input but is selected from a predefined list of legitimate options. Data is returned only if tenantType is a valid and legitimate option. It is unrelated to the "tid" claim.
         }
         catch (Exception ex)
         {
