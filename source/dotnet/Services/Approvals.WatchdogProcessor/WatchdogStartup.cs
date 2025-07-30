@@ -51,14 +51,21 @@ public class WatchdogStartup : FunctionsStartup
         // Create the new ConfigurationBuilder
         var configurationBuilder = new ConfigurationBuilder();
 
+        // Select credential based on environment: DefaultAzureCredential for DEBUG, ManagedIdentityCredential for production
+#if DEBUG
+        var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+        var azureCredential = new ManagedIdentityCredential();
+#endif
+
         configurationBuilder.AddAzureAppConfiguration(options =>
         {
-            options.Connect(new Uri(Environment.GetEnvironmentVariable(Constants.AzureAppConfigurationUrl)), new DefaultAzureCredential())
+            options.Connect(new Uri(Environment.GetEnvironmentVariable(Constants.AzureAppConfigurationUrl)), azureCredential)
                 // Load configuration values with no label
                 .Select(KeyFilter.Any, Environment.GetEnvironmentVariable(Constants.AppConfigurationLabel))
                 .ConfigureKeyVault(kv =>
                 {
-                    kv.SetCredential(new DefaultAzureCredential());
+                    kv.SetCredential(azureCredential);
                 })
                 .ConfigureRefresh(refreshOptions =>
                 {
@@ -82,15 +89,15 @@ public class WatchdogStartup : FunctionsStartup
 
         var client = new BlobServiceClient(
                         new Uri($"https://" + config?[Constants.StorageAccountName] + ".blob.core.windows.net/"),
-                        new DefaultAzureCredential());
+                        azureCredential);
         var cosmosdbClient = new CosmosClient(config?[ConfigurationKey.CosmosDbEndPoint.ToString()],
-            new DefaultAzureCredential(), new CosmosClientOptions() { AllowBulkExecution = true });
+            azureCredential, new CosmosClientOptions() { AllowBulkExecution = true });
 
         // Add services
         builder.Services.AddSingleton<ApplicationInsightsTarget>();
         builder.Services.AddScoped<IHostingEnvironment, HostingEnvironment>();
         builder.Services.AddScoped<IUserDelegationProvider, UserDelegationProvider>();
-        builder.Services.AddSingleton<ITableHelper, TableHelper>(x => new TableHelper(config?[Constants.StorageAccountName], new DefaultAzureCredential()));
+        builder.Services.AddSingleton<ITableHelper, TableHelper>(x => new TableHelper(config?[Constants.StorageAccountName], azureCredential));
         builder.Services.AddScoped<IEmailTemplateHelper, EmailTemplateHelper>();
         builder.Services.AddSingleton<ILogProvider, LogProvider>();
         builder.Services.AddScoped<INotificationProvider, GenericNotificationProvider>();

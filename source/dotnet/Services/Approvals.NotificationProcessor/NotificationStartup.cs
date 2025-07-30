@@ -51,14 +51,21 @@ public class NotificationStartup : FunctionsStartup
         // Create the new ConfigurationBuilder
         var configurationBuilder = new ConfigurationBuilder();
 
-            configurationBuilder.AddAzureAppConfiguration(options =>
+        // Select credentials based on environment: DefaultAzureCredential for DEBUG, ManagedIdentityCredential for production
+#if DEBUG
+        var azureCredential = new DefaultAzureCredential();  // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+        var azureCredential = new ManagedIdentityCredential();
+#endif
+
+        configurationBuilder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(new Uri(Environment.GetEnvironmentVariable(Constants.AzureAppConfigurationUrl)), new DefaultAzureCredential())
+                options.Connect(new Uri(Environment.GetEnvironmentVariable(Constants.AzureAppConfigurationUrl)), azureCredential)
                     // Load configuration values with no label
                     .Select(KeyFilter.Any, Environment.GetEnvironmentVariable(Constants.AppConfigurationLabel))
                     .ConfigureKeyVault(kv =>
                     {
-                        kv.SetCredential(new DefaultAzureCredential());
+                        kv.SetCredential(azureCredential);
                     })
                     .ConfigureRefresh(refreshOptions =>
                     {
@@ -83,9 +90,9 @@ public class NotificationStartup : FunctionsStartup
 
             var client = new BlobServiceClient(
                             new Uri($"https://" + config?[Constants.StorageAccountName] + ".blob.core.windows.net/"),
-                            new DefaultAzureCredential());
+                            azureCredential);
             var cosmosdbClient = new CosmosClient(config?[ConfigurationKey.CosmosDbEndPoint.ToString()],
-                new DefaultAzureCredential(), new CosmosClientOptions() { AllowBulkExecution = true });
+                azureCredential, new CosmosClientOptions() { AllowBulkExecution = true });
 
             //Add Services
             builder.Services.AddSingleton<IPerformanceLogger, PerformanceLogger>();
@@ -98,7 +105,7 @@ public class NotificationStartup : FunctionsStartup
             builder.Services.AddScoped<INotificationProcessor, NotificationProcessor>();
             builder.Services.AddScoped<IApprovalSummaryProvider, ApprovalSummaryProvider>();
             builder.Services.AddScoped<IEmailHelper, EmailHelper>();
-            builder.Services.AddSingleton<ITableHelper, TableHelper>((provider) => { return new TableHelper(config?[Constants.StorageAccountName], new DefaultAzureCredential()); });
+            builder.Services.AddSingleton<ITableHelper, TableHelper>((provider) => { return new TableHelper(config?[Constants.StorageAccountName], azureCredential); });
             builder.Services.AddScoped<IApprovalDetailProvider, ApprovalDetailProvider>();
             builder.Services.AddScoped<IApprovalTenantInfoProvider, ApprovalTenantInfoProvider>();
             builder.Services.AddScoped<IApprovalBlobDataProvider, ApprovalBlobDataProvider>();

@@ -48,14 +48,21 @@ namespace AuditAgentAzFunction
             // Create the new ConfigurationBuilder
             var configurationBuilder = new ConfigurationBuilder();
 
+            // Select credentials based on environment
+#if DEBUG
+            var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+            var azureCredential = new ManagedIdentityCredential();
+#endif
+
             configurationBuilder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(new Uri(Environment.GetEnvironmentVariable(Constants.AzureAppConfigurationUrl)), new DefaultAzureCredential())
+                options.Connect(new Uri(Environment.GetEnvironmentVariable(Constants.AzureAppConfigurationUrl)), azureCredential)
                     // Load configuration values with no label
                     .Select(KeyFilter.Any, Environment.GetEnvironmentVariable(Constants.AppConfigurationLabel))
                     .ConfigureKeyVault(kv =>
                     {
-                        kv.SetCredential(new DefaultAzureCredential());
+                        kv.SetCredential(azureCredential);
                     })
                     .ConfigureRefresh(refreshOptions =>
                     {
@@ -79,9 +86,9 @@ namespace AuditAgentAzFunction
 
             var client = new BlobServiceClient(
                             new Uri($"https://" + config?[Constants.StorageAccountName] + ".blob.core.windows.net/"),
-                            new DefaultAzureCredential());
+                            azureCredential);
             var cosmosdbClient = new CosmosClient(config?[ConfigurationKey.CosmosDbEndPoint.ToString()],
-                new DefaultAzureCredential(), new CosmosClientOptions() { AllowBulkExecution = true });
+                azureCredential, new CosmosClientOptions() { AllowBulkExecution = true });
 
             builder.Services.AddSingleton<IPerformanceLogger, PerformanceLogger>();
             builder.Services.AddScoped<IARConverterFactory, ARConverterFactory>();
@@ -93,7 +100,7 @@ namespace AuditAgentAzFunction
             builder.Services.AddScoped<IAuditAgentLoggingHelper, AuditAgentLoggingHelper>();
             builder.Services.AddScoped<IAuditAgentHelper, AuditAgentHelper>();
             builder.Services.AddScoped<IAuditAgentDataProvider, AuditAgentDataProvider>();
-            builder.Services.AddSingleton<ITableHelper, TableHelper>((provider) => { return new TableHelper(config[Constants.StorageAccountName], new DefaultAzureCredential()); });
+            builder.Services.AddSingleton<ITableHelper, TableHelper>((provider) => { return new TableHelper(config[Constants.StorageAccountName], azureCredential); });
             builder.Services.AddScoped<IApprovalBlobDataProvider, ApprovalBlobDataProvider>();
             builder.Services.AddScoped<IApprovalTenantInfoProvider, ApprovalTenantInfoProvider>();
             builder.Services.AddScoped<IApprovalTenantInfoHelper, ApprovalTenantInfoHelper>();

@@ -39,8 +39,15 @@ public class ApplicationSettingsHelper
     public Dictionary<string, IConfiguration> GetSettings()
     {
         #region Fetch Azure App Configuration Store
+        // Select credential based on environment: DefaultAzureCredential for DEBUG, ManagedIdentityCredential for production.
+        global::Azure.Core.TokenCredential credential;
+#if DEBUG
+        credential = new DefaultAzureCredential();  // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+        credential = new ManagedIdentityCredential();
+#endif
 
-        ConfigurationClient _client = new ConfigurationClient(new Uri(_configuration[Constants.AzureAppConfigurationUrl]), new DefaultAzureCredential());
+        ConfigurationClient _client = new ConfigurationClient(new Uri(_configuration[Constants.AzureAppConfigurationUrl]), credential);
         var settingsSelector = new SettingSelector() { KeyFilter = "*" };
         var settings = _client.GetConfigurationSettings(settingsSelector);
         var labels = settings.GroupBy(s => s.Label);
@@ -55,7 +62,7 @@ public class ApplicationSettingsHelper
                 if (setting is SecretReferenceConfigurationSetting secretReference)
                 {
                     var identifier = new KeyVaultSecretIdentifier(secretReference.SecretId);
-                    var secretClient = new SecretClient(identifier.VaultUri, new DefaultAzureCredential());
+                    var secretClient = new SecretClient(identifier.VaultUri, credential);
                     var secret = secretClient.GetSecretAsync(identifier.Name, identifier.Version).Result;
                     Config[setting.Key] = secret.Value.Value;
                 }
