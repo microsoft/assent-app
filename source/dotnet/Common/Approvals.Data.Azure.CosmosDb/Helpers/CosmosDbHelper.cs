@@ -51,7 +51,12 @@ public class CosmosDbHelper : ICosmosDbHelper
         {
             endpoint = _endpoint;
         }
-        return new CosmosClient(endpoint, new DefaultAzureCredential());
+#if DEBUG        
+        var credential = new DefaultAzureCredential();  // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+        var credential = new ManagedIdentityCredential();
+#endif
+        return new CosmosClient(endpoint, credential);
     }
 
     public void SetTarget(string databaseName, string collectionName, string partitionKeyPath, CosmosClient client = null)
