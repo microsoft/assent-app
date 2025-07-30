@@ -107,9 +107,9 @@ builder.Services.AddSwaggerGen(c =>
 
 var client = new BlobServiceClient(
                             new Uri($"https://" + config?[Constants.StorageAccountName] + ".blob.core.windows.net/"),
-                            new DefaultAzureCredential());
+                            azureCredential);
 var cosmosdbClient = new CosmosClient(config?[ConfigurationKey.CosmosDbEndPoint.ToString()],
-                new DefaultAzureCredential(), new CosmosClientOptions() { AllowBulkExecution = true });
+                azureCredential, new CosmosClientOptions() { AllowBulkExecution = true });
 builder.Services.AddSingleton<ApplicationInsightsTarget>();
 builder.Services.AddScoped<IClientActionHelper, ClientActionHelper>();
 builder.Services.AddScoped<IOfficeDocumentCreator, OfficeDocumentCreator>();
@@ -118,7 +118,7 @@ builder.Services.AddSingleton<IPerformanceLogger, PerformanceLogger>();
 builder.Services.AddScoped<IApprovalBlobDataProvider, ApprovalBlobDataProvider>();
 builder.Services.AddScoped<IApprovalTenantInfoProvider, ApprovalTenantInfoProvider>();
 builder.Services.AddScoped<INameResolutionHelper, NameResolutionHelper>();
-builder.Services.AddSingleton<ITableHelper, TableHelper>(x => new TableHelper(config?[Constants.StorageAccountName].ToString(), new DefaultAzureCredential()));
+builder.Services.AddSingleton<ITableHelper, TableHelper>(x => new TableHelper(config?[Constants.StorageAccountName].ToString(), azureCredential));
 builder.Services.AddSingleton<IBlobStorageHelper, BlobStorageHelper>(x => new BlobStorageHelper(client));
 builder.Services.AddScoped<IFlightingDataProvider, FlightingDataProvider>();
 builder.Services.AddSingleton<ICosmosDbHelper, CosmosDbHelper>(x => new CosmosDbHelper(cosmosdbClient));
