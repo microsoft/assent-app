@@ -45,6 +45,14 @@ using Polly.Extensions.Http;
 var builder = WebApplication.CreateBuilder(args);
 IConfigurationRefresher refresher;
 IConfiguration config = builder.Services.BuildServiceProvider().GetService<IConfiguration>();
+
+#if DEBUG
+        var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+        var azureCredential = new ManagedIdentityCredential();
+#endif
+
+
 builder.WebHost.ConfigureAppConfiguration((hostingContext, config) =>
 {
     var configuration = config.Build();
@@ -52,11 +60,11 @@ builder.WebHost.ConfigureAppConfiguration((hostingContext, config) =>
 
     config.AddAzureAppConfiguration(options =>
     {
-        options.Connect(new Uri(configuration[Constants.AzureAppConfigurationUrl]), new DefaultAzureCredential())
+        options.Connect(new Uri(configuration[Constants.AzureAppConfigurationUrl]), azureCredential)
             .Select(KeyFilter.Any, configuration?[Constants.AppConfigurationLabel])
             .ConfigureKeyVault(kv =>
             {
-                kv.SetCredential(new DefaultAzureCredential());
+                kv.SetCredential(azureCredential);
             })
             .ConfigureRefresh(refreshOptions =>
             {
