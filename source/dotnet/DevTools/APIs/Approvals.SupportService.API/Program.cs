@@ -48,18 +48,29 @@ builder.Services.AddSingleton<ConfigurationHelper>(provider =>
     return new ConfigurationHelper(appSettings);
 });
 
+#if DEBUG
+var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+    var azureCredential = new ManagedIdentityCredential();
+#endif
+
 builder.Services.AddTransient<Func<string, string, ITableHelper>>((provider) =>
 {
     return new Func<string, string, ITableHelper>(
-         (StorageAccountName, TokenCredential) => new TableHelper(StorageAccountName, new DefaultAzureCredential())
+         (StorageAccountName, TokenCredential) => new TableHelper(StorageAccountName, azureCredential)
     );
 });
+
+// Secure Azure credential selection for BlobStorageHelper
 builder.Services.AddTransient<Func<string, IBlobStorageHelper>>((provider) =>
 {
     return new Func<string, IBlobStorageHelper>(
-          (StorageAccountName) => new BlobStorageHelper(new BlobServiceClient(
-                 new Uri($"https://" + StorageAccountName + ".blob.core.windows.net/"),
-                 new DefaultAzureCredential()))
+          (StorageAccountName) =>
+          {
+              return new BlobStorageHelper(new BlobServiceClient(
+                     new Uri($"https://" + StorageAccountName + ".blob.core.windows.net/"),
+                     azureCredential));
+          }
      );
 });
 builder.Services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
