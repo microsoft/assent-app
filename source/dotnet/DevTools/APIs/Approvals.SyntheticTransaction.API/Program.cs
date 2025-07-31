@@ -59,13 +59,19 @@ builder.Services.AddScoped<IPayloadReceiverHelper, PayloadReceiverHelper>();
 builder.Services.AddScoped<IKeyVaultHelper, KeyVaultHelper>();
 builder.Services.AddScoped<IBulkDeleteHelper, BulkDeleteHelper>();
 builder.Services.AddScoped<ILoadGeneratorHelper, LoadGeneratorHelper>();
+// Secure credential selection for Azure resources
+#if DEBUG
+var azureCredential = new DefaultAzureCredential();  // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+    var azureCredential = new ManagedIdentityCredential(); // For production
+#endif
 builder.Services.AddScoped<Func<string, string, ITableHelper>>((provider) =>
 {
-    return new Func<string, string, ITableHelper>((StorageAccountName, TokenCredential) => new TableHelper(StorageAccountName, new DefaultAzureCredential()));
+    return new Func<string, string, ITableHelper>((StorageAccountName, TokenCredential) => new TableHelper(StorageAccountName, azureCredential));
 });
 builder.Services.AddTransient<Func<string, string, IBlobStorageHelper>>((provider) =>
 {
-    return new Func<string, string, IBlobStorageHelper>((StorageAccountName, TokenCredential) => new BlobStorageHelper(StorageAccountName, new DefaultAzureCredential()));
+    return new Func<string, string, IBlobStorageHelper>((StorageAccountName, TokenCredential) => new BlobStorageHelper(StorageAccountName, azureCredential));
 });
 builder.Services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
 builder.Services.AddSingleton<ISchemaGenerator, SchemaGenerator>();

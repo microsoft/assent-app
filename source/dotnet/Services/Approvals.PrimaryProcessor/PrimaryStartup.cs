@@ -47,14 +47,20 @@ public class PrimaryStartup : FunctionsStartup
         // Create the new ConfigurationBuilder
         var configurationBuilder = new ConfigurationBuilder();
 
+#if DEBUG
+        var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+        var azureCredential = new ManagedIdentityCredential();
+#endif
+
         configurationBuilder.AddAzureAppConfiguration(options =>
         {
-            options.Connect(new Uri(Environment.GetEnvironmentVariable(Constants.AzureAppConfigurationUrl)), new DefaultAzureCredential())
+            options.Connect(new Uri(Environment.GetEnvironmentVariable(Constants.AzureAppConfigurationUrl)), azureCredential)
                 // Load configuration values with no label
                 .Select(KeyFilter.Any, Environment.GetEnvironmentVariable(Constants.AppConfigurationLabel))
                 .ConfigureKeyVault(kv =>
                 {
-                    kv.SetCredential(new DefaultAzureCredential());
+                    kv.SetCredential(azureCredential);
                 })
                 .ConfigureRefresh(refreshOptions =>
                 {
@@ -78,9 +84,9 @@ public class PrimaryStartup : FunctionsStartup
 
         var client = new BlobServiceClient(
                         new Uri($"https://" + config?[Constants.StorageAccountName] + ".blob.core.windows.net/"),
-                        new DefaultAzureCredential());
+                        azureCredential);
         var cosmosdbClient = new CosmosClient(config?[ConfigurationKey.CosmosDbEndPoint.ToString()],
-            new DefaultAzureCredential(), new CosmosClientOptions() { AllowBulkExecution = true });
+            azureCredential, new CosmosClientOptions() { AllowBulkExecution = true });
 
         //Add Services
         builder.Services.AddSingleton<IPerformanceLogger, PerformanceLogger>();
@@ -89,7 +95,7 @@ public class PrimaryStartup : FunctionsStartup
         builder.Services.AddSingleton<ICosmosDbHelper, CosmosDbHelper>(x => new CosmosDbHelper(cosmosdbClient));
         builder.Services.AddSingleton<IHistoryStorageFactory, HistoryStorageFactory>();
         builder.Services.AddSingleton<IBlobStorageHelper, BlobStorageHelper>(x => new BlobStorageHelper(client));
-        builder.Services.AddSingleton<ITableHelper, TableHelper>((provider) => { return new TableHelper(config[Constants.StorageAccountName], new DefaultAzureCredential()); });
+        builder.Services.AddSingleton<ITableHelper, TableHelper>((provider) => { return new TableHelper(config[Constants.StorageAccountName], azureCredential); });
         builder.Services.AddSingleton<HttpClientHandler>();
         builder.Services.AddHttpClient<IHttpHelper, HttpHelper>()
             .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes

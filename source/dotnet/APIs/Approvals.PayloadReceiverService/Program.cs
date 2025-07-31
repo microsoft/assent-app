@@ -44,6 +44,13 @@ using Polly;
 var builder = WebApplication.CreateBuilder(args);
 IConfigurationRefresher refresher;
 IConfiguration config = builder.Services.BuildServiceProvider().GetService<IConfiguration>();
+
+#if DEBUG
+var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+        var azureCredential = new ManagedIdentityCredential();
+#endif
+
 builder.WebHost.ConfigureAppConfiguration((hostingContext, config) =>
 {
     var configuration = config.Build();
@@ -51,11 +58,11 @@ builder.WebHost.ConfigureAppConfiguration((hostingContext, config) =>
 
     config.AddAzureAppConfiguration(options =>
     {
-        options.Connect(new Uri(configuration?[Constants.AzureAppConfigurationUrl]), new DefaultAzureCredential())
+        options.Connect(new Uri(configuration?[Constants.AzureAppConfigurationUrl]), azureCredential)
                 .Select(KeyFilter.Any, configuration?[Constants.AppConfigurationLabel])
                 .ConfigureKeyVault(kv =>
                 {
-                    kv.SetCredential(new DefaultAzureCredential());
+                    kv.SetCredential(azureCredential);
                 })
                 .ConfigureRefresh(refreshOptions =>
                 {
@@ -93,19 +100,19 @@ builder.Services.AddSwaggerGen(c =>
 
 var client = new BlobServiceClient(
                             new Uri($"https://" + config?[Constants.StorageAccountName] + ".blob.core.windows.net/"),
-                            new DefaultAzureCredential());
+                            azureCredential);
 var cosmosdbClient = new CosmosClient(config?[ConfigurationKey.CosmosDbEndPoint.ToString()],
-                new DefaultAzureCredential(), new CosmosClientOptions() { AllowBulkExecution = true });
+                azureCredential, new CosmosClientOptions() { AllowBulkExecution = true });
 var serviceBusClient = new ServiceBusClient(
                             config?[ConfigurationKey.ServiceBusNamespace.ToString()] + ".servicebus.windows.net",
-                            new DefaultAzureCredential());
+                            azureCredential);
 builder.Services.AddSingleton<ApplicationInsightsTarget>();
 builder.Services.AddSingleton<ILogProvider, LogProvider>();
 builder.Services.AddSingleton<IPerformanceLogger, PerformanceLogger>();
 builder.Services.AddScoped<IApprovalBlobDataProvider, ApprovalBlobDataProvider>();
 builder.Services.AddScoped<IApprovalTenantInfoProvider, ApprovalTenantInfoProvider>();
 builder.Services.AddScoped<INameResolutionHelper, NameResolutionHelper>();
-builder.Services.AddSingleton<ITableHelper, TableHelper>(x => new TableHelper(config?[Constants.StorageAccountName].ToString(), new DefaultAzureCredential()));
+builder.Services.AddSingleton<ITableHelper, TableHelper>(x => new TableHelper(config?[Constants.StorageAccountName].ToString(), azureCredential));
 builder.Services.AddSingleton<IBlobStorageHelper, BlobStorageHelper>(x => new BlobStorageHelper(client));
 builder.Services.AddScoped<IFlightingDataProvider, FlightingDataProvider>();
 builder.Services.AddScoped<IAuthenticationHelper, AuthenticationHelper>();

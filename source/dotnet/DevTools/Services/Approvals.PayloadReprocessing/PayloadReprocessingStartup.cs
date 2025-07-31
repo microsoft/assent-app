@@ -39,14 +39,19 @@ namespace Microsoft.CFS.Approvals.PayloadReprocessing
         {
             var configurationBuilder = new ConfigurationBuilder();
             var config = configurationBuilder.AddEnvironmentVariables().Build();
+#if DEBUG
+            var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+            var azureCredential = new ManagedIdentityCredential();
+#endif
             configurationBuilder.AddAzureAppConfiguration(options =>
             {
-                options.Connect(new Uri(Environment.GetEnvironmentVariable(Constants.AzureAppConfigurationUrl)), new DefaultAzureCredential())
+                options.Connect(new Uri(Environment.GetEnvironmentVariable(Constants.AzureAppConfigurationUrl)), azureCredential)
                     // Load configuration values with no label
                     .Select(KeyFilter.Any, Environment.GetEnvironmentVariable(Constants.AppConfigurationLabel))
                     .ConfigureKeyVault(kv =>
                     {
-                        kv.SetCredential(new DefaultAzureCredential());
+                        kv.SetCredential(azureCredential);
                     })
                     .ConfigureRefresh(refreshOptions =>
                     {
@@ -60,9 +65,9 @@ namespace Microsoft.CFS.Approvals.PayloadReprocessing
 
             var client = new BlobServiceClient(
                             new Uri($"https://" + config?[Constants.StorageAccountName] + ".blob.core.windows.net/"),
-                            new DefaultAzureCredential());
+                            azureCredential);
             var cosmosdbClient = new CosmosClient(config?[ConfigurationKey.CosmosDbEndPoint.ToString()],
-                new DefaultAzureCredential(), new CosmosClientOptions() { AllowBulkExecution = true });
+                azureCredential, new CosmosClientOptions() { AllowBulkExecution = true });
             builder.Services.Replace(ServiceDescriptor.Singleton(typeof(IConfiguration), config));
 
 

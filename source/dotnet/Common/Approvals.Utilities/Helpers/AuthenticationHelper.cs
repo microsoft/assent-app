@@ -388,7 +388,11 @@ public class AuthenticationHelper : IAuthenticationHelper
                 try
                 {
                     // ADAL includes an in memory cache, so this call will only send a message to the server if the cached token is expired.
-                    var tokenCredential = new DefaultAzureCredential();
+#if DEBUG
+                    var tokenCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else               
+                    var tokenCredential = new ManagedIdentityCredential();
+#endif
                     var tokenResponse = await tokenCredential.GetTokenAsync(new TokenRequestContext(new[] { string.Format(scope, ".default") }));
                     accessToken = tokenResponse.Token;
                 }
