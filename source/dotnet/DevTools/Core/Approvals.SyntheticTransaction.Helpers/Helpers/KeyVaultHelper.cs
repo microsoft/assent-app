@@ -42,10 +42,15 @@ public class KeyVaultHelper : IKeyVaultHelper
     public Dictionary<string, AppSettings> GetKeyVault()
     {
         Dictionary<string, AppSettings> appSettings = new Dictionary<string, AppSettings>();
+#if DEBUG
+        var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+        var azureCredential = new ManagedIdentityCredential();
+#endif
         var environments = _configuration["Environmentlist"].Split(',').ToList();
         foreach (var environment in environments)
         {
-            SecretClient secretClient = new SecretClient(new Uri(_configuration["KeyVaultSecretUri"]), new DefaultAzureCredential());
+            SecretClient secretClient = new SecretClient(new Uri(_configuration["KeyVaultSecretUri"]), azureCredential);
             var secretResponse = secretClient.GetSecret(string.Format("{0}-{1}", environment, "TestHarnessConfiguration"));
             var config = JsonConvert.DeserializeObject<JObject>(secretResponse.Value.Value);
             if (!appSettings.ContainsKey(environment))
