@@ -442,7 +442,12 @@ public class ApprovalPresenter : IApprovalPresenter
 
                     logData[LogDataKey.BrokerMessage] = new { MessageBody = blobId, newMessage.ApplicationProperties, newMessage.CorrelationId }.ToJson();
 
-                    ServiceBusClient client = new ServiceBusClient(_serviceBusNamespace + ".servicebus.windows.net", new DefaultAzureCredential());
+#if DEBUG
+                    var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+                    var azureCredential = new ManagedIdentityCredential();
+#endif
+                    ServiceBusClient client = new ServiceBusClient(_serviceBusNamespace + ".servicebus.windows.net", azureCredential);
                     var messageSender = client.CreateSender(_notificationTopic);
                     await messageSender.SendMessageAsync(newMessage);
 

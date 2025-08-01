@@ -337,8 +337,12 @@ public class GenericReceiver : IApprovalsTopicReceiver
                     var brokreredMessage = BuildBrokeredMessage(expression, message);
                     retryMessages.Add(brokreredMessage.Map());
                 }
-
-                ServiceBusClient client = new ServiceBusClient(_serviceBusNamespace + ".servicebus.windows.net", new DefaultAzureCredential());
+#if DEBUG
+                var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+                var azureCredential = new ManagedIdentityCredential();
+#endif
+                ServiceBusClient client = new ServiceBusClient(_serviceBusNamespace + ".servicebus.windows.net", azureCredential);
                 var messageSender = client.CreateSender(_approvalsRetryTopic);
                 await messageSender.SendMessagesAsync(retryMessages);
                 LogMessageProgress(requestExpressions, TrackingEvent.BrokeredMessageMovedToRetryTopic, message, new FailureData() { ID = ((int)TrackingEvent.MoveMessageToRetry).ToString(), Message = TrackingEvent.MoveMessageToRetry.ToString() }, CriticalityLevel.Yes);

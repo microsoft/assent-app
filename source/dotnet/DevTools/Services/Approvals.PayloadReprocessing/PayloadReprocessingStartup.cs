@@ -81,7 +81,7 @@ namespace Microsoft.CFS.Approvals.PayloadReprocessing
             builder.Services.AddSingleton<ILogProvider, LogProvider>();
             builder.Services.AddSingleton<ApplicationInsightsTarget>();
             builder.Services.AddScoped<IApprovalTenantInfoProvider, ApprovalTenantInfoProvider>();
-            builder.Services.AddSingleton<ITableHelper, TableHelper>((provider) => { return new TableHelper(config?[Constants.StorageAccountName], new DefaultAzureCredential()); });
+            builder.Services.AddSingleton<ITableHelper, TableHelper>((provider) => { return new TableHelper(config?[Constants.StorageAccountName], azureCredential); });
             builder.Services.AddScoped<IDocumentStatusAuditHelper, DocumentStatusAuditHelper>();
             builder.Services.AddSingleton<ICosmosDbHelper, CosmosDbHelper>(x => new CosmosDbHelper(cosmosdbClient));
             builder.Services.AddSingleton<IBlobStorageHelper, BlobStorageHelper>(x => new BlobStorageHelper(client));
