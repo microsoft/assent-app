@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Models;
@@ -43,17 +44,15 @@ public class BulkDeleteHelper : IBulkDeleteHelper
     private readonly Dictionary<LogDataKey, object> logData = new Dictionary<LogDataKey, object>();
 
     public BulkDeleteHelper(
-        Func<string, string, ITableHelper> azureStorageHelper,
-        Func<string, string, IBlobStorageHelper> blobStorageHelper,
+        Func<string, ITableHelper> azureStorageHelper,
         IPayloadReceiverHelper payloadReceiverHelper,
         IActionContextAccessor actionContextAccessor,
-        ConfigurationSetting configurationSetting,
+        ConfigurationHelper configurationHelper,
         ILogProvider logProvider)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _azureStorageHelper = azureStorageHelper(
-           configurationSetting.appSettings[_environment].StorageAccountName,
-           configurationSetting.appSettings[_environment].StorageAccountKey);
+           configurationHelper.appSettings[_environment]["StorageAccountName"]);
         _payloadReceiverHelper = payloadReceiverHelper;
         _logProvider = logProvider;
     }
@@ -77,6 +76,8 @@ public class BulkDeleteHelper : IBulkDeleteHelper
 
         logData.Add(LogDataKey.Xcv, docNumber);
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.Environment, _environment);
         logData.Add(LogDataKey.TenantName, tenant);
         logData.Add(LogDataKey.UserAlias, approver);
@@ -137,7 +138,6 @@ public class BulkDeleteHelper : IBulkDeleteHelper
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "ErrorFetchingDeleteRequests");
             logData.Add(LogDataKey.Operation, "Error while fetching Delete requests");
             _logProvider.LogError(TrackingEvent.ErrorFetchingDeleteRequests, ex, logData);
             return new { bulkSuccessDocuments = "Error while bulk deleting requests!" };
@@ -185,7 +185,7 @@ public class BulkDeleteHelper : IBulkDeleteHelper
                 Name = action,
                 Date = DateTime.UtcNow,
                 Comment = comment,
-                ActionBy = new NameAliasEntity
+                ActionBy = new User
                 {
                     Alias = approver
                 }
@@ -202,7 +202,6 @@ public class BulkDeleteHelper : IBulkDeleteHelper
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "SendDeletePayloadFailure");
             logData.Add(LogDataKey.Operation, "Failed to send Delete payloads");
             _logProvider.LogError(TrackingEvent.SendDeletePayloadFailure, ex, logData);
             return null;
@@ -224,7 +223,6 @@ public class BulkDeleteHelper : IBulkDeleteHelper
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "DocumentStatusUpdateFailure");
             logData.Add(LogDataKey.Operation, "Failed to update Document status");
             _logProvider.LogError(TrackingEvent.DocumentStatusUpdateFailure, ex, logData);
             return false;

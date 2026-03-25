@@ -50,7 +50,7 @@ public class HistoryCountController : BaseApiController
     {
         try
         {
-            var historyCountData = await _approvalHistoryHelper.GetHistoryCountforAlias(Alias, timePeriod, searchCriteria, LoggedInAlias, sessionId, Host, Xcv, Tcv);
+            var historyCountData = await _approvalHistoryHelper.GetHistoryCountforAlias(OnBehalfUser.MailNickname, timePeriod, searchCriteria, SignedInUser, sessionId, ClientDevice, Xcv, MessageId);
             return Ok(historyCountData);
         }
         catch (Exception ex)

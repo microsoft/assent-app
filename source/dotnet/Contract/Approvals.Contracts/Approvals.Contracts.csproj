@@ -6,14 +6,14 @@
     <AssemblyName>Microsoft.CFS.Approvals.Contracts</AssemblyName>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>Microsoft.CFS.Approvals.Contracts</PackageId>
-    <Version>6.0.2</Version>
+    <Version>6.0.6</Version>
     <Authors>msapprovalscore</Authors>
     <Company>Microsoft</Company>
     <Description>This NuGet package, published by the Approvals team, provides the data contract to build approval request objects (ARX) which is sent to Approvals system by the LoB systems.</Description>
-    <Copyright>Copyright ©2023 Microsoft Corporation</Copyright>
-    <RepositoryUrl>https://github.com/microsoft/assent-app</RepositoryUrl>
+    <Copyright>Copyright ©2026 Microsoft Corporation</Copyright>
+    <RepositoryUrl>https://microsoftit.visualstudio.com/OneITVSO/_git/CFS-MODPRU-MSAPR-AP-Platform/</RepositoryUrl>
     <PackageTags>MSApprovals Approvals Contract ARX</PackageTags>
-    <PackageReleaseNotes>Approvals Contract - v6.0.2</PackageReleaseNotes>
+    <PackageReleaseNotes>Approvals Contract - v6.0.6</PackageReleaseNotes>
     <Title>Microsoft.CFS.Approvals.Contracts</Title>
   </PropertyGroup>
 
@@ -24,8 +24,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-    <PackageReference Include="System.ComponentModel.Annotations" Version="4.7.0" />
+    <PackageReference Include="Microsoft.Graph" />
+    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="System.ComponentModel.Annotations" />
   </ItemGroup>
 
 </Project>

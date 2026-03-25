@@ -156,22 +156,28 @@
             Class AttachmentUploadController,
             </summary>
         </member>
-        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController.attachmentHelper">
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController._tenantFactory">
             <summary>
-            Attachment helper.
+            The Tenant Factory.
             </summary>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IAttachmentHelper)">
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController._approvalTenantInfoHelper">
             <summary>
-            AttachmentUploadController.
+            Tenant informational helper.
             </summary>
-            <param name="attachmentHelper"></param>       
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController.Post(System.Collections.Generic.List{Microsoft.CFS.Approvals.Model.AttachmentUploadInfo},System.Int32,System.String,System.String,System.String,System.String)">
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalTenantInfoHelper,Microsoft.CFS.Approvals.Core.BL.Interface.ITenantFactory,Microsoft.CFS.Approvals.Core.BL.Interface.IDetailsHelper)">
+            <summary>
+            AttachmentUploadController
+            </summary>
+            <param name="approvalTenantInfoHelper">approvalTenantInfoHelper</param>
+            <param name="tenantFactory">tenantFactory</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController.Post(Microsoft.AspNetCore.Http.IFormCollection,System.Int32,System.String,System.String,System.String,System.String)">
             <summary>
             Post method for uploading the attachments.
             </summary>
-            <param name="files"> List of files to be uploaded into the blob storage.</param>
+            <param name="attachments"> List of files to be uploaded into the blob storage.</param>
             <param name="tenantId">Tenant id.</param>
             <param name="documentNumber">Document number.</param>
             <param name="sessionId">GUID SessionId. Unique for each user session</param>
@@ -289,7 +295,12 @@
             The performance logger
             </summary>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentActionController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalTenantInfoHelper,Microsoft.CFS.Approvals.Core.BL.Interface.IClientActionHelper,System.Func{System.String,Microsoft.CFS.Approvals.Core.BL.Interface.IDocumentActionHelper},Microsoft.CFS.Approvals.Common.DL.Interface.IPerformanceLogger)">
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentActionController._auditLogger">
+            <summary>
+            OpenTelemetry audit logger
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentActionController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalTenantInfoHelper,Microsoft.CFS.Approvals.Core.BL.Interface.IClientActionHelper,System.Func{System.String,Microsoft.CFS.Approvals.Core.BL.Interface.IDocumentActionHelper},Microsoft.CFS.Approvals.Common.DL.Interface.IPerformanceLogger,Microsoft.CFS.Approvals.LogManager.Interface.IAuditLogger)">
             <summary>
             Constructor of DocumentActionController
             </summary>
@@ -297,6 +308,7 @@
             <param name="clientActionHelper"></param>
             <param name="documentActionHelperDelegate"></param>
             <param name="performanceLogger"></param>
+            <param name="auditLogger"></param>
         </member>
         <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.DocumentActionController.Post(System.Int32,System.String,System.String)">
             <summary>
@@ -492,6 +504,35 @@
             </para>
             </remarks>
         </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.FlightingController">
+            <summary>
+            FlightingController
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.FlightingController._flightingHelper">
+            <summary>
+            The approval tenant info helper
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.FlightingController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IFlightingHelper)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.FlightingController"/> class.
+            </summary>
+            <param name="flightingHelper"></param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.FlightingController.GetFlightingFeatures(System.String)">
+            <summary>
+            HTTP GET api/v1/user/flightingFeatures
+            </summary>
+            <returns>Http action result</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.FlightingController.GetAllFlightingFeatures(System.String)">
+            <summary>
+            HTTP GET api/v1/metadata/flightingFeatures
+            </summary>
+            <returns>Http action result</returns>
+        </member>
         <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.HelpController">
             <summary>
             Class HelpController.
@@ -610,6 +651,78 @@
             </para>
             </remarks>
         </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.InsightsController">
+            <summary>
+            Class InsightsController.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.InsightsController._performanceLogger">
+            <summary>
+            The performance logger
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.InsightsController._logProvider">
+            <summary>
+            The log provider
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.InsightsController.#ctor(Microsoft.CFS.Approvals.Common.DL.Interface.IPerformanceLogger,Microsoft.CFS.Approvals.LogManager.Provider.Interface.ILogProvider,Microsoft.CFS.Approvals.Core.BL.Interface.IInsightsHelper)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.InsightsController"/> class.
+            </summary>
+            <param name="performanceLogger">The performance logger</param>
+            <param name="logProvider"></param>
+            <param name="insightsHelper"></param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.InsightsController.Get(System.String,System.String,System.Int32)">
+            <summary>
+            HTTP GET api/v1/me/Insights
+            Gets the specified session identifier.
+            </summary>
+            <param name="sessionId">The session identifier.</param>
+            <param name="page">The page where the API is called from</param>
+            <param name="timeperiod">The timeperiod in months.</param>
+            <returns>IHttpActionResult.</returns>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.IntelligenceController">
+            <summary>
+            Class IntelligenceController.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.IntelligenceController._logProvider">
+            <summary>
+            The log provider
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.IntelligenceController.#ctor(Microsoft.Extensions.Configuration.IConfiguration,Microsoft.CFS.Approvals.Core.BL.Interface.IIntelligenceHelper,Microsoft.CFS.Approvals.LogManager.Provider.Interface.ILogProvider)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.IntelligenceController"/> class.
+            </summary>
+            <param name="config">The configuration</param>
+            <param name="intelligenceHelper">The OpenAI helper.</param>
+            <param name="logProvider"></param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.IntelligenceController.GetChatCompletionAsync(Microsoft.CFS.Approvals.Model.PluginChatRequest)">
+            <summary>
+            Gets response from Azure Open AI for user question.
+            </summary>
+            <param name="chatRequest">Question from user.</param>
+            <returns>Answer from GPT models through Azure AI.</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.IntelligenceController.AIPlugin">
+            <summary>
+            Gets the ai-plugin information for OpenAPI specifications.
+            </summary>
+            <returns>aiplugin.json.</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.IntelligenceController.GetOpenApiYaml">
+            <summary>
+            Gets openapi.yaml file.
+            </summary>
+            <returns>Returns contents of openapi.yaml file.</returns>
+        </member>
         <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.OutOfSyncSummaryController">
             <summary>
             the OutOfSyncSummaryController
@@ -721,6 +834,37 @@
             <param name="operationType">The name of operation</param>
             <param name="sessionId">The SessionId</param>
             <returns> This method returns a JSON specifying the total number of request pending approval for the given user and tenant combination.</returns>
+        </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.QuickTourController">
+            <summary>
+            Class QuickTourController.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.QuickTourController._quickTourHelper">
+            <summary>
+            The tenant down time messages helper
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.QuickTourController._performanceLogger">
+            <summary>
+            The performance logger
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.QuickTourController.#ctor(Microsoft.CFS.Approvals.CoreServices.BL.Interface.IQuickTourHelper,Microsoft.CFS.Approvals.Common.DL.Interface.IPerformanceLogger)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.QuickTourController"/> class.
+            </summary>
+            <param name="quickTourHelper">Quick tour helper</param>
+            <param name="performanceLogger">The performance logger</param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.QuickTourController.Get(System.String)">
+            <summary>
+            HTTP GET api/v1/metadata/QuickTour
+            Gets the specified session identifier.
+            </summary>
+            <param name="sessionId">The session identifier.</param>
+            <returns>IHttpActionResult.</returns>
         </member>
         <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.ReadDetailsController">
             <summary>
@@ -980,26 +1124,24 @@
             </summary>
             <param name="delegationHelper">The delegation helper.</param>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserDelegationSettingsController.Get(System.String,System.String)">
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserDelegationSettingsController.Get(System.String)">
             <summary>
             Gets the specified logged in alias.
             </summary>
-            <param name="loggedInAlias">The logged in alias.</param>
             <param name="sessionId">The session identifier.</param>
             <returns>returns list</returns>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserDelegationSettingsController.Get(System.Int32,System.String,System.String)">
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserDelegationSettingsController.Get(System.Int32,System.String)">
             <summary>
-            This method will retrieve delegated users for the loggedInAlias
+            This method retrieves delegated users for the specified userPrincipalName or objectId.
             </summary>
-            <param name="tenantId">The tenantId</param>
-            <param name="loggedInAlias">The logged in alias</param>
+            <param name="tenantId">tenantId</param>
             <param name="sessionId">The session Id</param>
-            <returns>returns HttpResponse Object</returns>
+            <returns>Returns HttpResponse Object</returns>
             <remarks>
             <para>
             e.g.
-            HTTP GET api/UserDelegationSettings/[tenantId]/loggedInAlias]?SessionId=[userSessionId]
+            HTTP GET api/v1/users/delegations?tenantId=[tenantId]
             </para>
             </remarks>
         </member>
@@ -1034,17 +1176,25 @@
         </member>
         <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserPreferenceController.Get(System.String)">
             <summary>
-            HTTP GET api/UserPreference
+            HTTP GET api/v1/user/preferences
             </summary>
-            <param name="sessionId">Session Id </param>
+            <param name="sessionId">session Id </param>
             <returns>Http action result</returns>
         </member>
         <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserPreferenceController.Post(System.String)">
             <summary>
-            HTTP POST api/UserPreference
+            HTTP POST api/v1/user/preferences
             </summary>
-            <param name="sessionId">Session Id</param>
+            <param name="sessionId">session Id</param>
             <returns>Http action result</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.UserPreferenceController.Put(System.String,System.String)">
+            <summary>
+            HTTP PUT api/v1/user/preferences?userPreferenceColumn= for updating specific user preference data
+            </summary>
+            <param name="userPreferenceColumn"></param>
+            <param name="sessionId"></param>
+            <returns></returns>
         </member>
         <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController">
             <summary>
@@ -1061,17 +1211,12 @@
             Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController"/> class.
             </summary>
         </member>
-        <member name="P:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.Alias">
+        <member name="P:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.DomainName">
             <summary>
-            User alias.
+            Alias's Domain
             </summary>
         </member>
-        <member name="P:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.LoggedInAlias">
-            <summary>
-            Logged-in alias.
-            </summary>
-        </member>
-        <member name="P:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.Host">
+        <member name="P:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.ClientDevice">
             <summary>
             Client device.
             </summary>
@@ -1081,9 +1226,19 @@
             Xcv.
             </summary>
         </member>
-        <member name="P:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.Tcv">
+        <member name="P:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.MessageId">
             <summary>
             Tcv.
+            </summary>
+        </member>
+        <member name="P:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.OnBehalfUser">
+            <summary>
+            on behalf user
+            </summary>
+        </member>
+        <member name="P:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.SignedInUser">
+            <summary>
+            on signed-in user
             </summary>
         </member>
         <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.GetAlias">
@@ -1097,6 +1252,12 @@
             Get logged in alias.
             </summary>
             <returns>logged in alias</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.GetLoggedInUpn">
+            <summary>
+            Get logged in upn.
+            </summary>
+            <returns>logged in user UPN</returns>
         </member>
         <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.GetClientDevice">
             <summary>
@@ -1122,11 +1283,17 @@
             </summary>
             <returns>Xcv string</returns>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.GetTcv">
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.GetMessageId">
             <summary>
             Get Tcv
             </summary>
             <returns>Tcv string</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController.GetTenants">
+            <summary>
+            Get Tenants.
+            </summary>
+            <returns>Tenants</returns>
         </member>
         <member name="T:Microsoft.CFS.Approvals.CoreServices.Utils.AddRequiredHeaderParameter">
             <summary>
@@ -1145,7 +1312,7 @@
             Custom Authorization Middleware class which takes care of additional security checks
             </summary>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Utils.AuthorizationMiddleware.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalTenantInfoHelper,Microsoft.CFS.Approvals.Core.BL.Interface.IDelegationHelper,Microsoft.Extensions.Configuration.IConfiguration)">
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Utils.AuthorizationMiddleware.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalTenantInfoHelper,Microsoft.CFS.Approvals.Core.BL.Interface.IDelegationHelper,Microsoft.CFS.Approvals.Utilities.Interface.INameResolutionHelper,Microsoft.Extensions.Configuration.IConfiguration)">
             <summary>
             Constructor
             </summary>

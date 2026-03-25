@@ -16,6 +16,8 @@ public class ApprovalSummaryRow : BaseTableEntity
 
     public string Approver { get; set; }
 
+    public string ApproverDomain { get; set; }
+
     public string PreviousApprover { get; set; }
 
     public string Requestor { get; set; }
@@ -70,4 +72,14 @@ public class ApprovalSummaryRow : BaseTableEntity
     public string LastFailedOutOfSyncMessage { get; set; }
 
     public Guid RequestVersion { get; set; }
+
+    public string BlobPointer { get; set; }
+
+    public bool IsBackupApprover { get; set; }
+
+    public string BackupApprovers { get; set; }
+
+    public long? AutoReassignmentSequenceId { get; set; }
+
+    public string AutoReassignmentBlobId { get; set; }
 }

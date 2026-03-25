@@ -11,6 +11,7 @@ public enum LogDataKey
     DocDbCollectionName,
 
     SubscriptionName,
+    QueueName,
 
     ValidationResults,
 
@@ -32,6 +33,7 @@ public enum LogDataKey
     UserAlias,
     UserEmail,
     Approver,
+    BackupApprover,
     Approvers,
     OperationType,
     DeleteForAliases,
@@ -74,10 +76,8 @@ public enum LogDataKey
     // Used to log retry count to fetch summary
     Counter,
 
-    UriType,
     BrokerMessageProperty,
     Uri,
-    BaseAddress,
     MachineName,
     FailureData,
     PayloadId,
@@ -87,6 +87,7 @@ public enum LogDataKey
     NotificationTemplateKey,
 
     DetailStatus,
+    AttachmentDownloadStatus,
 
     // Payload Race Condition
     RaceConditionSleepTime,
@@ -104,6 +105,10 @@ public enum LogDataKey
     EventId,
     EventType,
     EventName,
+
+    // Keys used to override standard keys when logging
+    CustomEventId,
+    CustomEventName,
 
     // Telemetry Specific Keys
     UserRoleName,
@@ -148,7 +153,30 @@ public enum LogDataKey
     TeamsNotificationJson,
     TeamsNotificationCorrelationId,
     RequestMethod,
-    Scope
+
+    //OpenAI logging
+    InputPrompt,
+    ToolName,
+    Context,
+
+    AskRequest,
+    ChatHistory,
+
+    CopilotErrorType,
+
+    CopilotResponse,
+
+    Scope,
+    UserPreferenceType,
+    ObjectId,
+    Domain,
+
+    //Search
+    SearchFilters,
+    ModelName,
+    ChatFinishReason,
+    UserContext,
+    IsSubmittedRequest,
 }
 
 public enum TrackingEvent
@@ -232,14 +260,19 @@ public enum TrackingEvent
     /// </summary>
     UpdateSummarySuccess = 320,
 
-    MoveMessageToSecondaryOperationTopicFail = 330,
+    MoveMessageToSecondaryQueueFail = 330,
     ApprovalDetailRemoveFail = 331,
     MoveMessageToNotificationTopicFail = 333,
     ApprovalSummaryRemovalSkipped = 334,
-    UpdateSummaryForOfflineApproval = 340,
     SummaryNotFoundInTenantSystem = 341,
-    UpdateSummaryIsOutOfSyncChallenged = 344,
     ApprovalDetailRemovalSkipped = 345,
+    SecondaryProcessingFail = 346,
+    AIAnalysisProcessingFail = 347,
+    AIAnalysisProcessingSuccess = 348,
+    ReassignmentProcessingStart = 349,
+    ReassignmentProcessingFail = 350, 
+    ReassignmentProcessingSuccess = 351,
+    ReassignmentProcessingSkip = 352,
 
     /// <summary>
     /// This message would be logged when Approvals failed to complete message processing and now message is moved to dead-letter of the main topic
@@ -271,6 +304,8 @@ public enum TrackingEvent
     SummaryInsertedOrReplaced = 1028,
     DeleteProcessForRaceCondition = 1029,
     NotificationFrameworkSendEmailCompleted = 1030,
+    MessagePickedUp = 1031,
+    MessageProcessingException = 1032,
 
     #endregion Message Processing Checkpoints
 
@@ -540,8 +575,6 @@ public enum TrackingEvent
     /// </summary>
     WebApiDocumentActionFail = 531,
 
-    SummaryRowUpdateFailed = 532,
-
     ProcessUserActionsFailed = 533,
 
     ProcessUserActionsSuccess = 534,
@@ -561,6 +594,7 @@ public enum TrackingEvent
     WebApiImpersonationSettingsDeleteFail = 555,
     WebApiImpersonationSettingsTenantInfoFail = 556,
     WebApiAboutFail = 580,
+    WebApiFlightingReadFail = 585,
     WebApiHelpFail = 590,
     WebApiDetailAllDocumentDownloadFail = 600,
     WebApiDetailPreviewDocumentFail = 601,
@@ -568,6 +602,10 @@ public enum TrackingEvent
     WebApiSaveEditableDetailsFail = 606,
     WebApiUserPreferenceFail = 607,
     WebApiSummaryDataMappingFail = 608,
+    WebApiGetAllQuickTourFeaturesWithStatusFail = 609,
+    WebApiOpenAPIYamlFail = 610,
+    WebApiSubmitterViewSummaryFail = 611,
+    WebApiDelegationPlatformFail = 614,
 
     //Outlook Identity Provider related Tracking Events (DocumentAction and AutoRefresh)
     WebApiOutlookIdentityActionFail = 7005,
@@ -599,6 +637,7 @@ public enum TrackingEvent
     WebApiDetailDocumentDownloadSuccess = WebApiDetailDocumentDownloadFail * 1000,
     WebApiDetailPreviewDocumentSuccess = WebApiDetailPreviewDocumentFail * 1000,
     WebApiBulkDocumentDownloadSuccess = WebApiBulkDocumentDownloadFail * 1000,
+    WebApiFlightingReadSuccess = WebApiFlightingReadFail * 1000,
     WebApiImpersonationReadSuccess = WebApiImpersonationReadFail * 1000,
     WebApiImpersonationSettingsCreateSuccess = WebApiImpersonationSettingsCreateFail * 1000,
     WebApiImpersonationSettingsReadSuccess = WebApiImpersonationSettingsReadFail * 1000,
@@ -608,6 +647,8 @@ public enum TrackingEvent
     WebApiExternalSummaryWithNotFoundStatus = WebApiExternalSummarySuccess * 100,
     WebApiExternalDetailWithNotFoundStatus = WebApiDetailSuccess * 100,
     WebApiExternalActionDetailsSuccess = WebApiExternalActionDetailsFail * 1000,
+    WebApiGetAllQuickTourFeaturesWithStatusSuccess = WebApiGetAllQuickTourFeaturesWithStatusFail * 1000,
+    WebApiDelegationPlatformSuccess = WebApiDelegationPlatformFail * 1000,
 
     /// <summary>
     /// This message logged success scenario for Document Approval Status api
@@ -618,6 +659,7 @@ public enum TrackingEvent
     WebApiAdaptiveDetailSuccess = WebApiAdaptiveDetailFail * 1000,
     WebApiSaveEditableDetailsSuccess = WebApiSaveEditableDetailsFail * 1000,
     WebApiUserPreferenceSuccess = WebApiUserPreferenceFail * 1000,
+    WebApiSubmitterViewSummarySuccess = WebApiSubmitterViewSummaryFail * 1000,
 
     #endregion Web API Positive events
 
@@ -642,6 +684,18 @@ public enum TrackingEvent
     AttachmentConsolidationForTenantNotificationSuccess = 839,
     AttachmentConsolidationForTenantNotificationFailure = 840,
     GetAvailableDetailsAndOperatioNamesFailure = 841,
+
+    AddUpdateUserPreferenceSuccess = 842,
+    AddUpdateUserPreferenceFailure = 843,
+    UpdateSpecificUserPreferenceSuccess = 844,
+    UpdateSpecificUserPreferenceFailure = 845,
+
+    ApprovalAssistantCardGenerationInitiated = 846,
+    ApprovalAssistantCardGenerationSuccess = 847,
+    ApprovalAssistantCardGenerationFailure = 848,
+
+    GetAllFlightingFeaturesFailure = 866,
+    GetFlightingFeaturesByAliasFailure = 867,
 
     #endregion BL Tracking Events
 
@@ -710,8 +764,8 @@ public enum TrackingEvent
 
     #region Security
 
+    ManagedIdentityTokenGenerationSuccess = 805,
     ManagedIdentityTokenGenerationError = 806,
-    AcsSimpleWebToken = 807,
     OAuth2TokenGenerationError = 808,
     SASTokenGenerationError = 809,
     OAuth2TokenGenerationSuccessful = 810,
@@ -787,11 +841,22 @@ public enum TrackingEvent
     GetTenantActionDetailsSuccess = 6830,
     GetTenantActionDetailsFailed = 6831,
 
+    ARXReceivedBySecondaryWorker = 6832, // Pending
+    ARXFailedBySecondaryWorker = 6833, // Failed
+
+    AuxiliaryProcessingSuccess = 6834,
+    AuxiliaryProcessingFailed = 6835,
+
+    ARXSuccessfulToProcessInExternalMainTopic = 6836, // Successful
+    ARXFailedToProcessInExternalMainTopic = 6837, // Failed 
+    ARXSkippedToProcessInExternalMainTopic = 6838, // Skipped
+
     #region PAYLOAD RECEIVER LOGGING
 
     PayloadProcessingFailure = 200002,
     PayloadAccepted = 200001,
     PayloadValidationFailure = 200003,
+    PayloadApproverAliasResolutionSocketEx = 200004,
 
     #endregion PAYLOAD RECEIVER LOGGING
 
@@ -856,11 +921,93 @@ public enum TrackingEvent
     BatchUpdateDetailsSuccess = 9920,
     BatchUpdateDetailsFailed = 9921,
 
+    /// <summary>
+    /// Aut-Reassignment Events
+    /// </summary>
+    ARXReceivedByReassignmentWorker = 9922,
+    ARXFailedByReassignmentWorker = 9923,
+    ARXSuccessfulByReassignmentWorker = 9924,
+
     TenantApiComplete = 541002,
 
     TeamsNotificationAPISuccess = 541003,
     TeamsNotificationAPIFail = 541004,
 
     PayloadReprocessingSuccess = 551000,
-    PayloadReprocessingFailed = 551001
+    PayloadReprocessingFailed = 551001,
+
+    ChatRequestInitiated = 551002,
+    ChatRequestFailed = 551003,
+    ChatRequestSuccess = 551004,    
+    ApprovalsPluginInitiated = 551005,
+    ApprovalsPluginFailed = 551006,
+    ApprovalsPluginSuccess = 551007,
+    
+    SummaryViewInitiated = 551008,
+    SummaryViewFailed = 551009,
+    SummaryViewSuccess = 551010,
+    SubmitterViewFlightingDisabled = 551011,
+
+    CopilotProcessingInvoked = 561000,
+    CopilotProcessingSuccess = 561001,
+    CopilotProcessingFailed = 561002,
+
+    GetAttachmentSummarySuccess = 562000,
+    GetAttachmentSummaryFailed = 562001,
+
+    GetAIAnalysisInitiated = 51100004,
+    GetAIAnalysisSuccess = 563000,
+    GetAIAnalysisFailed = 563001,
+
+    CopilotToolInvoked = 564000,
+    CopilotToolExecutionSuccess = 564001,
+    CopilotToolExecutionFailed = 564002,
+
+    ErrorHandlerExecutionSuccess = 565000,
+    ErrorHandlerExecutionFailed = 565001,
+
+    // Request Details Tool specific tracking
+    GetRequestDetailsToolInitiated = 566000,
+    GetRequestDetailsToolSuccess = 566001,
+    GetRequestDetailsToolFailed = 566002,
+
+    QuickTourSlidesFileName = 571000,
+
+    GetSummaryInsightsFailed = 572000,
+    GetHistoryInsightsFailed = 573000,
+
+    DeepSearchInitiated = 574000,
+    DeepSearchInvoked = 574001,
+    DeepSearchSuccess = 574002,
+    DeepSearchFailed = 574003,
+    DeepSearchRequestFailed = 574004,
+
+    GetSearchFiltersInitiated = 575000,
+    GetSearchFiltersSuccess = 575001,
+    GetSearchFiltersFailed = 575002,
+
+    GetAIAssistedSearchResultsInitiated = 576000,
+    GetAIAssistedSearchResultsSuccess = 576001,
+    GetAIAssistedSearchResultsFailed = 576002,
+
+    SearchToolInitiated = 576500,
+    SearchToolSuccess = 576501,
+    SearchToolFailed = 576502,
+
+    OnErrorOccuredInitiated = 51100005,
+
+
+    SetContextCompleted = 576003,
+    FeedbackSubmissionSuccess = 577000,
+    FeedbackSubmissionFailed = 577001,
+    FeedbackRequestFailed = 577002,
+    ChatCompletionInitiated = 577100,
+    ChatCompletionSuccess = 577101,
+    ChatCompletionFailed = 577102,
+    FindTenantIdByDocumentNumberInitiated = 51100001,
+    FindTenantIdByDocumentNumberFailed = 51100002,
+    FindTenantIdByDocumentNumberSuccess = 51100003,
+    OnErrorOccuredFailed = 51100006,
+    OnErrorOccuredSuccess = 51100007,
+    ExplainAndAskPermissionToolSuccess = 51100008,
 }

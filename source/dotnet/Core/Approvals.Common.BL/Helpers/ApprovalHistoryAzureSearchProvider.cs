@@ -13,6 +13,7 @@ using Microsoft.Azure.Search;
 using Microsoft.Azure.Search.Models;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Data.Azure.CosmosDb.Interface;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
 using Microsoft.CFS.Approvals.LogManager.Model;
@@ -61,12 +62,15 @@ public class ApprovalHistoryAzureSearchProvider : ApprovalHistoryProvider
     /// <param name="alias"></param>
     /// <param name="timePeriod"></param>
     /// <param name="searchCriteria"></param>
+    /// <param name="approverDomain">Approver Domain</param>
+    /// <param name="approverId">Approver Object Id</param>
     /// <param name="page"></param>
     /// <param name="sortColumn"></param>
     /// <param name="sortDirection"></param>
+    /// <param name="tenantId"></param>
     /// <returns></returns>
-    public override async Task<PagedData<TransactionHistoryExtended>> GetHistoryDataAsync(string alias, int timePeriod, string searchCriteria
-        , int? page = null, string sortColumn = null, string sortDirection = "DESC")
+    public override async Task<PagedData<TransactionHistoryExtended>> GetHistoryDataAsync(string alias, int timePeriod, string searchCriteria,
+        string approverDomain, string approverId, int? page = null, string sortColumn = null, string sortDirection = "DESC", string tenantId = "")
     {
         var historyPagedData = new PagedData<TransactionHistoryExtended>();
         if (timePeriod == 0)
@@ -152,9 +156,9 @@ public class ApprovalHistoryAzureSearchProvider : ApprovalHistoryProvider
         }
 
         var tranHistories = dtTransactionHistory.ToList();
-        var tenants = _approvalTenantInfoProvider.GetAllTenantInfo();
+        var tenants = _approvalTenantInfoProvider.GetTenantInfo();
         var resultsExtended = from record in tranHistories
-                              join tenant in tenants.Result on record.TenantId equals tenant.RowKey
+                              join tenant in tenants on record.TenantId equals tenant.RowKey
                               let recordExtended = extendTransactionHistoryRecord(record, tenant)
                               select recordExtended;
         historyPagedData.Result = resultsExtended.ToList();
@@ -167,10 +171,10 @@ public class ApprovalHistoryAzureSearchProvider : ApprovalHistoryProvider
     /// <param name="alias"></param>
     /// <param name="timePeriod"></param>
     /// <param name="searchCriteria"></param>
-    /// <param name="loggedInAlias"></param>
+    /// <param name="signedInUser"></param>
     /// <param name="Xcv"></param>
     /// <returns></returns>
-    public override async Task<JArray> GetHistoryCountforAliasAsync(string alias, int timePeriod, string searchCriteria, string loggedInAlias, string Xcv)
+    public override async Task<JArray> GetHistoryCountforAliasAsync(string alias, int timePeriod, string searchCriteria, User signedInUser, string Xcv)
     {
         var logData = new Dictionary<LogDataKey, object>
         {
@@ -178,7 +182,7 @@ public class ApprovalHistoryAzureSearchProvider : ApprovalHistoryProvider
             { LogDataKey.Tcv, Xcv },
             { LogDataKey.ReceivedTcv, Xcv },
             { LogDataKey.SessionId, Xcv },
-            { LogDataKey.UserRoleName, loggedInAlias },
+            { LogDataKey.UserRoleName, signedInUser.MailNickname },
             { LogDataKey.EventType, Constants.FeatureUsageEvent },
             { LogDataKey.UserAlias, alias },
             { LogDataKey.SearchText, searchCriteria },
@@ -199,7 +203,7 @@ public class ApprovalHistoryAzureSearchProvider : ApprovalHistoryProvider
             parameters =
                 new SearchParameters()
                 {
-                    Filter = "(Approver eq '" + alias.ToLowerInvariant() + "' or Approver eq '" + alias.ToUpperInvariant() + "' or Approver eq '" + alias + "') and ActionDate ge " + actionDateRange,
+                    Filter = "(Approver eq '" + signedInUser.MailNickname.ToLowerInvariant() + "' or Approver eq '" + signedInUser.MailNickname.ToUpperInvariant() + "' or Approver eq '" + signedInUser.MailNickname + "') and ActionDate ge " + actionDateRange,
                     OrderBy = new[] { "ActionDate desc" },
                 };
 

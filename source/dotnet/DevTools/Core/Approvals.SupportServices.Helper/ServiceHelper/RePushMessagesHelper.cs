@@ -9,7 +9,9 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
+using global::Azure.Identity;
+using global::Azure.Messaging.ServiceBus;
+using Microsoft.AspNetCore.Mvc.Internal;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
@@ -175,9 +177,17 @@ public class RePushMessagesHelper : IRePushMessagesHelper
             ApprovalRequestExpression arxToSend = BuildRetryARX(data, noOfRetries);
 
             var brokeredMessage = await BuildBrokerMessageAsync(arxToSend, brokeredMsgProperty);
-            var client = new TopicClient(_config[ConfigurationKey.ServiceBusConnectionString.ToString()],
-                _config[ConfigurationKey.TopicNameMain.ToString()]);
-            await client.SendAsync(brokeredMessage);
+
+            // Use DefaultAzureCredential only in DEBUG (local development), ManagedIdentityCredential in production.
+            global::Azure.Core.TokenCredential credential;
+#if DEBUG
+            credential = new DefaultAzureCredential();  // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+            credential = new ManagedIdentityCredential();
+#endif
+            var client = new ServiceBusClient(_config[Constants.ServiceBusNamespace], credential);
+            var serviceBusSender = client.CreateSender(_config[ConfigurationKey.TopicNameMain.ToString()]);
+            await serviceBusSender.SendMessageAsync(brokeredMessage);
             return true;
         }
         catch (Exception ex)
@@ -193,7 +203,7 @@ public class RePushMessagesHelper : IRePushMessagesHelper
     /// <param name="approvalRequestExpression"></param>
     /// <param name="messageProperties"></param>
     /// <returns></returns>
-    private async Task<Message> BuildBrokerMessageAsync(ApprovalRequestExpression approvalRequestExpression, JObject messageProperties)
+    private async Task<ServiceBusMessage> BuildBrokerMessageAsync(ApprovalRequestExpression approvalRequestExpression, JObject messageProperties)
     {
         string messageBody = string.Format("{0}|{1}|{2}", approvalRequestExpression.DocumentTypeId, approvalRequestExpression.ApprovalIdentifier.DisplayDocumentNumber, approvalRequestExpression.Operation.ToString());
 
@@ -201,13 +211,13 @@ public class RePushMessagesHelper : IRePushMessagesHelper
         await _blobStorageHelper.UploadByteArray(messageToUpload, Constants.PrimaryMessageContainer, messageBody);
         await _blobStorageHelper.UploadByteArray(messageToUpload, Constants.AuditAgentMessageContainer, messageBody);
         // Create a BrokeredMessage of the customized class,
-        Message message = new Message();
+        ServiceBusMessage message = new ServiceBusMessage();
 
         if (approvalRequestExpression != null)
         {
             foreach (var properties in messageProperties)
             {
-                message.UserProperties[properties.Key] = properties.Value.ToString();
+                message.ApplicationProperties[properties.Key] = properties.Value.ToString();
             }
         }
 
@@ -215,21 +225,21 @@ public class RePushMessagesHelper : IRePushMessagesHelper
         message.CorrelationId = Guid.NewGuid().ToString();
 
         // Adding properties to the Message
-        message.UserProperties["ApplicationId"] = approvalRequestExpression.DocumentTypeId.ToString();
-        message.UserProperties["ApprovalRequestVersion"] = _config[ConfigurationKey.ApprovalRequestVersion.ToString()].ToString();
-        message.UserProperties["CreatedDate"] = DateTime.UtcNow;
-        message.UserProperties["ContentType"] = "ApprovalRequestExpression";
+        message.ApplicationProperties["ApplicationId"] = approvalRequestExpression.DocumentTypeId.ToString();
+        message.ApplicationProperties["ApprovalRequestVersion"] = _config[ConfigurationKey.ApprovalRequestVersion.ToString()].ToString();
+        message.ApplicationProperties["CreatedDate"] = DateTime.UtcNow;
+        message.ApplicationProperties["ContentType"] = "ApprovalRequestExpression";
         message.ContentType = "application/json";
-        message.Body = System.Text.Encoding.UTF8.GetBytes(messageBody);
+        message.Body = BinaryData.FromString(messageBody);
 
         //Add Additional Properties to the BrokeredMessage
-        if (!message.UserProperties.ContainsKey("ApprovalRequestVersion"))
+        if (!message.ApplicationProperties.ContainsKey("ApprovalRequestVersion"))
         {
-            message.UserProperties["ApprovalRequestVersion"] = "1";
+            message.ApplicationProperties["ApprovalRequestVersion"] = "1";
         }
-        if (!message.UserProperties.ContainsKey("ApprovalMessageType"))
+        if (!message.ApplicationProperties.ContainsKey("ApprovalMessageType"))
         {
-            message.UserProperties["ApprovalMessageType"] = "Summary";
+            message.ApplicationProperties["ApprovalMessageType"] = "Summary";
         }
         return message;
     }

@@ -20,4 +20,5 @@ public static class Constants
     public const string PendingApprovalEmailNotificationTemplates = "PendingApprovalEmailNotificationTemplates";
     public const string ApprovalEmailNotificationTemplates = "ApprovalEmailNotificationTemplates";
     public const string Outlookdynamictemplates = "outlookdynamictemplates";
+    public const string AzureAppConfigurationUrl = "AzureAppConfigurationUrl";
 }

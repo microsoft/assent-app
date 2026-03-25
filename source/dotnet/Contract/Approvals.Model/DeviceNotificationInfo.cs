@@ -28,6 +28,12 @@ public class DeviceNotificationInfo// : IExtensibleDataObject
     public String Approver { get; set; }
 
     [DataMember]
+    public string ApproverId { get; set; }
+
+    [DataMember]
+    public string ApproverDomain { get; set; }
+
+    [DataMember]
     public String OriginalApprover { get; set; }
 
     [DataMember]

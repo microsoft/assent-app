@@ -5,8 +5,8 @@ namespace Microsoft.CFS.Approvals.Extensions;
 
 using System;
 using System.Collections.Generic;
+using System.Net.Mail;
 using global::Azure.Messaging.ServiceBus;
-using Microsoft.Azure.ServiceBus;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -39,26 +39,26 @@ public static string GetCorrelationId(this IReadOnlyDictionary<string, object> b
     /// </summary>
     /// <param name="message"></param>
     /// <returns></returns>
-    public static string GetCorrelationId(this Message message)
+    public static string GetCorrelationId(this ServiceBusReceivedMessage message)
     {
         if (message != null)
         {
-            if (null != message.UserProperties && !message.UserProperties.ContainsKey("CorrelationID"))
+            if (null != message.ApplicationProperties && !message.ApplicationProperties.ContainsKey("CorrelationID"))
             {
-                message.UserProperties.Add("CorrelationID", message.MessageId);
+                return message.MessageId.ToString();
             }
-            return message.UserProperties["CorrelationID"].ToString();
+            return message.ApplicationProperties["CorrelationID"].ToString();
         }
         else
             return "";
     }
 
-/// <summary>
-/// To the json.
-/// </summary>
-/// <param name="obj">The object.</param>
-/// <returns>returns an object</returns>
-public static string ToJson(this object obj)
+    /// <summary>
+    /// To the json.
+    /// </summary>
+    /// <param name="obj">The object.</param>
+    /// <returns>returns an object</returns>
+    public static string ToJson(this object obj)
 {
     return JsonConvert.SerializeObject(obj);
 }
@@ -161,8 +161,8 @@ private static bool IsValidJson(this string strInput)
     {
         try
         {
-                strInput.ToJToken();
-                return true;
+            strInput.ToJToken();
+            return true;
         }
         catch
         {
@@ -271,7 +271,12 @@ public static string ReplaceSqlSpecialCharacters(this string searchCriteria)
         return searchCriteria;
     }
 
-    public static ServiceBusMessage Map(this Message source)
+    /// <summary>
+    /// Map ServiceBusMessage
+    /// </summary>
+    /// <param name="source"></param>
+    /// <returns>ServiceBusMessage</returns>
+    public static ServiceBusMessage Map(this ServiceBusMessage source)
     {
         var result = new ServiceBusMessage(source.Body)
         {
@@ -279,9 +284,9 @@ public static string ReplaceSqlSpecialCharacters(this string searchCriteria)
             ContentType = source.ContentType,
             CorrelationId = source.CorrelationId
         };
-        if (source.UserProperties != null)
+        if (source.ApplicationProperties != null)
         {
-            foreach (var property in source.UserProperties)
+            foreach (var property in source.ApplicationProperties)
             {
                 if (!result.ApplicationProperties.ContainsKey(property.Key))
                 {
@@ -290,5 +295,58 @@ public static string ReplaceSqlSpecialCharacters(this string searchCriteria)
             }
         }
         return result;
+    }
+
+    /// <summary>
+    /// Gets domain from UserPrincipalName
+    /// </summary>
+    /// <param name="upn">UserPrincipalName</param>
+    /// <returns></returns>
+    public static string GetDomainFromUPN(this string upn)
+    {
+        if (upn.IsUpn())
+        {
+            MailAddress mailAddress = new MailAddress(upn);
+            return '@' + mailAddress.Host;
+        }
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// Gets alias from UserPrincipalName
+    /// </summary>
+    /// <param name="upn">UserPrincipalName</param>
+    /// <returns></returns>
+    public static string GetAliasFromUPN(this string upn)
+    {
+        if (!string.IsNullOrWhiteSpace(upn))
+        {
+            MailAddress mailAddress = new MailAddress(upn);
+            return mailAddress.User;
+        }
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// Checks if string is a UPN
+    /// </summary>
+    /// <param name="upn">Alias or UserPrincipalName</param>
+    /// <returns></returns>
+    public static bool IsUpn(this string aliasOrUpn)
+    {
+        if (!string.IsNullOrWhiteSpace(aliasOrUpn) && aliasOrUpn.Contains('@'))
+            return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Parsing string into Enum
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    public static T ParseEnum<T>(this string value)
+    {
+        return (T)Enum.Parse(typeof(T), value, true);
     }
 }

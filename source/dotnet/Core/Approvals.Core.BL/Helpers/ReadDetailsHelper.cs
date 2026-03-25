@@ -5,12 +5,16 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers;
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Extensions;
 using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
+using Microsoft.CFS.Approvals.Utilities.Interface;
 using Newtonsoft.Json.Linq;
 
 /// <summary>
@@ -29,9 +33,9 @@ public class ReadDetailsHelper : IReadDetailsHelper
     private readonly IApprovalTenantInfoHelper _tenantInfoHelper;
 
     /// <summary>
-    /// The approval summary provider
+    /// The summary helper
     /// </summary>
-    private readonly IApprovalSummaryProvider _approvalSummaryProvider;
+    private readonly ISummaryHelper _summaryHelper;
 
     /// <summary>
     /// The performance logger
@@ -39,33 +43,45 @@ public class ReadDetailsHelper : IReadDetailsHelper
     private readonly IPerformanceLogger _performanceLogger;
 
     /// <summary>
+    /// The name resolution helper
+    /// </summary>
+    private readonly INameResolutionHelper _nameResolutionHelper;
+
+    private readonly IDelegationHelper _delegationHelper;
+
+    /// <summary>
     /// Constructor of ReadDetailsHelper
     /// </summary>
-    /// <param name="_approvalSummaryProvider"></param>
-    /// <param name="_tenantInfoHelper"></param>
-    /// <param name="_logProvider"></param>
-    /// <param name="_performanceLogger"></param>
-    public ReadDetailsHelper(IApprovalSummaryProvider approvalSummaryProvider, IApprovalTenantInfoHelper tenantInfoHelper, ILogProvider logProvider, IPerformanceLogger performanceLogger)
+    /// <param name="summaryHelper"></param>
+    /// <param name="tenantInfoHelper"></param>
+    /// <param name="logProvider"></param>
+    /// <param name="performanceLogger"></param>
+    public ReadDetailsHelper(ISummaryHelper summaryHelper, IApprovalTenantInfoHelper tenantInfoHelper, ILogProvider logProvider, IPerformanceLogger performanceLogger, INameResolutionHelper nameResolutionHelper, IDelegationHelper delegationHelper)
     {
-        _approvalSummaryProvider = approvalSummaryProvider;
+        _summaryHelper = summaryHelper;
         _tenantInfoHelper = tenantInfoHelper;
         _logProvider = logProvider;
         _performanceLogger = performanceLogger;
+        _nameResolutionHelper = nameResolutionHelper;
+        _delegationHelper = delegationHelper;
     }
 
     /// <summary>
-    /// Update detail tabel for IsRead flag
+    /// Update detail table for IsRead flag
     /// </summary>
+    /// <param name="signedInUser"></param>
+    /// <param name="onBehalfUser"></param>
+    /// <param name="oauth2UserToken"></param>
     /// <param name="postData"></param>
     /// <param name="tenantId"></param>
-    /// <param name="loggedInAlias"></param>
-    /// <param name="alias"></param>
+
     /// <param name="clientDevice"></param>
     /// <param name="sessionId"></param>
     /// <param name="Tcv"></param>
     /// <param name="Xcv"></param>
+    /// <param name="domain">Alias's domain</param>
     /// <returns></returns>
-    public bool UpdateIsReadDetails(string postData, int tenantId, string loggedInAlias, string alias, string clientDevice, string sessionId, string Tcv, string Xcv)
+    public async Task<bool> UpdateIsReadDetails(User signedInUser, User onBehalfUser, string oauth2UserToken, string postData, int tenantId, string clientDevice, string sessionId, string Tcv, string Xcv, string domain)
     {
         // Create a unique GUID per user transaction
         var activityId = Guid.NewGuid().ToString();
@@ -92,11 +108,11 @@ public class ReadDetailsHelper : IReadDetailsHelper
             {LogDataKey.EventType, Constants.FeatureUsageEvent},
             {LogDataKey.SessionId, sessionId},
             {LogDataKey.Xcv, Xcv},
-            {LogDataKey.UserRoleName, loggedInAlias},
+            {LogDataKey.UserRoleName, signedInUser.MailNickname},
             {LogDataKey.TenantId, tenantId},
-            {LogDataKey.Approver, alias},
+            {LogDataKey.Approver, onBehalfUser.MailNickname},
             {LogDataKey._ActivityId, activityId},
-            {LogDataKey.UserAlias, alias},
+            {LogDataKey.UserAlias, onBehalfUser.MailNickname},
             {LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString()},
             {LogDataKey.StartDateTime, DateTime.UtcNow },
             {LogDataKey.ClientDevice, clientDevice}
@@ -108,6 +124,17 @@ public class ReadDetailsHelper : IReadDetailsHelper
         {
             using (_performanceLogger.StartPerformanceLogger("PerfLog", Constants.WebClient, string.Format(Constants.PerfLogAction, "ReadDetailsHelper", "UpdatesIsReadDetails"), logData))
             {
+                await _delegationHelper.CheckUserAuthorization(signedInUser, onBehalfUser, oauth2UserToken, clientDevice, sessionId, Xcv, Tcv);
+
+                #region Fetch Object Id and Domain for alias
+
+                string approverDomain = string.IsNullOrWhiteSpace(domain) ? _nameResolutionHelper.GetUserPrincipalName(onBehalfUser.MailNickname).Result.GetDomainFromUPN() : domain;
+                string approverId = onBehalfUser.Id;
+                if (string.IsNullOrWhiteSpace(onBehalfUser.Id) && !string.IsNullOrWhiteSpace(approverDomain))
+                    approverId = _nameResolutionHelper.GetUser(onBehalfUser.MailNickname + approverDomain).Result?.Id;
+
+                #endregion Fetch Object Id and Domain for alias
+
                 #region Get the user action string from request content and validate it
 
                 // Getting the user action string from request content
@@ -141,7 +168,7 @@ public class ReadDetailsHelper : IReadDetailsHelper
 
                 #endregion Get Tenant Info
 
-                _approvalSummaryProvider.UpdateIsReadSummary(actionObject["DocumentKeys"].ToString(), alias, tenantInfo);
+                await _summaryHelper.UpdateSummary(tenantInfo, actionObject["DocumentKeys"].ToString(), onBehalfUser.MailNickname, approverId, approverDomain, DateTime.UtcNow, Constants.IsRead);
                 logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
                 _logProvider.LogInformation(TrackingEvent.WebApiReadDetailsSuccess, logData);
             }

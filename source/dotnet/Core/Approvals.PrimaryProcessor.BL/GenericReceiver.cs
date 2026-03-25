@@ -9,9 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using global::Azure.Identity;
 using global::Azure.Messaging.ServiceBus;
-using Microsoft.Azure.ServiceBus;
 using Microsoft.CFS.Approvals.Common.BL.Interface;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
@@ -22,6 +20,7 @@ using Microsoft.CFS.Approvals.Domain.BL.Interface;
 using Microsoft.CFS.Approvals.Extensions;
 using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
+using Microsoft.CFS.Approvals.Messaging.Azure.ServiceBus.Interface;
 using Microsoft.CFS.Approvals.Model;
 using Microsoft.CFS.Approvals.PrimaryProcessor.BL.Interface;
 using Microsoft.CFS.Approvals.Utilities.Extension;
@@ -34,7 +33,6 @@ public class GenericReceiver : IApprovalsTopicReceiver
 {
     #region Private Variables
 
-    private readonly string _serviceBusNamespace;
     private readonly string _approvalsRetryTopic;
     private readonly IPerformanceLogger _performanceLogger;
     private readonly IARConverterFactory _arConverterFactory = null;
@@ -45,6 +43,7 @@ public class GenericReceiver : IApprovalsTopicReceiver
     private readonly ITenantFactory _tenantFactory = null;
     private readonly ITableHelper _tableHelper = null;
     private readonly IApprovalPresenter _approvalPresenter = null;
+    private readonly IServiceBusHelper _serviceBusHelper = null;
 
     #endregion Private Variables
 
@@ -71,7 +70,8 @@ public class GenericReceiver : IApprovalsTopicReceiver
         IValidationHelper validationHelper,
         ITenantFactory tenantFactory,
         IApprovalPresenter approvalPresenter,
-        ITableHelper tableHelper)
+        ITableHelper tableHelper,
+        IServiceBusHelper serviceBusHelper)
     {
         _performanceLogger = performanceLogger;
         _arConverterFactory = arConverterFactory;
@@ -83,11 +83,9 @@ public class GenericReceiver : IApprovalsTopicReceiver
         _tableHelper = tableHelper;
         _approvalPresenter = approvalPresenter;
 
-        // Getting the Service Bus Connection Strings
-        _serviceBusNamespace = _config[ConfigurationKey.ServiceBusNamespace.ToString()];
-
         // Getting the Main and Retry Topic Names
         _approvalsRetryTopic = _config[ConfigurationKey.TopicNameRetry.ToString()];
+        _serviceBusHelper = serviceBusHelper;
     }
 
     #endregion Constructor - to set up state of this class for each tenant
@@ -97,7 +95,7 @@ public class GenericReceiver : IApprovalsTopicReceiver
     /// </summary>
     /// <param name="blobId"></param>
     /// <param name="message"></param>
-    public virtual async Task OnMainMessageReceived(string blobId, Message message)
+    public virtual async Task OnMainMessageReceived(string blobId, ServiceBusReceivedMessage message)
     {
         if (blobId != null)
         {
@@ -119,7 +117,7 @@ public class GenericReceiver : IApprovalsTopicReceiver
     /// <param name="blobId"></param>
     /// <param name="message"></param>
     /// <returns></returns>
-    public virtual async Task OnRetryMessageRecieved(string blobId, Message message)
+    public virtual async Task OnRetryMessageRecieved(string blobId, ServiceBusReceivedMessage message)
     {
         if (message != null)
         {
@@ -145,10 +143,10 @@ public class GenericReceiver : IApprovalsTopicReceiver
                 using (_performanceLogger.StartPerformanceLogger("PerfLog", Constants.WorkerRole, string.Format(Constants.PerfLogAction, TenantInfo.AppName, "Retry message processing time in GenericReceiver"), logData))
                 {
                     byte[] messageContent;
-                    if (message.UserProperties.ContainsKey("ApprovalRequestVersion") && message.UserProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
+                    if (message.ApplicationProperties.ContainsKey("ApprovalRequestVersion") && message.ApplicationProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
                         messageContent = await _blobHelper.DownloadByteArray(Constants.PrimaryMessageContainer, blobId);
                     else
-                        messageContent = message.Body;
+                        messageContent = message.Body.ToArray();
 
                     var arConverterAdaptor = _arConverterFactory.GetARConverter();
                     List<ApprovalRequestExpressionExt> requestExpressions = arConverterAdaptor.GetAR(messageContent, message, TenantInfo);
@@ -157,8 +155,7 @@ public class GenericReceiver : IApprovalsTopicReceiver
                     logData.Add(LogDataKey.ReceivedTcv, requestExpressions.FirstOrDefault().Telemetry.Tcv);
                     logData.Add(LogDataKey.TenantTelemetryData, requestExpressions.FirstOrDefault().Telemetry.TenantTelemetry);
                     logData.Add(LogDataKey.BusinessProcessName, string.Format(TenantInfo.BusinessProcessName, Constants.BusinessProcessNameSendPayload, requestExpressions.FirstOrDefault().Operation));
-                    logData.Modify(LogDataKey.EventId, TrackingEvent.NewMessageRecievedInRetryTopic + TenantInfo.TenantId);
-                    logData.Modify(LogDataKey.EventName, TrackingEvent.NewMessageRecievedInRetryTopic.ToString());
+                    logData[LogDataKey.CustomEventId] = TrackingEvent.NewMessageRecievedInRetryTopic + TenantInfo.TenantId;
                     LogMessageProgress(requestExpressions, TrackingEvent.ARXReceivedSuccessfullyByServiceBusInRetryTopic, message, null, CriticalityLevel.Yes);
 
                     _approvalPresenter.TenantInfo = TenantInfo;
@@ -168,15 +165,13 @@ public class GenericReceiver : IApprovalsTopicReceiver
                         throw new InvalidOperationException("Request failed while processing in retry topic. Identifier: " + failedRequest.FirstOrDefault().ApprovalIdentifier.ToJson());
                     }
 
-                    logData.Modify(LogDataKey.EventId, TrackingEvent.MessageCompleteSuccessFromRetryTopic + TenantInfo.TenantId);
-                    logData.Modify(LogDataKey.EventName, TrackingEvent.MessageCompleteSuccessFromRetryTopic.ToString());
+                    logData[LogDataKey.CustomEventId] = TrackingEvent.MessageCompleteSuccessFromRetryTopic + TenantInfo.TenantId;
                     LogMessageProgress(requestExpressions, TrackingEvent.ARXProcessedSuccessfullyInRetryTopic, message, null, CriticalityLevel.Yes);
                 }
             }
             catch (Exception ex)
             {
-                logData.Modify(LogDataKey.EventId, TrackingEvent.MoveMessageToDeadletterFromRetryTopic + TenantInfo.TenantId);
-                logData.Modify(LogDataKey.EventName, TrackingEvent.MoveMessageToDeadletterFromRetryTopic.ToString());
+                logData[LogDataKey.CustomEventId] = TrackingEvent.MoveMessageToDeadletterFromRetryTopic + TenantInfo.TenantId;
                 _logProvider.LogError((int)TrackingEvent.MoveMessageToDeadletterFromRetryTopic + TenantInfo.TenantId, ex, logData);
             }
         }
@@ -190,7 +185,7 @@ public class GenericReceiver : IApprovalsTopicReceiver
     /// <param name="blobId"></param>
     /// <param name="brokeredMessage"></param>
     /// <returns></returns>
-    private async Task ProcessMessageOnTaskAndAwait(string blobId, Message brokeredMessage)
+    private async Task ProcessMessageOnTaskAndAwait(string blobId, ServiceBusReceivedMessage brokeredMessage)
     {
         var logData = new Dictionary<LogDataKey, object>()
         {
@@ -212,10 +207,10 @@ public class GenericReceiver : IApprovalsTopicReceiver
             {
                 var numberOfRetries = int.Parse(_config[ConfigurationKey.MainTopicFailCountThreshold.ToString()]);
                 byte[] message;
-                if (brokeredMessage.UserProperties.ContainsKey("ApprovalRequestVersion") && brokeredMessage.UserProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
+                if (brokeredMessage.ApplicationProperties.ContainsKey("ApprovalRequestVersion") && brokeredMessage.ApplicationProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
                     message = await _blobHelper.DownloadByteArray(Constants.PrimaryMessageContainer, blobId);
                 else
-                    message = brokeredMessage.Body;
+                    message = brokeredMessage.Body.ToArray();
 
                 var arConverterAdaptor = _arConverterFactory.GetARConverter();
                 requestExpressions = arConverterAdaptor.GetAR(message, brokeredMessage, TenantInfo);
@@ -248,24 +243,41 @@ public class GenericReceiver : IApprovalsTopicReceiver
 
                     // If there was an error in validating the approval request then throw
                     // an exception so that the message is not marked as complete
+                    var socketExceptionValidationResult = validationResults?.FirstOrDefault(x => x.ErrorMessage.Equals(Constants.SocketExceptionMessage));
+                    
                     if (validationResults != null && validationResults.Count > 0)
                     {
                         string errorMessage;
-                        if (expression.ApprovalIdentifier != null)
+                        if (socketExceptionValidationResult != null)
                         {
-                            errorMessage = "Approval Request Expression (DocumentNumber: " + expression.ApprovalIdentifier.DocumentNumber
-                                                + " - " + expression.ApprovalIdentifier.DisplayDocumentNumber + ") validation failed: " + validationResults.ToJson();
-                        }
-                        else
-                        {
-                            errorMessage = "Approval Request Expression (Message ID: " + blobId + ") validation failed: " + validationResults.ToJson();
+                            validationResults.Remove(socketExceptionValidationResult);
+                            errorMessage = "Approval Request Expression (Message ID: " + blobId + ") validation failed ( " + Constants.SocketExceptionMessage + ")" + validationResults.ToJson();
+                            logData.Add(LogDataKey.ErrorMessage, errorMessage);
+                            logData.Add(LogDataKey.ValidationResults, validationResults);
+                            _logProvider.LogError(TrackingEvent.PayloadApproverAliasResolutionSocketEx, new Exception(TrackingEvent.PayloadApproverAliasResolutionSocketEx.ToString()), logData);
+
+                            LogMessageProgress(new List<ApprovalRequestExpressionExt> { expression }, TrackingEvent.ARXValidationFailed, brokeredMessage, new FailureData() { Message = validationResults.Count + " business rules failed", ID = ((int)TrackingEvent.ARXValidationFailed).ToString() }, CriticalityLevel.Yes);
                         }
 
-                        logData.Add(LogDataKey.ErrorMessage, errorMessage);
-                        logData.Add(LogDataKey.ValidationResults, validationResults);
-                        _logProvider.LogError(TrackingEvent.PayloadValidationFailure, new Exception(TrackingEvent.PayloadValidationFailure.ToString()), logData);
+                        if (validationResults != null && validationResults.Count > 0)
+                        {
+                            if (expression.ApprovalIdentifier != null)
+                            {
+                                errorMessage = "Approval Request Expression (DocumentNumber: " + expression.ApprovalIdentifier.DocumentNumber
+                                                    + " - " + expression.ApprovalIdentifier.DisplayDocumentNumber + ") validation failed: " + validationResults.ToJson();
+                            }
+                            else
+                            {
+                                errorMessage = "Approval Request Expression (Message ID: " + blobId + ") validation failed: " + validationResults.ToJson();
+                            }
 
-                        LogMessageProgress(new List<ApprovalRequestExpressionExt> { expression }, TrackingEvent.ARXValidationFailed, brokeredMessage, new FailureData() { Message = validationResults.Count + " business rules failed", ID = ((int)TrackingEvent.ARXValidationFailed).ToString() }, CriticalityLevel.Yes);
+                            logData.Add(LogDataKey.ErrorMessage, errorMessage);
+                            logData.Add(LogDataKey.ValidationResults, validationResults);
+                            _logProvider.LogError(TrackingEvent.PayloadValidationFailure, new Exception(TrackingEvent.PayloadValidationFailure.ToString()), logData);
+
+                            LogMessageProgress(new List<ApprovalRequestExpressionExt> { expression }, TrackingEvent.ARXValidationFailed, brokeredMessage, new FailureData() { Message = validationResults.Count + " business rules failed", ID = ((int)TrackingEvent.ARXValidationFailed).ToString() }, CriticalityLevel.Yes);
+                            return;
+                        }
                         return;
                     }
 
@@ -274,7 +286,7 @@ public class GenericReceiver : IApprovalsTopicReceiver
 
                 // ITenant object created to change ARX object. This could be modified for CREATE & UPDATE operations only
                 ITenant tenant = _tenantFactory.GetTenant(TenantInfo);
-                tenant.ModifyApprovalRequestExpression(requestExpressions);
+                await tenant.ModifyApprovalRequestExpression(requestExpressions);
 
                 MaintainQueue(requestExpressions, "Insert");
 
@@ -283,16 +295,12 @@ public class GenericReceiver : IApprovalsTopicReceiver
 
                 MaintainQueue(requestExpressions, "Delete");
             }
-            catch (MessageLockLostException lockLostException)
+            catch (ServiceBusException ex)
             {
-                logData[LogDataKey.EventId] = TrackingEvent.MoveMessageToDeadletterFromMainTopic;
-                logData[LogDataKey.EventName] = TrackingEvent.MoveMessageToDeadletterFromMainTopic.ToString();
-                LogMessageProgress(requestExpressions, TrackingEvent.ARXFailedToProcessInMainTopic, brokeredMessage, new FailureData() { ID = (TrackingEvent.MoveMessageToDeadletterFromMainTopic + TenantInfo.TenantId).ToString(), Message = lockLostException.Message }, CriticalityLevel.Yes);
+                LogMessageProgress(requestExpressions, TrackingEvent.ARXFailedToProcessInMainTopic, brokeredMessage, new FailureData() { ID = (TrackingEvent.MoveMessageToDeadletterFromMainTopic + TenantInfo.TenantId).ToString(), Message = ex.Message }, CriticalityLevel.Yes);
             }
             catch (Exception ex)
             {
-                logData[LogDataKey.EventId] = TrackingEvent.MoveMessageToDeadletterFromMainTopic;
-                logData[LogDataKey.EventName] = TrackingEvent.MoveMessageToDeadletterFromMainTopic.ToString();
                 LogMessageProgress(requestExpressions, TrackingEvent.ARXFailedToProcessInMainTopic, brokeredMessage, new FailureData() { ID = ((int)TrackingEvent.MoveMessageToDeadletterFromMainTopic + TenantInfo.TenantId).ToString(), Message = ex.Message }, CriticalityLevel.Yes);
             }
         }
@@ -306,7 +314,7 @@ public class GenericReceiver : IApprovalsTopicReceiver
     /// <param name="requestExpressions"></param>
     /// <param name="numberOfRetries"></param>
     /// <returns></returns>
-    private async Task ProcessMainApproval(string blobId, List<ApprovalRequestExpressionExt> requestExpressions, Message message, int numberOfRetries)
+    private async Task ProcessMainApproval(string blobId, List<ApprovalRequestExpressionExt> requestExpressions, ServiceBusReceivedMessage message, int numberOfRetries)
     {
         var logData = new Dictionary<LogDataKey, object>()
         {
@@ -319,7 +327,6 @@ public class GenericReceiver : IApprovalsTopicReceiver
         {
             if (numberOfRetries < 0)
             {
-                var retryMessages = new List<ServiceBusMessage>();
                 foreach (var expression in requestExpressions)
                 {
                     logData.Add(LogDataKey.Xcv, expression.Telemetry.Xcv);
@@ -329,22 +336,15 @@ public class GenericReceiver : IApprovalsTopicReceiver
                     logData.Add(LogDataKey.TenantTelemetryData, expression.Telemetry.TenantTelemetry);
                     logData.Add(LogDataKey.BusinessProcessName, string.Format(TenantInfo.BusinessProcessName, Constants.BusinessProcessNameSendPayload, expression.Operation));
 
-                    if (message.UserProperties.ContainsKey("ApprovalRequestVersion") && message.UserProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
+                    if (message.ApplicationProperties.ContainsKey("ApprovalRequestVersion") && message.ApplicationProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
                     {
                         byte[] messageToUpload = ConvertToByteArray(expression);
                         await _blobHelper.UploadByteArray(messageToUpload, Constants.PrimaryMessageContainer, blobId);
                     }
-                    var brokreredMessage = BuildBrokeredMessage(expression, message);
-                    retryMessages.Add(brokreredMessage.Map());
+                    
+                    await _serviceBusHelper.SendMessage(expression, message.MessageId, _config[ConfigurationKey.ApprovalRequestVersion.ToString()].ToString(), _approvalsRetryTopic);
                 }
-#if DEBUG
-                var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
-#else
-                var azureCredential = new ManagedIdentityCredential();
-#endif
-                ServiceBusClient client = new ServiceBusClient(_serviceBusNamespace + ".servicebus.windows.net", azureCredential);
-                var messageSender = client.CreateSender(_approvalsRetryTopic);
-                await messageSender.SendMessagesAsync(retryMessages);
+
                 LogMessageProgress(requestExpressions, TrackingEvent.BrokeredMessageMovedToRetryTopic, message, new FailureData() { ID = ((int)TrackingEvent.MoveMessageToRetry).ToString(), Message = TrackingEvent.MoveMessageToRetry.ToString() }, CriticalityLevel.Yes);
             }
             else
@@ -361,7 +361,7 @@ public class GenericReceiver : IApprovalsTopicReceiver
                     logData.Add(LogDataKey.BusinessProcessName, string.Format(TenantInfo.BusinessProcessName, Constants.BusinessProcessNameSendPayload, requestExpression.Operation));
                     if (!failedApprovalRequests.Any(f => f.ApprovalIdentifier.DisplayDocumentNumber == requestExpression.ApprovalIdentifier.DisplayDocumentNumber))
                     {
-                        if (message.UserProperties.ContainsKey("ApprovalRequestVersion") && message.UserProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
+                        if (message.ApplicationProperties.ContainsKey("ApprovalRequestVersion") && message.ApplicationProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
                         {
                             await _blobHelper.DeleteBlob(Constants.PrimaryMessageContainer, blobId);
                         }
@@ -443,7 +443,7 @@ public class GenericReceiver : IApprovalsTopicReceiver
     /// <param name="message"></param>
     /// <param name="failureData"></param>
     /// <param name="criticalityLevel"></param>
-    private void LogMessageProgress(List<ApprovalRequestExpressionExt> expressions, TrackingEvent trackingEvent, Message message, FailureData failureData, CriticalityLevel criticalityLevel)
+    private void LogMessageProgress(List<ApprovalRequestExpressionExt> expressions, TrackingEvent trackingEvent, ServiceBusReceivedMessage message, FailureData failureData, CriticalityLevel criticalityLevel)
     {
         foreach (var expression in expressions)
         {
@@ -492,22 +492,22 @@ public class GenericReceiver : IApprovalsTopicReceiver
     /// <param name="approvalRequestExpression"> Arx from which brokered brokeredMessage will be created.</param>
     /// <param name="message">Brokered message property object</param>
     /// <returns>Returns the brokered brokeredMessage.</returns>
-    private Message BuildBrokeredMessage(ApprovalRequestExpression approvalRequestExpression, Message message)
+    private ServiceBusMessage BuildBrokeredMessage(ApprovalRequestExpression approvalRequestExpression, ServiceBusMessage message)
     {
         if (approvalRequestExpression == null)
             throw new ArgumentNullException("approvalRequestExpression", "Approval Request Expression cannot be null");
 
-        Message brokeredMessage = new Message(message.Body)
+        ServiceBusMessage brokeredMessage = new ServiceBusMessage(message.Body)
         {
-            MessageId = message.MessageId
-        };
-        brokeredMessage.CorrelationId = message.CorrelationId;
+            MessageId = message.MessageId,
+            CorrelationId = message.CorrelationId
+        };        
 
         // Adding properties to the Message
-        brokeredMessage.UserProperties["ApplicationId"] = message.UserProperties.ToJson().FromJson<Dictionary<string, string>>()["ApplicationId"];
-        brokeredMessage.UserProperties["ApprovalRequestVersion"] = message.UserProperties["ApprovalRequestVersion"]?.ToString();
-        brokeredMessage.UserProperties["CreatedDate"] = DateTime.UtcNow;
-        brokeredMessage.UserProperties["ContentType"] = "ApprovalRequestExpression";
+        brokeredMessage.ApplicationProperties["ApplicationId"] = message.ApplicationProperties.ToJson().FromJson<Dictionary<string, string>>()["ApplicationId"];
+        brokeredMessage.ApplicationProperties["ApprovalRequestVersion"] = message.ApplicationProperties["ApprovalRequestVersion"]?.ToString();
+        brokeredMessage.ApplicationProperties["CreatedDate"] = DateTime.UtcNow;
+        brokeredMessage.ApplicationProperties["ContentType"] = "ApprovalRequestExpression";
         brokeredMessage.ContentType = "application/json";
 
         return brokeredMessage;

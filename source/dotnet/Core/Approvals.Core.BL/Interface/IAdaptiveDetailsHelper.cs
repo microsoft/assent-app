@@ -24,6 +24,8 @@ public interface IAdaptiveDetailsHelper
     /// <param name="xcv">X-correlation ID</param>
     /// <param name="tcv">T-Correlation ID</param>
     /// <param name="templateType">Template Type</param>
+    /// <param name="objectId">Alias's ObjectId</param>
+    /// <param name="domain">Alias's Domain</param>
     /// <returns>Adaptive Card Payload JObject</returns>
     Task<Dictionary<string, JObject>> GetAdaptiveTemplate(
         int tenantId,
@@ -34,5 +36,7 @@ public interface IAdaptiveDetailsHelper
         string sessionId,
         string xcv,
         string tcv,
-        int templateType);
+        int templateType,
+        string objectId,
+        string domain);
 }

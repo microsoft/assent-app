@@ -33,13 +33,12 @@ public class AboutHelper : IAboutHelper
     /// <summary>
     /// Get about
     /// </summary>
-    /// <param name="host"></param>
     /// <param name="sessionId"></param>
     /// <param name="loggedInAlias"></param>
     /// <param name="clientDevice"></param>
     /// <param name="alias"></param>
     /// <returns></returns>
-    public dynamic GetAbout(string host, string sessionId, string loggedInAlias, string clientDevice, string alias)
+    public dynamic GetAbout(string sessionId, string loggedInAlias, string clientDevice, string alias)
     {
         var logData = new Dictionary<LogDataKey, object>();
 
@@ -68,7 +67,7 @@ public class AboutHelper : IAboutHelper
             using (_performanceLogger.StartPerformanceLogger("PerfLog", string.IsNullOrWhiteSpace(clientDevice) ? Constants.WebClient : clientDevice, string.Format(Constants.PerfLogCommon, "About"), logData))
             {
                 // Check if Host is null or empty and throw back an exception which will get returned as bad request to caller
-                if (string.IsNullOrEmpty(host))
+                if (string.IsNullOrEmpty(clientDevice))
                 {
                     throw new InvalidOperationException(_config[ConfigurationKey.Message_NoTenantForDevice.ToString()]);
                 }
@@ -93,13 +92,12 @@ public class AboutHelper : IAboutHelper
     /// <summary>
     /// Get help data
     /// </summary>
-    /// <param name="host"></param>
     /// <param name="sessionId"></param>
     /// <param name="loggedInAlias"></param>
     /// <param name="clientDevice"></param>
     /// <param name="alias"></param>
     /// <returns></returns>
-    public JObject GetHelpData(string host, string sessionId, string loggedInAlias, string clientDevice, string alias)
+    public JObject GetHelpData(string sessionId, string loggedInAlias, string clientDevice, string alias)
     {
         var logData = new Dictionary<LogDataKey, object>();
 
@@ -130,7 +128,7 @@ public class AboutHelper : IAboutHelper
             using (_performanceLogger.StartPerformanceLogger("PerfLog", string.IsNullOrWhiteSpace(clientDevice) ? Constants.WebClient : clientDevice, string.Format(Constants.PerfLogCommon, "Help"), logData))
             {
                 // Check if Host is null or empty and throw back an exception which will get returned as bad request to caller
-                if (string.IsNullOrEmpty(host))
+                if (string.IsNullOrEmpty(clientDevice))
                 {
                     throw new InvalidOperationException(_config[ConfigurationKey.Message_NoTenantForDevice.ToString()]);
                 }

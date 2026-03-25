@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Common\Approvals.Data.Azure.Storage\Approvals.Data.Azure.Storage.csproj" />
+    <ProjectReference Include="..\..\Common\Approvals.LogManager\Approvals.LogManager.csproj" />
+    <ProjectReference Include="..\..\Common\Approvals.Messaging.Azure.ServiceBus\Approvals.Messaging.Azure.ServiceBus.csproj" />
+    <ProjectReference Include="..\..\Contract\Approvals.Contracts\Approvals.Contracts.csproj" />
+    <ProjectReference Include="..\..\Contract\Approvals.Model\Approvals.Model.csproj" />
+    <ProjectReference Include="..\Approvals.Common.BL\Approvals.Common.BL.csproj" />
+    <ProjectReference Include="..\Approvals.Core.BL\Approvals.Core.BL.csproj" />
+  </ItemGroup>
+</Project>

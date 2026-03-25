@@ -1,11 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>Microsoft.CFS.Approvals.NotificationProcessor.BL</RootNamespace>
     <AssemblyName>Microsoft.CFS.Approvals.NotificationProcessor.BL</AssemblyName>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\Common\Approvals.LogManager\Approvals.LogManager.csproj" />
     <ProjectReference Include="..\..\Common\Approvals.Utilities\Approvals.Utilities.csproj" />
@@ -13,5 +11,4 @@
     <ProjectReference Include="..\Approvals.Common.BL\Approvals.Common.BL.csproj" />
     <ProjectReference Include="..\Approvals.Core.BL\Approvals.Core.BL.csproj" />
   </ItemGroup>
-
 </Project>

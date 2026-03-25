@@ -35,6 +35,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Hosting.Internal;
 using Microsoft.Extensions.Logging;
+using Microsoft.Internal.AntiSSRF;
 using Polly;
 using Polly.Extensions.Http;
 
@@ -58,7 +59,7 @@ public class WatchdogStartup : FunctionsStartup
         var azureCredential = new ManagedIdentityCredential();
 #endif
 
-        configurationBuilder.AddAzureAppConfiguration(options =>
+		configurationBuilder.AddAzureAppConfiguration(options =>
         {
             options.Connect(new Uri(Environment.GetEnvironmentVariable(Constants.AzureAppConfigurationUrl)), azureCredential)
                 // Load configuration values with no label
@@ -81,11 +82,6 @@ public class WatchdogStartup : FunctionsStartup
 
         // Replace the existing config with the new one
         builder.Services.Replace(ServiceDescriptor.Singleton(typeof(IConfiguration), config));
-
-        builder.Services.AddLogging(configure =>
-        {
-            configure.AddApplicationInsights(Environment.GetEnvironmentVariable(Constants.AppinsightsInstrumentationkey));
-        });
 
         var client = new BlobServiceClient(
                         new Uri($"https://" + config?[Constants.StorageAccountName] + ".blob.core.windows.net/"),
@@ -117,7 +113,6 @@ public class WatchdogStartup : FunctionsStartup
         builder.Services.AddScoped<IActionAuditLogger, ActionAuditLogger>();
         builder.Services.AddScoped<IActionAuditLogHelper, ActionAuditLogHelper>();
         builder.Services.AddScoped<IEditableConfigurationHelper, EditableConfigurationHelper>();
-        builder.Services.AddScoped<IApprovalSummaryHelper, ApprovalSummaryHelper>();
         builder.Services.AddScoped<ISummaryHelper, SummaryHelper>();
         builder.Services.AddScoped<IDetailsHelper, DetailsHelper>();
         builder.Services.AddScoped<IImageRetriever, UserImageRetrieval>();
@@ -127,8 +122,17 @@ public class WatchdogStartup : FunctionsStartup
         builder.Services.AddScoped<IApprovalTenantInfoHelper, ApprovalTenantInfoHelper>();
         builder.Services.AddScoped<IEmailHelper, EmailHelper>();
         builder.Services.AddScoped<IAuthenticationHelper, AuthenticationHelper>();
+
+        var policy = new AntiSSRFPolicy();
+        policy.SetDefaults();
         builder.Services.AddSingleton<HttpClientHandler>();
-        builder.Services.AddHttpClient<IHttpHelper, HttpHelper>()
+        builder.Services
+            .AddHttpClient<IHttpHelper, HttpHelper>()
+            .ConfigurePrimaryHttpMessageHandler(_ =>
+            {
+                var handler = policy.GetHandler();
+                return handler;
+            })
             .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
             .AddPolicyHandler(GetRetryPolicy());
     }

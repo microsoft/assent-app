@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Domain.BL.Interface;
-using Microsoft.CFS.Approvals.Domain.BL.Tenants.Model;
 using Microsoft.CFS.Approvals.Model;
 using Microsoft.CFS.Approvals.Utilities.Interface;
 using Microsoft.Extensions.Configuration;
@@ -24,12 +23,12 @@ public class ValidationBase : IValidation
     /// <summary>
     /// The configuration
     /// </summary>
-    private readonly IConfiguration _config = null;
+    protected readonly IConfiguration _config = null;
 
     /// <summary>
     /// The name resolution helper
     /// </summary>
-    private readonly INameResolutionHelper _nameResolutionHelper = null;
+    protected readonly INameResolutionHelper _nameResolutionHelper = null;
 
     /// <summary>
     /// Constructor of ValidationBase
@@ -56,9 +55,26 @@ public class ValidationBase : IValidation
         {
             foreach (Approver approver in arx.Approvers)
             {
-                if (await _nameResolutionHelper.GetUserName(approver.Alias) == approver.Alias)
+                if (!string.IsNullOrWhiteSpace(approver.Id))
                 {
-                    results.Add(new ValidationResult("Invalid arx.Approvers.Alias", new List<string> { "ApprovalRequestExpression.Approvers.Alias", approver.Alias.ToString() }));
+                    if (await _nameResolutionHelper.GetUser(approver.Id) == null)
+                        results.Add(new ValidationResult("arx.Approvers.Id is invalid", new List<string> { "ApprovalRequestExpression.Approvers.Id", approver.Id.ToString() }));
+                }
+                else if (!string.IsNullOrWhiteSpace(approver.UserPrincipalName))
+                {
+                    if (await _nameResolutionHelper.GetUser(approver.UserPrincipalName) == null)
+                        results.Add(new ValidationResult("arx.Approvers.UserPrincipalName is invalid", new List<string> { "ApprovalRequestExpression.Approvers.UserPrincipalName", approver.UserPrincipalName.ToString() }));
+                }
+                else
+                {
+                    var userValidation = await _nameResolutionHelper.IsValidUser(approver.Alias);
+                    if (!userValidation.Item1)
+                    {
+                        if (userValidation.Item2.Equals(Constants.SocketExceptionMessage))
+                            results.Add(new ValidationResult(Constants.SocketExceptionMessage, new List<string> { "ApprovalRequestExpression.Approvers.Alias", approver.Alias.ToString() }));
+                        else
+                            results.Add(new ValidationResult("Invalid arx.Approvers.Alias", new List<string> { "ApprovalRequestExpression.Approvers.Alias", approver.Alias.ToString() }));
+                    }
                 }
             }
         }
@@ -74,51 +90,5 @@ public class ValidationBase : IValidation
     public virtual bool IsExternalUser(string alias)
     {
         return false;
-    }
-
-    /// <summary>
-    /// Validation for the file attachment.
-    /// </summary>
-    /// <param name="file">File uploaded.</param>
-    /// <param name="attachments">List of attachments.</param>
-    /// <param name="attachmentProperties">Attachment properties for the tenant.</param>
-    /// <param name="files">List of files uploaded.</param>
-    /// <returns>Returns the validation result object.</returns>
-    public virtual ValidationCheckResult ValidateAttachmentUpload(AttachmentUploadInfo file, List<Attachment> attachments, AttachmentProperties attachmentProperties, List<AttachmentUploadInfo> files)
-    {
-        var validationCheckResult = new ValidationCheckResult();
-        bool fileValid = true;
-        var errorMessage = new List<string>();
-
-        FileAttachmentOptions fileAttachmentOptions = attachmentProperties?.FileAttachmentOptions;
-
-        if (fileAttachmentOptions != null && !fileAttachmentOptions.AllowFileUpload)
-        {
-            fileValid = false;
-            errorMessage.Add("File upload feature is disabled");
-        }
-
-        if (fileAttachmentOptions != null && !fileAttachmentOptions.AllowedFileTypes.Split(',').Contains($".{file.Name.Split('.')[file.Name.Split('.').Length - 1]}"))
-        {
-            fileValid = false;
-            errorMessage.Add("File Type is not permitted.");
-        }
-
-        if (fileAttachmentOptions != null && fileAttachmentOptions.MaxAttachments != null && (attachments.Count + files.Count) > fileAttachmentOptions.MaxAttachments)
-        {
-            fileValid = false;
-            errorMessage.Add("Maximum file count exceeded.");
-        }
-
-        if (fileAttachmentOptions != null && file.FileSize > fileAttachmentOptions.MaxFileSizeInBytes)
-        {
-            fileValid = false;
-            errorMessage.Add("Maximum file size exceeded.");
-        }
-
-        validationCheckResult.ActionResult = fileValid;
-        validationCheckResult.ErrorMessages = errorMessage;
-
-        return validationCheckResult;
     }
 }

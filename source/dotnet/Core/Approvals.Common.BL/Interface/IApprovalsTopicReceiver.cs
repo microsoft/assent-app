@@ -5,7 +5,7 @@ namespace Microsoft.CFS.Approvals.Common.BL.Interface;
 
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
+using global::Azure.Messaging.ServiceBus;
 using Microsoft.CFS.Approvals.Model;
 
 public interface IApprovalsTopicReceiver
@@ -21,7 +21,7 @@ public interface IApprovalsTopicReceiver
     /// </summary>
     /// <param name="blobId"></param>
     /// <param name="message"></param>
-    Task OnMainMessageReceived(string blobId, Message message);
+    Task OnMainMessageReceived(string blobId, ServiceBusReceivedMessage message);
 
     /// <summary>
     /// Business logic to retry process a message from the retry topic.
@@ -29,5 +29,5 @@ public interface IApprovalsTopicReceiver
     /// <param name="blobId"></param>
     /// <param name="message"></param>
     /// <returns></returns>
-    Task OnRetryMessageRecieved(string blobId, Message message);
+    Task OnRetryMessageRecieved(string blobId, ServiceBusReceivedMessage message);
 }

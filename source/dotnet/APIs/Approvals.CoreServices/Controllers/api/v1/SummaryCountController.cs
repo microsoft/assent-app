@@ -58,7 +58,7 @@ public class SummaryCountController : BaseApiController
     {
         try
         {
-            var approvalsData = await _summaryHelper.GetSummaryCountData(string.Empty, LoggedInAlias, Alias, sessionId, Host);
+            var approvalsData = await _summaryHelper.GetSummaryCountData(SignedInUser, OnBehalfUser, string.Empty, sessionId, ClientDevice, DomainName, GetTokenOrCookie());
             return Ok(approvalsData);
         }
         catch (Exception ex)
@@ -92,14 +92,14 @@ public class SummaryCountController : BaseApiController
             // Get Tenant Info by DocTypeID
             var tenants = (await _approvalTenantInfoHelper.GetTenants(false)).Where(x => x.DocTypeId.Equals(Guid.Parse(tenantDocTypeID).ToString())).ToList();
 
-            var approvalsCount = await _summaryHelper.GetSummaryCountData(tenantDocTypeID, LoggedInAlias, Alias, sessionId, Host);
+            var approvalsCount = await _summaryHelper.GetSummaryCountData(SignedInUser, OnBehalfUser, tenantDocTypeID, sessionId, ClientDevice, DomainName, GetTokenOrCookie());
             var count = "0";
             if (approvalsCount != null && approvalsCount.Any())
             {
                 count = approvalsCount.FirstOrDefault()["Count"].ToString();
             }
 
-            var pendingRequestObject = JObject.FromObject(new { ApproverAlias = Alias, Count = count, ID = tenantDocTypeID, TenantName = tenants.FirstOrDefault().AppName });
+            var pendingRequestObject = JObject.FromObject(new { ApproverAlias = OnBehalfUser.MailNickname, Count = count, ID = tenantDocTypeID, TenantName = tenants.FirstOrDefault().AppName });
             return Ok(pendingRequestObject);
         }
         catch (Exception ex)

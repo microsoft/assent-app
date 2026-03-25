@@ -35,10 +35,28 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
         public string ActionByAlias { get; set; }
 
         /// <summary>
+        /// NameAlias entity of the person who performed the action. This is the approver in Approvals
+        /// </summary>
+        [DataMember]
+        public User ActionBy { get; set; }
+
+        /// <summary>
         /// Alias of the person for who the action was performed. This is used in case where delegate approver takes action.
         /// </summary>
         [DataMember]
         public string ActionByDelegateInMSApprovals { get; set; }
+
+        /// <summary>
+        /// NameAlias entity of the person for who the action was performed. This is used in case where delegate approver takes action.
+        /// </summary>
+        [DataMember]
+        public User ActionByDelegate { get; set; }
+
+        /// <summary>
+        /// This is the Backup Approver who is Backup Approver who has taken action on the request.
+        /// </summary>
+        [DataMember]
+        public string ElevatedApproverUpn { get; set; }
 
         /// <summary>
         /// Alias of the person for who the action was performed. This is used in case where delegate approver takes action.

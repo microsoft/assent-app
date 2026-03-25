@@ -6,7 +6,7 @@ namespace Microsoft.CFS.Approvals.Common.DL.Interface;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
+using global::Azure.Messaging.ServiceBus;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Model;
@@ -25,52 +25,65 @@ public interface IApprovalSummaryProvider
     /// </summary>
     /// <param name="approver"></param>
     /// <param name="tenants"></param>
+    /// <param name="approverId">Approver Alias's object Id</param>
+    /// <param name="approverDomain">Approver Alias's domain</param>
+    /// <param name="isSubmittedRequest">Flag to indicate if the request is for submitted approvals</param>
     /// <returns></returns>
-    List<ApprovalSummaryData> GetApprovalSummaryJsonByApproverAndTenants(string approver, List<ApprovalTenantInfo> tenants);
+    List<ApprovalSummaryData> GetApprovalSummaryJsonByApproverAndTenants(string approver, List<ApprovalTenantInfo> tenants, string approverId, string approverDomain, bool isSubmittedRequest = false);
 
     /// <summary>
     /// Get approval summary count json by approver and tenants
     /// </summary>
     /// <param name="approver"></param>
     /// <param name="tenants"></param>
+    /// <param name="approverId">Approver Alias's object Id</param>
+    /// <param name="approverDomain">Approver Alias's domain</param>
     /// <returns></returns>
-    List<ApprovalSummaryRow> GetApprovalSummaryCountJsonByApproverAndTenants(string approver, List<ApprovalTenantInfo> tenants);
+    List<ApprovalSummaryRow> GetApprovalSummaryCountJsonByApproverAndTenants(string approver, List<ApprovalTenantInfo> tenants, string approverId, string approverDomain);
 
     /// <summary>
     /// Get approval summary by document number
     /// </summary>
     /// <param name="documentTypeID"></param>
     /// <param name="documentNumber"></param>
-    /// <param name="approver"></param>
+    /// <param name="approverAlias"></param>
+    /// <param name="approverId"></param>
+    /// <param name="domain"></param>
     /// <returns></returns>
-    ApprovalSummaryRow GetApprovalSummaryByDocumentNumber(string documentTypeID, string documentNumber, string approver);
+    ApprovalSummaryRow GetApprovalSummaryByDocumentNumber(string documentTypeID, string documentNumber, string approverAlias, string approverId, string domain);
 
     /// <summary>
     /// Get approvals summary by document number including soft delete data
     /// </summary>
     /// <param name="documentTypeID"></param>
     /// <param name="documentNumber"></param>
-    /// <param name="approver"></param>
+    /// <param name="approverAlias"></param>
+    /// <param name="approverId"></param>
+    /// <param name="approverDomain"></param>
     /// <returns></returns>
-    ApprovalSummaryRow GetApprovalSummaryByDocumentNumberIncludingSoftDeleteData(string documentTypeID, string documentNumber, string approver);
+    ApprovalSummaryRow GetApprovalSummaryByDocumentNumberIncludingSoftDeleteData(string documentTypeID, string documentNumber, string approverAlias, string approverId, string approverDomain);
 
     /// <summary>
     /// Get approval summary by document number and approver
     /// </summary>
     /// <param name="documentTypeID"></param>
     /// <param name="documentNumber"></param>
-    /// <param name="approver"></param>
+    /// <param name="approverAlias"></param>
+    /// <param name="approverId">In case external users allowed: ObjectId else Alias</param>
+    /// <param name="approverDomain"></param>
     /// <returns></returns>
-    ApprovalSummaryRow GetApprovalSummaryByDocumentNumberAndApprover(string documentTypeID, string documentNumber, string approver);
+    ApprovalSummaryRow GetApprovalSummaryByDocumentNumberAndApprover(string documentTypeID, string documentNumber, string approverAlias, string approverId, string approverDomain);
 
     /// <summary>
     /// Get approval summary by RowKey and approver
     /// </summary>
     /// <param name="documentTypeID"></param>
     /// <param name="rowKey"></param>
-    /// <param name="approver"></param>
+    /// <param name="approverAlias"></param>
+    /// <param name="approverId"></param>
+    /// <param name="approverDomain"></param>
     /// <returns></returns>
-    ApprovalSummaryRow GetApprovalSummaryByRowKeyAndApprover(string documentTypeID, string rowKey, string approver);
+    ApprovalSummaryRow GetApprovalSummaryByRowKeyAndApprover(string documentTypeID, string rowKey, string approverAlias, string approverId, string approverDomain);
 
     /// <summary>
     /// Get document summary by RowKey
@@ -89,15 +102,6 @@ public interface IApprovalSummaryProvider
     Task<bool> AddApprovalSummary(ApprovalTenantInfo tenant, ApprovalRequestExpression approvalRequest, List<ApprovalSummaryRow> summaryRows);
 
     /// <summary>
-    /// Update summary post action
-    /// </summary>
-    /// <param name="tenant"></param>
-    /// <param name="SummaryRow"></param>
-    /// <param name="actionDate"></param>
-    /// <param name="actionName"></param>
-    void UpdateSummaryPostAction(ApprovalTenantInfo tenant, ApprovalSummaryRow SummaryRow, DateTime? actionDate, string actionName);
-
-    /// <summary>
     /// Remove approval summary
     /// </summary>
     /// <param name="approvalRequest"></param>
@@ -105,33 +109,29 @@ public interface IApprovalSummaryProvider
     /// <param name="message"></param>
     /// <param name="tenantInfo"></param>
     /// <returns></returns>
-    Task<AzureTableRowDeletionResult> RemoveApprovalSummary(ApprovalRequestExpressionExt approvalRequest, List<ApprovalSummaryRow> summaryRows, Message message, ApprovalTenantInfo tenantInfo);
+    Task<AzureTableRowDeletionResult> RemoveApprovalSummary(ApprovalRequestExpressionExt approvalRequest, List<ApprovalSummaryRow> summaryRows, ServiceBusReceivedMessage message, ApprovalTenantInfo tenantInfo);
 
     /// <summary>
-    /// Update is read summary
-    /// </summary>
-    /// <param name="documentNumber"></param>
-    /// <param name="approver"></param>
-    /// <param name="tenantInfo"></param>
-    /// <returns></returns>
-    bool UpdateIsReadSummary(string documentNumber, string approver, ApprovalTenantInfo tenantInfo);
-
-    /// <summary>
-    /// Update summary is out of sync challenged
+    /// Update summary
     /// </summary>
     /// <param name="tenant"></param>
-    /// <param name="SummaryRow"></param>
+    /// <param name="documentNumber"></param>
+    /// <param name="approverAlias"></param>
+    /// <param name="approverId"></param>
+    /// <param name="approverDomain"></param>
     /// <param name="actionDate"></param>
     /// <param name="actionName"></param>
-    void UpdateSummaryIsOutOfSyncChallenged(ApprovalTenantInfo tenant, ApprovalSummaryRow SummaryRow, DateTime? actionDate, string actionName);
+    /// <returns></returns>
+    Task UpdateSummary(ApprovalTenantInfo tenant, string documentNumber, string approverAlias, string approverId, string approverDomain, DateTime? actionDate, string actionName);
 
     /// <summary>
-    /// Update summary for offline approval
+    /// Update summary
     /// </summary>
     /// <param name="tenant"></param>
-    /// <param name="SummaryRow"></param>
+    /// <param name="summaryRow"></param>
+    /// <param name="actionDate"></param>
     /// <param name="actionName"></param>
-    void UpdateSummaryForOfflineApproval(ApprovalTenantInfo tenant, ApprovalSummaryRow SummaryRow, string actionName);
+    Task UpdateSummary(ApprovalTenantInfo tenant, ApprovalSummaryRow summaryRow, DateTime? actionDate, string actionName);
 
     /// <summary>
     /// Update summary in batch async
@@ -157,4 +157,15 @@ public interface IApprovalSummaryProvider
     /// </summary>
     /// <param name="row"></param>
     void ApplyCaseConstraints(ApprovalSummaryRow row);
+
+    /// <summary>
+    /// Finds a summary row by approver and document number without requiring a documentTypeID.
+    /// Queries ApprovalSummary with PartitionKey scoped to the approver and a DocumentNumber column filter.
+    /// </summary>
+    /// <param name="documentNumber">The document number to search for.</param>
+    /// <param name="approverAlias">The approver alias.</param>
+    /// <param name="approverId">The approver's object ID (for external users).</param>
+    /// <param name="approverDomain">The approver's domain.</param>
+    /// <returns>The first matching ApprovalSummaryRow, or null if not found.</returns>
+    Task<ApprovalSummaryRow> FindSummaryByApproverAndDocumentNumberAsync(string documentNumber, string approverAlias, string approverId, string approverDomain);
 }

@@ -78,7 +78,7 @@ namespace Microsoft.CFS.Approvals.Contracts.AttributeValidators
             if (arx.ActionDetail != null)
                 results.AddRange(new ActionDetailValidator().Validator(arx.ActionDetail));
             if (arx.NotificationDetail != null)
-                results.AddRange(new NotificationDetailsValidator().Validator(arx.NotificationDetail));
+                results.AddRange(new NotificationDetailsValidator().Validator(arx.NotificationDetail, arx.Operation));
             if (arx.SummaryData != null)
                 results.AddRange(new SummaryJsonValidator().Validator(arx.SummaryData, arx.DocumentTypeId));
 

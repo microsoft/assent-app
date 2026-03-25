@@ -1,14 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Version>1.0</Version>
-    <Authors></Authors>
+    <Authors>
+    </Authors>
     <Company>Microsoft</Company>
     <Product>Microsoft.CFS.Data.Azure.CosmosDb</Product>
     <Copyright>Copyright ©2022 Microsoft Corporation</Copyright>
-    <RepositoryUrl></RepositoryUrl>
+    <RepositoryUrl>
+    </RepositoryUrl>
     <PackageTags>Azure CosmosDb</PackageTags>
     <Description>The main purpose of this package is to provide a common set of methods for read/write/delete operations on Azure CosmosDb.</Description>
     <PackageReleaseNotes>Data.Azure.CosmosDb - v1.1.0</PackageReleaseNotes>
@@ -19,8 +20,9 @@
     <RootNamespace>Microsoft.CFS.Approvals.Data.Azure.CosmosDb</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Azure.Identity" Version="1.10.2" />
-    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.19.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="Azure.Core" />
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" />
+    <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
 </Project>

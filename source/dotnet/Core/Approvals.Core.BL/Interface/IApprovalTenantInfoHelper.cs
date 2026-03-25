@@ -6,6 +6,7 @@ namespace Microsoft.CFS.Approvals.Core.BL.Interface;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Model;
 
 /// <summary>
@@ -90,6 +91,8 @@ public interface IApprovalTenantInfoHelper
     /// <param name="xcv">The xcv.</param>
     /// <param name="tcv">The tcv.</param>
     /// <param name="oauth2UserToken">OAuth 2.0 Token</param>
+    /// <param name="objectId">Alias's ObjectId</param>
+    /// <param name="domain">Alias's Domain</param>
     /// <returns>Returns Approval tenant info with action details.</returns>
-    Task<ApprovalTenantInfo> GetTenantActionDetails(int tenantId, string loggedInAlias, string alias, string clientDevice, string sessionId, string xcv, string tcv, string oauth2UserToken);
+    Task<ApprovalTenantInfo> GetTenantActionDetails(int tenantId, string loggedInAlias, string alias, string clientDevice, string sessionId, string xcv, string tcv, string oauth2UserToken, string objectId, string domain);
 }

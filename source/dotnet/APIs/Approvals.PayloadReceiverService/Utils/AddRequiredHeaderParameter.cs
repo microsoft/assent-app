@@ -26,7 +26,7 @@ public class AddRequiredHeaderParameter : IOperationFilter
         {
             Name = "ReportId",
             In = ParameterLocation.Header,
-            Schema = new OpenApiSchema() { Type = "String" },
+            Schema = new OpenApiSchema() { Type = "string" },
             Required = false // set to false if this is optional
         });
     }

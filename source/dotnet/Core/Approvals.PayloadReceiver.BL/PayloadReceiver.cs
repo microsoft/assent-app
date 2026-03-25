@@ -30,7 +30,7 @@ public class PayloadReceiver : IPayloadReceiver
     /// <summary>
     /// The payload delivery
     /// </summary>
-    private readonly IPayloadDelivery _payloadDelivery = null;
+    private readonly IPayloadDelivery<ApprovalRequestExpression> _payloadDelivery = null;
 
     /// <summary>
     /// The performance logger
@@ -42,7 +42,7 @@ public class PayloadReceiver : IPayloadReceiver
     /// </summary>
     private readonly ILogProvider _logProvider = null;
 
-    public PayloadReceiver(IPayloadValidator payloadValidator, IPayloadDelivery payloadDelivery, IPerformanceLogger performanceLogger, ILogProvider logProvider)
+    public PayloadReceiver(IPayloadValidator payloadValidator, IPayloadDelivery<ApprovalRequestExpression> payloadDelivery, IPerformanceLogger performanceLogger, ILogProvider logProvider)
     {
         _payloadValidator = payloadValidator;
         _payloadDelivery = payloadDelivery;
@@ -201,7 +201,7 @@ public class PayloadReceiver : IPayloadReceiver
                         _performanceLogger.StartPerformanceLogger("PerfLog", Constants.PayloadReceiver, string.Format(Constants.PerfLogAction, "GenerateAndSendBrokeredMsg", tenant.AppName), new Dictionary<LogDataKey, object>())
                         )
                 {
-                    if (!(_payloadDelivery.SendPayload(approvalRequestExpression, payloadId)).Result)
+                    if (!(_payloadDelivery.SendPayload(approvalRequestExpression, approvalRequestExpression.DocumentTypeId.ToString(), payloadId.ToString(), approvalRequestExpression.Telemetry.Xcv).Result))
                     {
                         throw new WebException("Payload could not be sent", WebExceptionStatus.SendFailure);
                     }

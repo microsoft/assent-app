@@ -4,7 +4,7 @@
 namespace Microsoft.CFS.Approvals.AuditProcessor.BL.Interface;
 
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
+using global::Azure.Messaging.ServiceBus;
 
 public interface IAuditAgentHelper
 {
@@ -14,5 +14,5 @@ public interface IAuditAgentHelper
     /// <param name="blobId">Blod Id</param>
     /// <param name="message">Service Bus Message</param>
     /// <returns></returns>
-    Task ProcessMessage(string blobId, Message message);
+    Task ProcessMessage(string blobId, ServiceBusReceivedMessage message);
 }

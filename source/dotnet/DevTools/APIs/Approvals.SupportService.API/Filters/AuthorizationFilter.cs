@@ -4,7 +4,7 @@
 using System;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 
 namespace Microsoft.CFS.Approvals.SupportService.API.Filters
 {

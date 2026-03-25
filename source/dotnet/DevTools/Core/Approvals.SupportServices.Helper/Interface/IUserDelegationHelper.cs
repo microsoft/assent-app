@@ -4,7 +4,7 @@
 namespace Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.CFS.Approvals.DevTools.Model.Models;
+using Microsoft.CFS.Approvals.Model;
 
 public interface IUserDelegationHelper
 {
@@ -12,11 +12,11 @@ public interface IUserDelegationHelper
 
     Task<List<dynamic>> GetUserDelegations();
 
-    UserDelegationEntity GetDelegation(string id);
+    UserDelegationSetting GetDelegation(string id);
 
-    Task<bool> InsertUserDelegation(UserDelegationEntity userDelegationEntity);
+    Task<bool> InsertUserDelegation(UserDelegationSetting userDelegationEntity);
 
     Task<bool> InsertUserDelegationHistory(UserDelegationSettingsHistory userDelegationSettingsHistory);
 
-    Task DeleteUserDelegations(UserDelegationEntity delegations);
+    Task DeleteUserDelegations(UserDelegationSetting delegations);
 }

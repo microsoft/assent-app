@@ -95,7 +95,6 @@ public class TestPullTenantDetailsController : ControllerBase
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "PullTenantDetailsFailure");
             _logProvider.LogError(TrackingEvent.PullTenantDetailsFailure, ex, logData);
             return BadRequest(ex.Message);
         }

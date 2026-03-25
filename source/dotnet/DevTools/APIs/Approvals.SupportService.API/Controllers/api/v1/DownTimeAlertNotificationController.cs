@@ -9,10 +9,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.DevTools.Model.Models;
 using Microsoft.CFS.Approvals.SupportService.API.Filters;
-using Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper;
 
 
 /// <summary>
@@ -37,14 +37,13 @@ public class DownTimeAlertNotificationController : ControllerBase
     /// <param name="configurationHelper"></param>
     /// <param name="actionContextAccessor"></param>
     public DownTimeAlertNotificationController(
-        Func<string, string, ITableHelper> azureTableStorageHelper,
+        Func<string, ITableHelper> azureTableStorageHelper,
          ConfigurationHelper configurationHelper,
          IActionContextAccessor actionContextAccessor)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _azureTableStorageHelper = azureTableStorageHelper(
-            configurationHelper.appSettings[_environment]["StorageAccountName"],
-            configurationHelper.appSettings[_environment]["StorageAccountKey"]);
+            configurationHelper.appSettings[_environment]["StorageAccountName"]);
     }
 
     /// <summary>

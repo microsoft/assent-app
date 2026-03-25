@@ -124,6 +124,21 @@ public class ApprovalTenantInfo : BaseTableEntity
     public bool NotifyTeamsWithWatchdogReminder { get; set; }
 
     /// <summary>
+    /// List of Copilot feature Ids with flag values
+    /// </summary>
+    public string CopilotFeatures { get; set; }
+
+    public List<CopilotFeature> CopilotFeatureList 
+    {
+        get
+        {
+            if (!string.IsNullOrEmpty(CopilotFeatures))
+                return CopilotFeatures.FromJson<List<CopilotFeature>>();
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Gets or sets the name of the application.
     /// </summary>
     /// <value>The name of the application.</value>
@@ -225,6 +240,11 @@ public class ApprovalTenantInfo : BaseTableEntity
     public bool NotifyWatchDogEmailWithApprovalFunctionality { get; set; }
 
     /// <summary>
+    /// Gets or sets value indicating whether MEO framework should be enabled for sending emails
+    /// </summary>
+    public bool EnableMEOFramework { get; set; }
+
+    /// <summary>
     /// Gets or sets a value indicating whether this instance is race condition handled.
     /// </summary>
     /// <value><c>true</c> if this instance is race condition handled; otherwise, <c>false</c>.</value>
@@ -241,6 +261,11 @@ public class ApprovalTenantInfo : BaseTableEntity
     /// </summary>
     /// <value>true or false</value>
     public bool IgnoreCurrentApproverCheck { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether submitters are internal user.
+    /// </summary>
+    public bool IsSubmitterInternalUser { get; set; }
 
     /// <summary>
     /// Gets the action details.
@@ -335,6 +360,12 @@ public class ApprovalTenantInfo : BaseTableEntity
     public string TemplateName { get; set; }
 
     /// <summary>
+    /// Gets or sets the value for allow bulk approval.
+    /// </summary>
+    /// <value>Value for allow bulk approval.</value>
+    public string AllowBulkApprovalCondition { get; set; }
+
+    /// <summary>
     /// Gets or sets the name of the tool.
     /// </summary>
     /// <value>The name of the tool.</value>
@@ -345,6 +376,12 @@ public class ApprovalTenantInfo : BaseTableEntity
     /// </summary>
     /// <value>The name of the class.</value>
     public string ClassName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the name of the Data Contract Class .
+    /// </summary>
+    /// <value>The name of the class.</value>
+    public string DataContractClassName { get; set; }
 
     /// <summary>
     /// Gets or sets the use document number for row key.
@@ -624,6 +661,24 @@ public class ApprovalTenantInfo : BaseTableEntity
         set
         {
             DetailsComponentSettings = value.ToJson();
+        }
+    }
+
+    /// <summary>
+    /// Auto Reassignment details in JSON format
+    /// </summary>
+    public string AutoReassignmentDetails { get; set; }
+
+    /// <summary>
+    /// Auto Reassignment details
+    /// </summary>
+    public AutoReassignment AutoReassignment
+    {
+        get
+        {
+            if (!string.IsNullOrEmpty(AutoReassignmentDetails))
+                return AutoReassignmentDetails.FromJson<AutoReassignment>();
+            return null;
         }
     }
 }
@@ -1063,4 +1118,43 @@ public class DetailsComponentInfo
     /// Gets or sets CDN url
     /// </summary>
     public string CdnUrl { get; set; }
+}
+
+public class CopilotFeature
+{
+    /// <summary>
+    /// Copilot Feature Name
+    /// </summary>
+    public string FeatureName { get; set; }
+
+    /// <summary>
+    /// Copilot Feature Id
+    /// </summary>
+    public int FeatureId { get; set; }
+
+    /// <summary>
+    /// Copilot Feature Status
+    /// </summary>
+    public int Status { get; set; }
+}
+
+public class AutoReassignment
+{
+    /// <summary>
+    /// Gets or sets a value indicating whether auto reassignment is enabled.
+    /// </summary>
+    public bool IsAutoReassignmentEnabled { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether default backup approver as a manager is enabled.
+    /// </summary>
+    public bool IsDefaultBackupApproverEnabled { get; set; }
+    /// <summary>
+    /// Gets or sets the threshold in days for auto reassignment.
+    /// </summary>
+    public int ThresholdInDays { get; set; }
+    /// <summary>
+    /// Gets or sets the maximum number of reassignments allowed.
+    /// </summary>
+    public int NonEscalationManagerLevel { get; set; }
 }

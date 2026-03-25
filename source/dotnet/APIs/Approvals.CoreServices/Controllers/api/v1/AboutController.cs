@@ -66,7 +66,7 @@ public class AboutController : BaseApiController
         var logData = new Dictionary<LogDataKey, object>
         {
             { LogDataKey.Xcv, Xcv },
-            { LogDataKey.DXcv, Tcv },
+            { LogDataKey.DXcv, MessageId },
             { LogDataKey.StartDateTime, DateTime.UtcNow },
             { LogDataKey.SessionId, sessionId },
             { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() }
@@ -78,7 +78,7 @@ public class AboutController : BaseApiController
         {
             using (_performanceLogger.StartPerformanceLogger("PerfLog", Constants.WebClient, string.Format(Constants.PerfLogAction, "AboutController", "Get information for About page"), logData))
             {
-                var result = _aboutHelper.GetAbout(Host, sessionId, LoggedInAlias, Host, Alias);
+                var result = _aboutHelper.GetAbout(sessionId, SignedInUser.MailNickname, ClientDevice, OnBehalfUser.MailNickname);
                 logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
                 _logProvider.LogInformation(TrackingEvent.WebApiAboutSuccess, logData);
                 return Ok(result);

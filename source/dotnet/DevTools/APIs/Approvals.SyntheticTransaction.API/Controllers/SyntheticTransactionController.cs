@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.Model;
@@ -57,18 +58,17 @@ public class SyntheticTransactionController : ControllerBase
 
     public SyntheticTransactionController(ISyntheticTransactionHelper syntheticTransactionHelper,
         IPayloadReceiverHelper payloadReceiverHelper,
-        Func<string, string, ITableHelper> azureStorageHelper,
+        Func<string, ITableHelper> azureStorageHelper,
         IConfiguration configuration,
         IActionContextAccessor actionContextAccessor,
-        ConfigurationSetting configurationSetting,
+        ConfigurationHelper configurationHelper,
         ILogProvider logProvider)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _syntheticTransactionHelper = syntheticTransactionHelper;
         _payloadReceiverHelper = payloadReceiverHelper;
         _azureStorageHelper = azureStorageHelper(
-            configurationSetting.appSettings[_environment].StorageAccountName,
-            configurationSetting.appSettings[_environment].StorageAccountKey);
+            configurationHelper.appSettings[_environment]["StorageAccountName"]);
         _configuration = configuration;
         _logProvider = logProvider;
     }
@@ -86,6 +86,8 @@ public class SyntheticTransactionController : ControllerBase
         Dictionary<LogDataKey, object> logData = new Dictionary<LogDataKey, object>();
         logData.Add(LogDataKey.Xcv, tcv);
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.Environment, _environment);
         logData.Add(LogDataKey.BlobName, blobName);
         logData.Add(LogDataKey.Operation, "Get Blob - Controller");
@@ -97,7 +99,6 @@ public class SyntheticTransactionController : ControllerBase
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "GetBlobFailure");
             _logProvider.LogError(TrackingEvent.GetBlobFailure, ex, logData);
             return null;
         }
@@ -138,7 +139,6 @@ public class SyntheticTransactionController : ControllerBase
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "UploadToBlobFailure");
             _logProvider.LogError(TrackingEvent.UploadToBlobFailure, ex, logData);
             return BadRequest(ex.Message);
         }
@@ -221,7 +221,6 @@ public class SyntheticTransactionController : ControllerBase
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "GenerateFormFailure");
             _logProvider.LogError(TrackingEvent.GenerateFormFailure, ex, logData);
             return BadRequest(ex.Message);
         }
@@ -282,8 +281,9 @@ public class SyntheticTransactionController : ControllerBase
             }
             logData.Add(LogDataKey.DocumentNumber, jpayload?.SelectToken("ApprovalIdentifier")?.SelectToken("DisplayDocumentNumber").Value<string>());
             var result = _payloadReceiverHelper.SendPayload(jpayload?.ToString(), tcv).Result;
+            var content = result.Content.ReadAsStringAsync().Result;
 
-            var PayloadValidationResults = JsonConvert.DeserializeObject<JObject>(result.Content.ReadAsStringAsync().Result)?.SelectToken("PayloadProcessingResult")?.SelectToken("PayloadValidationResults")?.Value<JArray>();
+            var PayloadValidationResults = JsonConvert.DeserializeObject<JObject>(content)?.SelectToken("PayloadProcessingResult")?.SelectToken("PayloadValidationResults")?.Value<JArray>();
             if (result.IsSuccessStatusCode && PayloadValidationResults == null)
             {
                 _logProvider.LogInformation(TrackingEvent.SendPayloadSuccessful, logData);
@@ -308,11 +308,10 @@ public class SyntheticTransactionController : ControllerBase
                 logData.Add(LogDataKey.PayloadResult, result.ToString());
                 _logProvider.LogInformation(TrackingEvent.SendPayloadFailure, logData);
             }
-            return Ok(result);
+            return Ok(content);
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "SendPayloadFailure");
             _logProvider.LogError(TrackingEvent.SendPayloadFailure, ex, logData);
             return BadRequest(ex.Message);
         }

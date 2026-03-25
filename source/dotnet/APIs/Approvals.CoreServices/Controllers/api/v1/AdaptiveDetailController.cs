@@ -13,6 +13,7 @@ using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Extensions;
 using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
+using Microsoft.CFS.Approvals.Utilities.Extension;
 using Microsoft.CFS.Approvals.Utilities.Helpers;
 using Swashbuckle.AspNetCore.Annotations;
 
@@ -93,8 +94,18 @@ public class AdaptiveDetailController : BaseApiController
             {
                 ArgumentGuard.NotNull(tenantId, nameof(tenantId));
 
-                TemplateType type = (TemplateType)Enum.Parse(typeof(TemplateType), templateType, true);
-                var result = await _adaptiveDetailsHelper.GetAdaptiveTemplate(tenantId, Alias, LoggedInAlias, Host, GetTokenOrCookie(), sessionId, xcv, tcv, (int)type);
+                // Validate and sanitize the templateType parameter
+                // Allow only alphanumeric characters, spaces, and basic punctuation
+                string sanitizedInput = Extension.SanitizeInput(templateType);
+                if (sanitizedInput == null)
+                {
+                    return BadRequest("Invalid request: Input contains disallowed characters.");
+                }
+                if (!Enum.TryParse(typeof(TemplateType), sanitizedInput, true, out var type))
+                {
+                    return BadRequest("Invalid templateType parameter.");
+                }
+                var result = await _adaptiveDetailsHelper.GetAdaptiveTemplate(tenantId, OnBehalfUser.MailNickname, SignedInUser.MailNickname, ClientDevice, GetTokenOrCookie(), sessionId, xcv, tcv, (int)type, OnBehalfUser.Id, DomainName);
 
                 logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
                 _logProvider.LogInformation(TrackingEvent.WebApiAdaptiveDetailSuccess, logData);

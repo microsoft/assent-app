@@ -36,6 +36,6 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
         /// This will be to retry after this interval. Please use this only if a transient error occurred and not when a non-transient or fatal error occurs
         /// </summary>
         [DataMember]
-        public int RetryInterval { get; set; }
+        public int? RetryInterval { get; set; }
     }
 }

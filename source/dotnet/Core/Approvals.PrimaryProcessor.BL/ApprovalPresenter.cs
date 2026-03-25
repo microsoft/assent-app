@@ -13,10 +13,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using global::Azure.Data.Tables;
-using global::Azure.Identity;
 using global::Azure.Messaging.ServiceBus;
-using Microsoft.Azure.ServiceBus;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
@@ -26,6 +23,7 @@ using Microsoft.CFS.Approvals.Domain.BL.Interface;
 using Microsoft.CFS.Approvals.Extensions;
 using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
+using Microsoft.CFS.Approvals.Messaging.Azure.ServiceBus.Interface;
 using Microsoft.CFS.Approvals.Model;
 using Microsoft.CFS.Approvals.PrimaryProcessor.BL.Interface;
 using Microsoft.CFS.Approvals.Utilities.Extension;
@@ -95,8 +93,14 @@ public class ApprovalPresenter : IApprovalPresenter
     /// </summary>
     private readonly IAuthenticationHelper _authenticationHelper = null;
 
-    private readonly string _serviceBusNamespace;
+    /// <summary>
+    /// The approval blob data provider
+    /// </summary>
+    private readonly IApprovalBlobDataProvider _approvalBlobDataProvider = null;
+
     private readonly string _notificationTopic;
+
+    private readonly IServiceBusHelper _serviceBusHelper = null;
 
     #endregion Private Variables
 
@@ -120,6 +124,8 @@ public class ApprovalPresenter : IApprovalPresenter
     /// <param name="tenantFactory"></param>
     /// <param name="blobStorageHelper"></param>
     /// <param name="authenticationHelper"></param>
+    /// <param name="serviceBusHelper"></param>
+    /// <param name="approvalBlobDataProvider"></param>
     public ApprovalPresenter(
         IConfiguration config,
         IApprovalDetailProvider approvalDetailProvider,
@@ -131,7 +137,9 @@ public class ApprovalPresenter : IApprovalPresenter
         IApprovalHistoryProvider historyProvider,
         ITenantFactory tenantFactory,
         IBlobStorageHelper blobStorageHelper,
-        IAuthenticationHelper authenticationHelper)
+        IAuthenticationHelper authenticationHelper,
+        IServiceBusHelper serviceBusHelper,
+        IApprovalBlobDataProvider approvalBlobDataProvider)
     {
         _config = config;
         _approvalDetailProvider = approvalDetailProvider;
@@ -144,8 +152,9 @@ public class ApprovalPresenter : IApprovalPresenter
         _tenantFactory = tenantFactory;
         _blobStorageHelper = blobStorageHelper;
         _authenticationHelper = authenticationHelper;
-        _serviceBusNamespace = _config[ConfigurationKey.ServiceBusNamespace.ToString()];
         _notificationTopic = _config[ConfigurationKey.TopicNameNotification.ToString()];
+        _serviceBusHelper = serviceBusHelper;
+        _approvalBlobDataProvider = approvalBlobDataProvider;
     }
 
     #region Implemented methods
@@ -156,7 +165,7 @@ public class ApprovalPresenter : IApprovalPresenter
     /// <param name="approvalRequests"></param>
     /// <param name="message"></param>
     /// <returns>List of approval request expressions</returns>
-    public async Task<List<ApprovalRequestExpressionExt>> ProcessApprovalRequestExpressions(List<ApprovalRequestExpressionExt> approvalRequests, Message message)
+    public async Task<List<ApprovalRequestExpressionExt>> ProcessApprovalRequestExpressions(List<ApprovalRequestExpressionExt> approvalRequests, ServiceBusReceivedMessage message)
     {
         using (var perfTracer = _performanceLogger.StartPerformanceLogger("PerfLog", Constants.WorkerRole, string.Format(Constants.PerfLogAction, TenantInfo.AppName, "Process list of ApprovalRequestExpressions ")
             , new Dictionary<LogDataKey, object> { { LogDataKey.MessageId, message.MessageId } }))
@@ -212,7 +221,7 @@ public class ApprovalPresenter : IApprovalPresenter
     /// <param name="approvalRequest"></param>
     /// <param name="message"></param>
     /// <returns></returns>
-    public async Task<bool> AddApprovalDetailsToAzureTable(ApprovalRequestDetails approvalRequest, Message message)
+    public async Task<bool> AddApprovalDetailsToAzureTable(ApprovalRequestDetails approvalRequest, ServiceBusReceivedMessage message)
     {
         var logData = new Dictionary<LogDataKey, object>
         {
@@ -235,14 +244,20 @@ public class ApprovalPresenter : IApprovalPresenter
             {
                 detailsExistsOrNot = _approvalDetailProvider.GetAllApprovalsDetails(TenantInfo.TenantId, approvalRequest.ApprovalIdentifier.DisplayDocumentNumber);
                 List<string> tenantOperationNames = new List<string>();
+                List<string> tenantOperationNamesNew = new List<string>();
                 if (TenantInfo.DetailOperations != null && TenantInfo.DetailOperations.DetailOpsList != null)
                 {
                     tenantOperationNames = TenantInfo.DetailOperations.DetailOpsList.Select(o => o.operationtype).ToList();
                 }
+                tenantOperationNames.ForEach(op => tenantOperationNamesNew.Add(op + "|" + TenantInfo.DocTypeId));
 
-                detailsExistsOrNot = detailsExistsOrNot.Where(d => tenantOperationNames.Contains(d.RowKey)).ToList();
+                detailsExistsOrNot = detailsExistsOrNot.Where(d => tenantOperationNamesNew.Contains(d.RowKey)).ToList();
+                //Backward Compatibility
+                if (detailsExistsOrNot.Count == 0)
+                    detailsExistsOrNot = detailsExistsOrNot.Where(d => tenantOperationNames.Contains(d.RowKey)).ToList();
+                
                 logData.Add(LogDataKey.EntryUtcDateTime, approvalRequest.CreateDateTime);
-
+                
                 // Insert only if brokered message UTC time is later than storage timestamp.
                 if (detailsExistsOrNot.Count == 0 || approvalRequest.CreateDateTime > detailsExistsOrNot.FirstOrDefault().Timestamp)
                 {
@@ -286,7 +301,7 @@ public class ApprovalPresenter : IApprovalPresenter
     /// <param name="activityId"></param>
     /// <param name="tenant"></param>
     /// <returns></returns>
-    public async Task<bool> DownloadAndStoreAttachments(ApprovalRequestDetails approvalRequest, string activityId, ITenant tenant)
+    public async Task<Tuple<bool, List<Attachment>>> DownloadAndStoreAttachments(ApprovalRequestDetails approvalRequest, string activityId, ITenant tenant)
     {
         var logData = new Dictionary<LogDataKey, object>()
         {
@@ -310,28 +325,29 @@ public class ApprovalPresenter : IApprovalPresenter
 
             // Get the attachment details from SummaryJson.Attachments or Tenant details (DT1 or HDR or REC)
             List<Attachment> attachments = await tenant.GetAttachmentDetails(approvalRequest.SummaryRows, approvalRequest.ApprovalIdentifier, telemetry);
+            string approverUpn = approvalRequest.SummaryRows?.FirstOrDefault()?.Approver + approvalRequest.SummaryRows?.FirstOrDefault()?.ApproverDomain;
             logData.Add(LogDataKey.Attachments, attachments);
 
             if (attachments != null && attachments.Count > 0)
             {
                 foreach (var attachment in attachments)
                 {
-                    await tenant.DownloadDocumentUsingAttachmentIdAsync(approvalRequest.ApprovalIdentifier, attachment.ID.ToString(), telemetry);
+                    await tenant.DownloadDocumentUsingAttachmentIdAsync(approvalRequest.ApprovalIdentifier, attachment.ID.ToString(), telemetry, approverUpn);
                 }
                 // return true when the 'Attachments' is null or empty JArray
                 _logger.LogInformation(TrackingEvent.DownloadAndStoreAttachmentsSuccessOrSkipped, logData);
             }
-            return true;
+            return new Tuple<bool, List<Attachment>>(true, attachments);
         }
         catch (Exception ex)
         {
             _logger.LogError(TrackingEvent.DownloadAndStoreAttachmentsFail, ex, logData);
-            return false;
+            return new Tuple<bool, List<Attachment>>(true, null);
         }
     }
 
     /// <summary>
-    /// Creates a new Brokered Message and pushes it to Notification Topic
+    /// Creates a new Brokered ServiceBusMessage and pushes it to Notification Topic
     /// The messages which will reach this topic will be processed separately
     /// </summary>
     /// <param name="approvalRequest"></param>
@@ -340,7 +356,7 @@ public class ApprovalPresenter : IApprovalPresenter
     /// <param name="notification"></param>
     /// <param name="detailsLoadSuccess"></param>
     /// <returns></returns>
-    public async Task MoveMessageToNotificationTopic(ApprovalRequestExpressionExt approvalRequest, Message message, List<ApprovalSummaryRow> summaryRows, DeviceNotificationInfo notification = null, bool detailsLoadSuccess = false)
+    public async Task MoveMessageToNotificationTopic(ApprovalRequestExpressionExt approvalRequest, ServiceBusReceivedMessage message, List<ApprovalSummaryRow> summaryRows, DeviceNotificationInfo notification = null, bool detailsLoadSuccess = false)
     {
         // TODO:: Handle cases to send multiple Device notifications in case of multiple approvers
         var logData = new Dictionary<LogDataKey, object>()
@@ -421,7 +437,7 @@ public class ApprovalPresenter : IApprovalPresenter
                     byte[] messageToUpload = ConvertToByteArray(notificationDetails);
                     string blobId = Encoding.UTF8.GetString(message.Body);
 
-                    if (message.UserProperties.ContainsKey("ApprovalRequestVersion") && message.UserProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
+                    if (message.ApplicationProperties.ContainsKey("ApprovalRequestVersion") && message.ApplicationProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
                     {
                         await _blobStorageHelper.DeleteBlob(Constants.NotificationMessageContainer, blobId);
                     }
@@ -432,24 +448,7 @@ public class ApprovalPresenter : IApprovalPresenter
 
                     await _blobStorageHelper.UploadByteArray(messageToUpload, Constants.NotificationMessageContainer, blobId);
 
-                    // Create a BrokeredMessage of the customized class,
-                    // with ApplicationId property set to DocumentTypeId, and the same CorrelationID as the orginal BrokeredMessage
-                    ServiceBusMessage newMessage = new ServiceBusMessage(blobId);
-                    newMessage.ApplicationProperties["ApplicationId"] = message.UserProperties["ApplicationId"];
-                    newMessage.ApplicationProperties["ApprovalNotificationDetails"] = true;
-                    newMessage.ApplicationProperties["ApprovalNotificationRequestVersion"] = _config[ConfigurationKey.ApprovalRequestVersion.ToString()];
-                    newMessage.CorrelationId = message.GetCorrelationId();
-
-                    logData[LogDataKey.BrokerMessage] = new { MessageBody = blobId, newMessage.ApplicationProperties, newMessage.CorrelationId }.ToJson();
-
-#if DEBUG
-                    var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
-#else
-                    var azureCredential = new ManagedIdentityCredential();
-#endif
-                    ServiceBusClient client = new ServiceBusClient(_serviceBusNamespace + ".servicebus.windows.net", azureCredential);
-                    var messageSender = client.CreateSender(_notificationTopic);
-                    await messageSender.SendMessageAsync(newMessage);
+                    await _serviceBusHelper.SendMessage(approvalRequest, message.MessageId, _config[ConfigurationKey.ApprovalRequestVersion.ToString()], _notificationTopic, blobId, int.Parse(_config[ConfigurationKey.NotificationTopicDelaySeconds.ToString()]));
 
                     // If no error occurs and all are processed, set the flag to true
                     approvalRequest.IsNotificationSent = true;
@@ -473,6 +472,69 @@ public class ApprovalPresenter : IApprovalPresenter
         }
     }
 
+    /// <summary>
+    /// Creates a new Brokered ServiceBusMessage and pushes it to secondary queue
+    /// </summary>
+    /// <param name="approvalRequest"></param>
+    /// <param name="message"
+    /// <returns></returns>
+    public async Task MoveMessageToSecondaryQueue(ApprovalRequestExpressionExt approvalRequest, ServiceBusReceivedMessage message)
+    {
+        var logData = new Dictionary<LogDataKey, object>()
+        {
+            { LogDataKey._CorrelationId, message.GetCorrelationId() },
+            { LogDataKey.ReceivedTcv, approvalRequest.Telemetry.Tcv },
+            { LogDataKey.TenantTelemetryData, approvalRequest.Telemetry.TenantTelemetry },
+            { LogDataKey.BusinessProcessName, string.Format(TenantInfo.BusinessProcessName, Constants.BusinessProcessNameSendPayload, approvalRequest.Operation.ToString()) },
+            { LogDataKey.Tcv, approvalRequest.Telemetry.Tcv },
+            { LogDataKey.Xcv, approvalRequest.Telemetry.Xcv },
+            { LogDataKey.DocumentNumber, approvalRequest.ApprovalIdentifier.DisplayDocumentNumber },
+            { LogDataKey.DXcv, approvalRequest.ApprovalIdentifier.DisplayDocumentNumber },
+            { LogDataKey.TenantName, TenantInfo.AppName},
+        };
+        try
+        {
+            int noOfRetries = 3;
+            for (int i = 1; i <= noOfRetries; i++)
+            {
+                try
+                {
+                    logData[LogDataKey.Counter] = i;
+
+                    if (string.IsNullOrEmpty(approvalRequest.Telemetry.BusinessProcessName))
+                    {
+                        approvalRequest.Telemetry.BusinessProcessName = TenantInfo.BusinessProcessName;
+                    }
+                    byte[] messageToUpload = ConvertToByteArray(approvalRequest);
+                    string blobId = Encoding.UTF8.GetString(message.Body);
+
+                    if (message.ApplicationProperties.ContainsKey("ApprovalRequestVersion") && message.ApplicationProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
+                    {
+                        await _blobStorageHelper.DeleteBlob(Constants.SecondaryMessageContainer, blobId);
+                    }
+                    else
+                    {
+                        blobId = string.Format("{0}|{1}|{2}", approvalRequest.DocumentTypeId, approvalRequest.ApprovalIdentifier.DisplayDocumentNumber, approvalRequest.Operation.ToString());
+                    }
+
+                    await _blobStorageHelper.UploadByteArray(messageToUpload, Constants.SecondaryMessageContainer, blobId);
+
+                    await _serviceBusHelper.SendMessage(approvalRequest, message.MessageId, _config[ConfigurationKey.ApprovalRequestVersion.ToString()], _config[ConfigurationKey.QueueNameSecondary.ToString()], blobId);
+
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(TrackingEvent.MoveMessageToSecondaryQueueFail, ex, logData);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(TrackingEvent.MoveMessageToSecondaryQueueFail, ex, logData);
+        }
+    }
+
     #endregion Implemented methods
 
     #region Private methods
@@ -483,7 +545,7 @@ public class ApprovalPresenter : IApprovalPresenter
     /// <param name="approvalRequest"></param>
     /// <param name="message"></param>
     /// <returns></returns>
-    private async Task<ApprovalRequestResult> ProcessApprovalRequest(ApprovalRequestExpressionExt approvalRequest, Message message)
+    private async Task<ApprovalRequestResult> ProcessApprovalRequest(ApprovalRequestExpressionExt approvalRequest, ServiceBusReceivedMessage message)
     {
         using (var perfTracer = _performanceLogger.StartPerformanceLogger("PerfLog", "Worker", string.Format(Constants.PerfLogAction, TenantInfo.AppName, "Process ApprovalRequestExpression based on operation asynchrounously.")
             , new Dictionary<LogDataKey, object> { { LogDataKey.MessageId, message.MessageId }, { LogDataKey.DocumentNumber, approvalRequest?.ApprovalIdentifier?.DocumentNumber } }))
@@ -504,7 +566,7 @@ public class ApprovalPresenter : IApprovalPresenter
     /// <param name="approvalRequest"></param>
     /// <param name="message"></param>
     /// <returns></returns>
-    private async Task<ApprovalRequestResult> ProcessCreateApprovalRequest(ApprovalRequestExpressionExt approvalRequest, Message message)
+    private async Task<ApprovalRequestResult> ProcessCreateApprovalRequest(ApprovalRequestExpressionExt approvalRequest, ServiceBusReceivedMessage message)
     {
         using (var perfTracer = _performanceLogger.StartPerformanceLogger("PerfLog", Constants.WorkerRole, string.Format(Constants.PerfLogAction, TenantInfo.AppName, "Process request creation based on summary exists or not")
             , new Dictionary<LogDataKey, object> { { LogDataKey.MessageId, message.MessageId }, { LogDataKey.DisplayDocumentNumber, approvalRequest?.ApprovalIdentifier?.DocumentNumber } }))
@@ -555,7 +617,7 @@ public class ApprovalPresenter : IApprovalPresenter
     /// <param name="approvalRequest"></param>
     /// <param name="logData"></param>
     /// <returns></returns>
-    private async Task<ApprovalRequestResult> ProcessCreateApprovalRequestForComputeTypes(ApprovalRequestExpressionExt approvalRequest, Message message, Dictionary<LogDataKey, object> logData)
+    private async Task<ApprovalRequestResult> ProcessCreateApprovalRequestForComputeTypes(ApprovalRequestExpressionExt approvalRequest, ServiceBusReceivedMessage message, Dictionary<LogDataKey, object> logData)
     {
         using (var perfTracer = _performanceLogger.StartPerformanceLogger("PerfLog", Constants.WorkerRole, string.Format(Constants.PerfLogAction, TenantInfo.AppName, "Process request creation which contains summary"), logData))
         {
@@ -600,12 +662,32 @@ public class ApprovalPresenter : IApprovalPresenter
                 {
                     isSummaryInserted = await _approvalSummaryProvider.AddApprovalSummary(TenantInfo, approvalRequest, approvalSummaryRows);
 
+                    if (TenantInfo.IsSubmitterInternalUser && isSummaryInserted && approvalSummaryRows?.Count > 0)
+                    {
+                        foreach (var summaryRow in approvalSummaryRows)
+                        {
+                            if (string.IsNullOrWhiteSpace(summaryRow.Requestor))
+                            {
+                                continue;
+                            }
+
+                            var submissionSummaryRow = new SubmissionSummaryRow
+                            {
+                                PartitionKey = summaryRow.Requestor,
+                                RowKey = summaryRow.PartitionKey + summaryRow.RowKey,
+                                ApprovalSummaryPartitionKey = summaryRow.PartitionKey,
+                                ApprovalSummaryRowKey = summaryRow.RowKey
+                            };
+                            await _tableHelper.InsertOrReplace(_config[ConfigurationKey.SubmissionSummaryAzureTableName.ToString()], submissionSummaryRow);
+                        }
+                    }
+
                     #region Save a copy of Summary Data in Details Table
 
                     ApprovalDetailsEntity approvalDetails = new ApprovalDetailsEntity()
                     {
                         PartitionKey = approvalRequest?.ApprovalIdentifier?.GetDocNumber(TenantInfo),
-                        RowKey = Constants.SummaryOperationType,
+                        RowKey = Constants.SummaryOperationType + "|" + TenantInfo.DocTypeId,
                         JSONData = approvalSummaryRows.ToJson(),
                         TenantID = Int32.Parse(TenantInfo.RowKey)
                     };
@@ -617,7 +699,7 @@ public class ApprovalPresenter : IApprovalPresenter
                         BusinessProcessName = string.Format(TenantInfo.BusinessProcessName, Constants.BusinessProcessNameAddSummaryCopy, Constants.BusinessProcessNameDetailsPrefetched)
                     };
 
-                    Task<bool> isSummaryDetailsInserted = Task.Run(() => _approvalDetailProvider.AddTransactionalAndHistoricalDataInApprovalsDetails(approvalDetails, TenantInfo, telemetry));
+                    Task<bool> isSummaryDetailsInserted = _approvalDetailProvider.AddTransactionalAndHistoricalDataInApprovalsDetails(approvalDetails, TenantInfo, telemetry);
                     allTasks.Add(isSummaryDetailsInserted);
 
                     #endregion Save a copy of Summary Data in Details Table
@@ -633,6 +715,7 @@ public class ApprovalPresenter : IApprovalPresenter
             // If summary was successfully processed, process next steps of sending notifications and pre-fetching details
             if (isSummaryInserted)
             {
+                List<Attachment> attachments = null;
                 switch (TenantInfo.ProcessSecondaryAction)
                 {
                     case (int)(ProcessSecondaryActions.ProcessSecondaryActionsOnMainChannel):
@@ -657,7 +740,9 @@ public class ApprovalPresenter : IApprovalPresenter
                             {
                                 var notification = approvalRequest.ToDeviceNotificationInfo(approvalSummaryRows.FirstOrDefault(), message.MessageId);
                                 ApprovalRequestDetails ard = approvalRequest.ToApprovalRequestDetails(approvalSummaryRows, notification, TenantInfo);
-                                approvalRequest.IsDownloadAttachmentSuccess = await DownloadAndStoreAttachments(ard, message.MessageId, tenant);
+                                var tuple = await DownloadAndStoreAttachments(ard, message.MessageId, tenant);
+                                approvalRequest.IsDownloadAttachmentSuccess = tuple.Item1;
+                                attachments = tuple.Item2;
                             }
                         }
                         else
@@ -677,6 +762,12 @@ public class ApprovalPresenter : IApprovalPresenter
 
                         #endregion Send notifications
 
+                        #region Send List of Attachments to Secondary
+
+                        await MoveMessageToSecondaryQueue(approvalRequest, message);
+
+                        #endregion Send List of Attachments to Secondary
+
                         break;
 
                     case (int)(ProcessSecondaryActions.ProcessSecondaryActionsNone):
@@ -692,7 +783,9 @@ public class ApprovalPresenter : IApprovalPresenter
                                 var notification = approvalRequest.ToDeviceNotificationInfo(summaryRow, message.MessageId);
                                 ApprovalRequestDetails ard = approvalRequest.ToApprovalRequestDetails(approvalSummaryRows, notification, TenantInfo);
 
-                                approvalRequest.IsDownloadAttachmentSuccess = await DownloadAndStoreAttachments(ard, message.MessageId, tenant);
+                                var tuple = await DownloadAndStoreAttachments(ard, message.MessageId, tenant);
+                                approvalRequest.IsDownloadAttachmentSuccess = tuple.Item1;
+                                attachments = tuple.Item2;
                             }
                         }
                         else
@@ -711,6 +804,12 @@ public class ApprovalPresenter : IApprovalPresenter
                         }
 
                         #endregion Send notifications
+
+                        #region Send List of Attachments to Secondary
+
+                        await MoveMessageToSecondaryQueue(approvalRequest, message);
+
+                        #endregion Send List of Attachments to Secondary
 
                         break;
                 }
@@ -732,7 +831,7 @@ public class ApprovalPresenter : IApprovalPresenter
     /// <param name="approvalRequest"></param>
     /// <param name="message"></param>
     /// <returns></returns>
-    private async Task<ApprovalRequestResult> ProcessUpdateApprovalRequest(ApprovalRequestExpressionExt approvalRequest, Message message)
+    private async Task<ApprovalRequestResult> ProcessUpdateApprovalRequest(ApprovalRequestExpressionExt approvalRequest, ServiceBusReceivedMessage message)
     {
         try
         {
@@ -800,7 +899,7 @@ public class ApprovalPresenter : IApprovalPresenter
     /// <param name="isNotificationRequired"></param>
     /// <param name="numberOfRetry"></param>
     /// <returns></returns>
-    private async Task<ApprovalRequestResult> ProcessDeleteApprovalRequest(Message message, ApprovalRequestExpressionExt approvalRequest, Boolean isNotificationRequired, int numberOfRetry = 0)
+    private async Task<ApprovalRequestResult> ProcessDeleteApprovalRequest(ServiceBusReceivedMessage message, ApprovalRequestExpressionExt approvalRequest, Boolean isNotificationRequired, int numberOfRetry = 0)
     {
         using (var perfTracer = _performanceLogger.StartPerformanceLogger("PerfLog", Constants.WorkerRole, string.Format(Constants.PerfLogAction, TenantInfo.AppName, "DeleteNotificationProcessing")
             , new Dictionary<LogDataKey, object> { { LogDataKey.MessageId, message.MessageId }, { LogDataKey.DocumentNumber, (approvalRequest == null || approvalRequest.ApprovalIdentifier == null || approvalRequest.ApprovalIdentifier.DocumentNumber == null) ? string.Empty : approvalRequest.ApprovalIdentifier.DocumentNumber } }))
@@ -844,7 +943,12 @@ public class ApprovalPresenter : IApprovalPresenter
 
                 if (summaryRows != null && summaryRows.Any() && approvalRequest.DeleteFor != null && approvalRequest.DeleteFor.Any())
                 {
-                    summaryRows = summaryRows.Where(x => approvalRequest.DeleteFor.Contains(x.PartitionKey)).ToList();
+                    summaryRows = summaryRows.Where(x => approvalRequest.DeleteFor.Contains(x.Approver) || approvalRequest.DeleteFor.Contains(x.PartitionKey) || approvalRequest.DeleteFor.Contains(x.Approver + x.ApproverDomain) || approvalRequest.DeleteFor.Contains(_nameResolutionHelper.GetObjectId(x.Approver + x.ApproverDomain).Result)).ToList();
+                    var backupSummaryRows = _tableHelper.GetTableEntityListByRowKey<ApprovalSummaryRow>(_config[ConfigurationKey.ApprovalSummaryAzureTableName.ToString()], rowKeyValue).Where(b => b.IsBackupApprover == true).ToList();
+                    if (backupSummaryRows != null && backupSummaryRows.Any())
+                    {
+                        summaryRows = summaryRows.Union(backupSummaryRows);
+                    }
                 }
                 if (summaryRows == null || !summaryRows.Any() && numberOfRetry > 0 && TenantInfo.IsRaceConditionHandled)
                 {
@@ -883,9 +987,10 @@ public class ApprovalPresenter : IApprovalPresenter
                 else
                 {
                     summaryRowsFromTenant = summaryRows.ToList();
-                    var additionalDetailsEntity = _approvalDetailProvider.GetApprovalsDetails(TenantInfo.TenantId,
+                    var additionalDetailsEntity = await _approvalDetailProvider.GetApprovalDetailsByOperation(TenantInfo.TenantId,
                                                     approvalRequest.ApprovalIdentifier.GetDocNumber(TenantInfo),
-                                                    Constants.AdditionalDetails);
+                                                    Constants.AdditionalDetails,
+                                                    TenantInfo.DocTypeId);
 
                     JObject additionalDataFromSummary = null;
                     if (summaryRowsFromTenant.FirstOrDefault().SummaryJson.FromJson<SummaryJson>()?.AdditionalData != null)
@@ -902,6 +1007,23 @@ public class ApprovalPresenter : IApprovalPresenter
 
                 if (summaryRowsFromTenant != null && summaryRowsFromTenant.Any())
                 {
+                    var actionByAlias = (TransactionHistoryExtended.IsActionExempt(approvalRequest.ActionDetail.Name)
+                                           || string.IsNullOrEmpty(approvalRequest.ActionDetail.ActionBy?.Alias))
+                          ? string.Empty
+                          : approvalRequest.ActionDetail.ActionBy?.Alias;
+                    if (!string.IsNullOrWhiteSpace(actionByAlias))
+                    {
+                        if (approvalRequest.ActionDetail.ActionBy != null && string.IsNullOrWhiteSpace(approvalRequest.ActionDetail.ActionBy?.UserPrincipalName))
+                        {
+                            approvalRequest.ActionDetail.ActionBy.UserPrincipalName = await _nameResolutionHelper.GetUserPrincipalName(actionByAlias);
+                        }
+                        if (approvalRequest.ActionDetail.ActionBy != null && string.IsNullOrWhiteSpace(approvalRequest.ActionDetail.ActionBy.Id)
+                            && string.IsNullOrWhiteSpace(approvalRequest.ActionDetail.ActionBy.UserPrincipalName))
+                        {
+                            approvalRequest.ActionDetail.ActionBy.Id = (await _nameResolutionHelper.GetUser(approvalRequest.ActionDetail.ActionBy.UserPrincipalName))?.Id;
+                        }
+                    }
+
                     foreach (var summaryRow in summaryRowsFromTenant)
                     {
                         notifications.Add(approvalRequest.ToDeviceNotificationInfo(summaryRow, message.GetCorrelationId()));
@@ -914,6 +1036,26 @@ public class ApprovalPresenter : IApprovalPresenter
                 if (!approvalRequest.IsDeleteOperationComplete)
                 {
                     azuretablerowdeletionresult = await _approvalSummaryProvider.RemoveApprovalSummary(approvalRequest, summaryRows.ToList(), message, TenantInfo);
+
+                    if (TenantInfo.IsSubmitterInternalUser && azuretablerowdeletionresult == AzureTableRowDeletionResult.DeletionSuccessful && summaryRows != null && summaryRows.Any())
+                    {
+                        var submissionSummaryRows = summaryRows.Select(x => new SubmissionSummaryRow()
+                        {
+                            PartitionKey = x.Requestor,
+                            RowKey = x.PartitionKey + x.RowKey,
+                            ETag = global::Azure.ETag.All
+                        }).Where(r => !string.IsNullOrEmpty(r.PartitionKey) && !string.IsNullOrEmpty(r.RowKey)).ToList();
+
+                        if (submissionSummaryRows.Any())
+                        {
+                            var groupedRows = submissionSummaryRows.GroupBy(x => x.PartitionKey);
+                            foreach (var group in groupedRows)
+                            {
+                                await _tableHelper.DeleteRowsAsync(_config[ConfigurationKey.SubmissionSummaryAzureTableName.ToString()], group.ToList());
+                            }
+                        }
+                    }
+
                     LogMessageProgress(new List<ApprovalRequestExpressionExt> { approvalRequest }, TrackingEvent.SummaryDeletedInBackground, message, null, CriticalityLevel.Yes);
 
                     #region Delete Details from Azure Table
@@ -930,6 +1072,14 @@ public class ApprovalPresenter : IApprovalPresenter
                             LogMessageProgress(new List<ApprovalRequestExpressionExt> { approvalRequest }, TrackingEvent.ApprovalDetailRemovalSkipped, message, null, CriticalityLevel.Yes);
                     }
 
+                    // Remove UPATTACH Row key for current approver 
+                    await _approvalDetailProvider.RemoveApprovalsDetails(new List<ApprovalDetailsEntity>() 
+                    { 
+                        new ApprovalDetailsEntity() { PartitionKey = approvalRequest?.ApprovalIdentifier?.GetDocNumber(TenantInfo), RowKey = Constants.UploadAttachmentsOperationType, TenantID = TenantInfo.TenantId },
+                        new ApprovalDetailsEntity() { PartitionKey = approvalRequest?.ApprovalIdentifier?.GetDocNumber(TenantInfo), RowKey = string.Format(Constants.UploadAttachmentsOperationTypeNew, TenantInfo.DocTypeId), TenantID = TenantInfo.TenantId }
+                    });
+                    
+
                     #endregion Delete Details from Azure Table
 
                     #region Create ApprovalHierarchy, encapsulate in ApprovalDetailsEntity object and save in ApprovalsDetails table
@@ -937,10 +1087,10 @@ public class ApprovalPresenter : IApprovalPresenter
                     //Added this to prevent issues while creating Approval Chain in a scenario wherein duplicate update payloads are sent
 
                     string actionDate = (historyData.ActionDate.Value.ToUniversalTime()).ToString("yyyy-MM-dd HH:mm:ss");
-                    isHistoryInserted = await _historyProvider.CheckIfHistoryInsertedAsync(TenantInfo, historyData.Approver, actionDate, historyData.DocumentNumber, historyData.ActionTaken);
+                    isHistoryInserted = await _historyProvider.CheckIfHistoryInsertedAsync(TenantInfo, historyData.Approver, actionDate, historyData.DocumentNumber, historyData.ActionTaken, historyData.ApproverDomain, historyData.ApproverId);
                     if (isHistoryInserted.HasValue && isHistoryInserted.Value)
                     {
-                        await GenerateAndSaveApprovalChain(approvalRequest, summaryRows, historyData);
+                        await GenerateAndSaveApprovalChain(approvalRequest, summaryRowsFromTenant, historyData);
                     }
 
                     #endregion Create ApprovalHierarchy, encapsulate in ApprovalDetailsEntity object and save in ApprovalsDetails table
@@ -954,7 +1104,7 @@ public class ApprovalPresenter : IApprovalPresenter
                         if (historyData != null && approvalRequest.IsHistoryLogged == false)
                         {
                             string actionDate = (historyData.ActionDate.Value.ToUniversalTime()).ToString("yyyy-MM-dd HH:mm:ss");
-                            if (isHistoryInserted ?? await _historyProvider.CheckIfHistoryInsertedAsync(TenantInfo, historyData.Approver, actionDate, historyData.DocumentNumber, historyData.ActionTaken))
+                            if (isHistoryInserted ?? await _historyProvider.CheckIfHistoryInsertedAsync(TenantInfo, historyData.Approver, actionDate, historyData.DocumentNumber, historyData.ActionTaken, historyData.ApproverDomain, historyData.ApproverId))
                             {
                                 await _historyProvider.AddApprovalHistoryAsync(TenantInfo, historyData);
                                 approvalRequest.IsHistoryLogged = true;
@@ -980,6 +1130,24 @@ public class ApprovalPresenter : IApprovalPresenter
                             }
                             approvalRequest.IsNotificationSent = true;
                         }
+                        // TODO: We need to revisit this logic in future to simply the code to avoid multiple enumerations and improve clarity and reduce repeated null/empty checks
+                        // Cancelling scheduled message and deleting corresponding blob from storage if exists
+                        var sequenceNumberForScheduledMessage = summaryRowsFromTenant != null && summaryRowsFromTenant.Any() &&
+                            summaryRowsFromTenant.FirstOrDefault().AutoReassignmentSequenceId != null
+                            ? summaryRowsFromTenant.FirstOrDefault().AutoReassignmentSequenceId
+                            : 0;
+                        if (sequenceNumberForScheduledMessage != 0)
+                            await _serviceBusHelper.CancelScheduledMessageFromServiceBus((long)sequenceNumberForScheduledMessage, _config[ConfigurationKey.QueueNameReassignment.ToString()]);
+                        var blobIdForScheduledMessage = summaryRowsFromTenant != null && summaryRowsFromTenant.Any() ?
+                            summaryRowsFromTenant.FirstOrDefault().AutoReassignmentBlobId : string.Empty;
+                        if (!string.IsNullOrWhiteSpace(blobIdForScheduledMessage))
+                        {
+                            if (await _blobStorageHelper.DoesExist(_config[ConfigurationKey.ReassignmentContainer.ToString()], blobIdForScheduledMessage))
+                            {
+                                await _blobStorageHelper.DeleteBlob(_config[ConfigurationKey.ReassignmentContainer.ToString()], blobIdForScheduledMessage);
+                            }
+                        }
+
                         LogMessageProgress(new List<ApprovalRequestExpressionExt> { approvalRequest }, TrackingEvent.ARXDeleteProcessCompletes, message, null, CriticalityLevel.Yes);
                         return new ApprovalRequestResult()
                         {
@@ -1021,17 +1189,28 @@ public class ApprovalPresenter : IApprovalPresenter
         {
             // Get Existing ApproverChain if any
             List<ApproverChainEntity> existingApproverChainEntity;
-            var approverChainRow = _approvalDetailProvider.GetApprovalsDetails(Int32.Parse(TenantInfo.RowKey), approvalRequest.ApprovalIdentifier.DisplayDocumentNumber, Constants.ApprovalChainOperation);
+            var approverChainRow = _approvalDetailProvider.GetApprovalDetailsByOperation(Int32.Parse(TenantInfo.RowKey), approvalRequest.ApprovalIdentifier.DisplayDocumentNumber, Constants.ApprovalChainOperation, TenantInfo.DocTypeId).Result;
             if (approverChainRow != null)
             {
                 existingApproverChainEntity = approverChainRow.JSONData.FromJson<List<ApproverChainEntity>>();
+                foreach (var approverEntity in existingApproverChainEntity)
+                {
+                    if (approverEntity != null && string.IsNullOrWhiteSpace(approverEntity.UserPrincipalName) && !string.IsNullOrWhiteSpace(approverEntity.Alias))
+                    {
+                        approverEntity.UserPrincipalName = await _nameResolutionHelper.GetUserPrincipalName(approverEntity.Alias);
+                    }
+                    if (approverEntity != null && string.IsNullOrWhiteSpace(approverEntity.Id) && !string.IsNullOrWhiteSpace(approverEntity.UserPrincipalName))
+                    {
+                        approverEntity.Id = (await _nameResolutionHelper.GetUser(approverEntity.UserPrincipalName))?.Id ?? string.Empty;
+                    }
+                }
             }
             else
             {
                 approverChainRow = new ApprovalDetailsEntity()
                 {
                     PartitionKey = approvalRequest?.ApprovalIdentifier?.GetDocNumber(TenantInfo),
-                    RowKey = Constants.ApprovalChainOperation,
+                    RowKey = Constants.ApprovalChainOperation + "|" + TenantInfo.DocTypeId,
                     TenantID = Int32.Parse(TenantInfo.RowKey)
                 };
                 existingApproverChainEntity = new List<ApproverChainEntity>();
@@ -1041,6 +1220,8 @@ public class ApprovalPresenter : IApprovalPresenter
             ApproverChainEntity currentApproverChain = new ApproverChainEntity
             {
                 Action = historyData.ActionTaken,
+                Id = historyData.ApproverId,
+                UserPrincipalName = historyData.Approver + historyData.ApproverDomain,
                 ActionDate = historyData.ActionDate,
                 Alias = historyData.Approver,
                 Name = await _nameResolutionHelper.GetUserName(historyData.Approver),
@@ -1062,12 +1243,12 @@ public class ApprovalPresenter : IApprovalPresenter
             // Save in ApprovalDetails table
             ApprovalsTelemetry telemetry = new ApprovalsTelemetry()
             {
-                Xcv = summaryRows.FirstOrDefault().Xcv,
-                Tcv = summaryRows.FirstOrDefault().Tcv,
+                Xcv = summaryRows?.FirstOrDefault()?.Xcv,
+                Tcv = summaryRows?.FirstOrDefault()?.Tcv,
                 BusinessProcessName = string.Format(TenantInfo.BusinessProcessName, Constants.BusinessProcessNameAddSummaryCopy, Constants.BusinessProcessNameDetailsPrefetched)
             };
 
-            _approvalDetailProvider.AddTransactionalAndHistoricalDataInApprovalsDetails(approverChainRow, TenantInfo, telemetry);
+            await _approvalDetailProvider.AddTransactionalAndHistoricalDataInApprovalsDetails(approverChainRow, TenantInfo, telemetry);
         }
     }
 
@@ -1204,9 +1385,9 @@ public class ApprovalPresenter : IApprovalPresenter
     /// <param name="Tcv"></param>
     /// <param name="BusinessProcessName"></param>
     /// <param name="approvalTenantInfo"></param>
-    /// <param name="approver"></param>
+    /// <param name="approverAlias"></param>
     /// <returns></returns>
-    private async Task<bool> AddDetailsData(Message message, ApprovalRequestExpressionExt approvalRequest, ApprovalIdentifier approvalIdentifier, Dictionary<LogDataKey, object> logData, Dictionary<string, string> detailsData, string Xcv, string Tcv, string BusinessProcessName, ApprovalTenantInfo approvalTenantInfo, string approver)
+    private async Task<bool> AddDetailsData(ServiceBusReceivedMessage message, ApprovalRequestExpressionExt approvalRequest, ApprovalIdentifier approvalIdentifier, Dictionary<LogDataKey, object> logData, Dictionary<string, string> detailsData, string Xcv, string Tcv, string BusinessProcessName, ApprovalTenantInfo approvalTenantInfo, string approverAlias)
     {
         // Fix issue if any tenant send us RefreshDetail = false for create. For create, we need to ignore this flag or RefreshDetail has to set to true. Otherwise, worker role will not populate detail correctly.
         if (approvalRequest.Operation != ApprovalRequestOperation.Create && !approvalRequest.RefreshDetails)
@@ -1237,19 +1418,35 @@ public class ApprovalPresenter : IApprovalPresenter
 
         SetServiceParameter(serviceParameterObject);
 
-        var oauth2AppToken = await _authenticationHelper.AcquireOAuth2TokenByScopeAsync(
-            serviceParameterObject[Constants.ClientID].ToString(),
-            serviceParameterObject[Constants.AuthKey].ToString(),
-            serviceParameterObject[Constants.Authority].ToString(),
-            serviceParameterObject[Constants.ResourceURL].ToString(),
-            "/.default");
+        AuthenticationModelType authType = (AuthenticationModelType)Enum.Parse(typeof(AuthenticationModelType), Convert.ToString(serviceParameterObject[Constants.AuthenticationType]));
 
-        var tenantAdaptor = _tenantFactory.GetTenant(TenantInfo, String.Empty, Constants.WebClient, oauth2AppToken.AccessToken);
+        string oauth2AppToken = string.Empty;
+        if (authType == AuthenticationModelType.OAuth2ClientCredentials)
+        {
+            oauth2AppToken = await _authenticationHelper.AcquireOAuth2TokenByScopeAsync(
+                    serviceParameterObject[Constants.ClientID].ToString(),
+                    serviceParameterObject[Constants.AuthKey].ToString(),
+                    serviceParameterObject[Constants.Authority].ToString(),
+                    serviceParameterObject[Constants.Scope].ToString());
+        }
+        else
+        {
+            oauth2AppToken = authType == AuthenticationModelType.ManagedIdentityToken
+                ? (await _authenticationHelper.GetManagedIdentityToken(_config[ConfigurationKey.ManagedIdentityClientId.ToString()], serviceParameterObject[Constants.ResourceURL].ToString()))
+                : (await _authenticationHelper.AcquireOAuth2TokenByScopeAsync(
+                serviceParameterObject[Constants.ClientID].ToString(),
+                serviceParameterObject[Constants.AuthKey].ToString(),
+                serviceParameterObject[Constants.Authority].ToString(),
+                serviceParameterObject[Constants.ResourceURL].ToString(),
+                "/.default")).AccessToken;
+        }
+        var tenantAdaptor = _tenantFactory.GetTenant(TenantInfo, String.Empty, Constants.WebClient, oauth2AppToken, string.Empty, string.Empty);
+
         try
         {
             var detailOperationList = TenantInfo.DetailOperations.DetailOpsList.Where(o => o.IsCached == true).ToList();
             bool detailsLoadSuccess = false;
-            if (_approvalSummaryProvider.GetApprovalSummaryByDocumentNumberAndApprover(approvalTenantInfo.DocTypeId, approvalIdentifier.DisplayDocumentNumber, approver) != null)
+            if (_approvalSummaryProvider.GetApprovalSummaryByDocumentNumberAndApprover(approvalTenantInfo.DocTypeId, approvalIdentifier.DisplayDocumentNumber, approverAlias, approvalRequest.Approvers[0].Id, approvalRequest.Approvers[0].UserPrincipalName.GetDomainFromUPN()) != null)
             {
                 for (int retryCount = 0; retryCount < TenantInfo.TenantDetailRetryCount && detailOperationList.Count > 0; retryCount++)
                 {
@@ -1267,7 +1464,7 @@ public class ApprovalPresenter : IApprovalPresenter
                                 var detailObject = new ApprovalDetailsEntity()
                                 {
                                     JSONData = jsonDetail,
-                                    RowKey = operation.operationtype,
+                                    RowKey = operation.operationtype + "|" + approvalTenantInfo.DocTypeId,
                                     TenantID = TenantInfo.TenantId,
                                     PartitionKey = approvalIdentifier?.GetDocNumber(TenantInfo)
                                 };
@@ -1289,7 +1486,7 @@ public class ApprovalPresenter : IApprovalPresenter
                                             JSONData = await responseContent.ReadAsStringAsync(),
                                             TenantID = TenantInfo.TenantId,
                                             PartitionKey = approvalIdentifier?.GetDocNumber(TenantInfo),
-                                            RowKey = operation.operationtype
+                                            RowKey = operation.operationtype + "|" + approvalTenantInfo.DocTypeId
                                         };
                                         detailsRows.Add(detailsRow);
                                         LogMessageProgress(new List<ApprovalRequestExpressionExt> { approvalRequest }, TrackingEvent.DetailsDataPrefetchSuccess, message, null, CriticalityLevel.Yes, null, operation.operationtype);
@@ -1331,10 +1528,7 @@ public class ApprovalPresenter : IApprovalPresenter
         }
     }
 
-    /// <summary>
-    /// Set Service Parameter
-    /// </summary>
-    /// <param name="serviceParameterObject"></param>
+    //Will add this method to a common place in future
     private void SetServiceParameter(JObject serviceParameterObject)
     {
         if (serviceParameterObject != null)
@@ -1405,10 +1599,15 @@ public class ApprovalPresenter : IApprovalPresenter
                         ).FirstOrDefault();
                 if (approvalDetails != null)
                 {
-                    List<string> currentApproverList = approvalDetails.JSONData.FromJson<List<Approver>>().Select(a => a.Alias).ToList();
+                    List<User> currentApproverList = approvalDetails.JSONData.FromJson<List<User>>().ToList();
                     if (currentApproverList != null && currentApproverList.Count > 0)
                     {
-                        summaryRows = await GetSummaryRowsFromTableAsync(currentApproverList, rowKeyValue);
+                        List<string> approverIdList = new List<string>();
+                        foreach (var approver in currentApproverList)
+                        {
+                            approverIdList.Add(string.IsNullOrWhiteSpace(approver.Id) ? approver.Alias : approver.Id);
+                        }
+                        summaryRows = await GetSummaryRowsFromTableAsync(approverIdList, rowKeyValue);
                     }
                 }
             }
@@ -1423,6 +1622,7 @@ public class ApprovalPresenter : IApprovalPresenter
                 using (var perfTracer = _performanceLogger.StartPerformanceLogger("PerfLog", Constants.WorkerRole, string.Format(Constants.PerfLogActionWithInfo, TenantInfo.AppName, "DeleteNotificationProcessing", "QueryingSummaryTableWithoutApprover"), logData))
                 {
                     summaryRows = _tableHelper.GetTableEntityListByRowKey<ApprovalSummaryRow>(_config[ConfigurationKey.ApprovalSummaryAzureTableName.ToString()], rowKeyValue).ToList();
+                    return (summaryRows.Select(row => !string.IsNullOrEmpty(row.BlobPointer) ? _approvalBlobDataProvider.GetApprovalSummaryJsonFromBlob(row).Result : row))?.ToList();
                 }
             }
         }
@@ -1444,7 +1644,34 @@ public class ApprovalPresenter : IApprovalPresenter
 
         foreach (var keyItem in approvers)
         {
-            tasks.Add(GetDataCollectionAsync(keyItem, rowKeyValue));
+            Guid objectId;
+            var isGuid = Guid.TryParse(keyItem, out objectId);
+            string domain, partitionKey;
+            if (isGuid)
+            {
+                var user = await _nameResolutionHelper.GetUser(keyItem);
+                domain = user != null ? user.UserPrincipalName.GetDomainFromUPN() : string.Empty;
+                if (!_config[Constants.OldWhitelistedDomains].Contains(domain, StringComparison.InvariantCultureIgnoreCase))
+                    partitionKey = keyItem;
+                else
+                    partitionKey = user != null && !string.IsNullOrWhiteSpace(user.UserPrincipalName) ? user.UserPrincipalName.Substring(0, user.UserPrincipalName.IndexOf("@")) : string.Empty;
+            }
+            else if (keyItem.Contains("@"))
+            {
+                domain = keyItem.GetDomainFromUPN();
+                if (!_config[Constants.OldWhitelistedDomains].Contains(domain, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    var user = await _nameResolutionHelper.GetUser(keyItem);
+                    partitionKey = user != null ? user.Id : string.Empty;
+                }
+                else
+                    partitionKey = keyItem.Substring(0, keyItem.IndexOf("@"));
+            }
+            else
+            {
+                partitionKey = keyItem;
+            }
+            tasks.Add(GetDataCollectionAsync(partitionKey, rowKeyValue));
         }
 
         // to ensure all the task are executed and getting the result.
@@ -1467,7 +1694,7 @@ public class ApprovalPresenter : IApprovalPresenter
         return Task.Run(() =>
         {
             var summaryRows = _tableHelper.GetTableEntityListByPartitionKeyAndRowKey<ApprovalSummaryRow>(_config[ConfigurationKey.ApprovalSummaryAzureTableName.ToString()], partitionKey, rowKey);
-            return summaryRows;
+            return (summaryRows.Select(row => !string.IsNullOrEmpty(row.BlobPointer) ? _approvalBlobDataProvider.GetApprovalSummaryJsonFromBlob(row).Result : row))?.ToList();
         });
     }
 
@@ -1492,28 +1719,35 @@ public class ApprovalPresenter : IApprovalPresenter
                     partitionKey = approvalRequest.ApprovalIdentifier.DocumentNumber;
                 }
 
-                detailsRows = _approvalDetailProvider.GetAllApprovalsDetails(TenantInfo.TenantId, partitionKey).Where(x => (x.RowKey != Constants.CurrentApprover && x.RowKey != Constants.SummaryOperationType)).ToList();
+                #region Get Attachment List to delete from the blob
+
+                ITenant tenant = _tenantFactory.GetTenant(TenantInfo, approvalRequest?.ActionDetail?.ActionBy?.Alias, string.Empty, string.Empty, string.Empty, string.Empty);
+
+                List<Attachment> attachments = await tenant.GetAttachmentDetails(summaryRows, approvalRequest.ApprovalIdentifier, approvalRequest.Telemetry);
+
+                #endregion Get Attachment List to delete from the blob
+
+                detailsRows = _approvalDetailProvider.GetAllApprovalsDetails(TenantInfo.TenantId, partitionKey)
+                                .Where(x => (x.RowKey != Constants.CurrentApprover && x.RowKey != string.Format(Constants.CurrentApproverNew, TenantInfo.DocTypeId) 
+                                        && x.RowKey != Constants.SummaryOperationType && x.RowKey != string.Format(Constants.SummaryOperationTypeNew, TenantInfo.DocTypeId))).ToList();
                 if (detailsRows != null && detailsRows.Count > 0)
                 {
                     // TODO:: Find better way to do this
                     // filter the detailsRows and remove the 'APPRCHAIN' row so that it doesn't get deleted during an UPDATE operation
                     if (approvalRequest.Operation.Equals(ApprovalRequestOperation.Update))
                     {
-                        detailsRows = detailsRows.Where(x => (x.RowKey != Constants.ApprovalChainOperation && x.RowKey != Constants.TransactionDetailsOperationType)).ToList();
+                        detailsRows = detailsRows.Where(x => (x.RowKey != Constants.ApprovalChainOperation && x.RowKey != string.Format(Constants.ApprovalChainOperationNew, TenantInfo.DocTypeId)
+                                                    && x.RowKey != Constants.TransactionDetailsOperationType && x.RowKey != string.Format(Constants.TransactionDetailsOperationTypeNew, TenantInfo.DocTypeId))).ToList();
                     }
                     azuretabledetailrowdeletionresult = await _approvalDetailProvider.RemoveApprovalsDetails(detailsRows);
                 }
 
-                #region Get Attachment Details and initiate a Delete call
-
-                ITenant tenant = _tenantFactory.GetTenant(TenantInfo);
-
-                List<Attachment> attachments = await tenant.GetAttachmentDetails(summaryRows, approvalRequest.ApprovalIdentifier, approvalRequest.Telemetry);
+                #region Initiate a Delete call to Remove Attachment from blob
 
                 // Fire and forget code to delete the blob related to this DocumentNumber and tenantId combination
                 await _approvalDetailProvider.RemoveAttachmentFromBlob(attachments, approvalRequest.ApprovalIdentifier, tenant.AttachmentOperationName(), Constants.WorkerRole, TenantInfo, approvalRequest.Telemetry);
 
-                #endregion Get Attachment Details and initiate a Delete call
+                #endregion Initiate a Delete call to Remove Attachment from blob
             }
         }
         catch (Exception failedToRemoveDetailsFromAzureTable)
@@ -1543,7 +1777,7 @@ public class ApprovalPresenter : IApprovalPresenter
     /// <param name="criticalityLevel"></param>
     /// <param name="tenantLogData"></param>
     /// <param name="DetailsOperation"></param>
-    private void LogMessageProgress(List<ApprovalRequestExpressionExt> expressions, TrackingEvent trackingEvent, Message message, FailureData failureData, CriticalityLevel criticalityLevel, Dictionary<LogDataKey, object> tenantLogData = null, string DetailsOperation = "")
+    private void LogMessageProgress(List<ApprovalRequestExpressionExt> expressions, TrackingEvent trackingEvent, ServiceBusReceivedMessage message, FailureData failureData, CriticalityLevel criticalityLevel, Dictionary<LogDataKey, object> tenantLogData = null, string DetailsOperation = "")
     {
         foreach (var expression in expressions)
         {
@@ -1579,17 +1813,15 @@ public class ApprovalPresenter : IApprovalPresenter
             tenantLogData[LogDataKey.DeleteForAliases] = expression.Operation != ApprovalRequestOperation.Create ? expression.DeleteFor.ToJson() : string.Empty;
             tenantLogData[LogDataKey.OperationDateTime] = expression.OperationDateTime;
             tenantLogData[LogDataKey._CorrelationId] = message.GetCorrelationId();
-            tenantLogData[LogDataKey.BrokerMessageProperty] = message.UserProperties.ToJson();
+            tenantLogData[LogDataKey.BrokerMessageProperty] = message.ApplicationProperties.ToJson();
             tenantLogData[LogDataKey.FailureData] = failureData;
-            tenantLogData[LogDataKey.EventId] = (int)trackingEvent;
-            tenantLogData[LogDataKey.EventName] = trackingEvent.ToString();
 
             if (!string.IsNullOrEmpty(DetailsOperation) && !tenantLogData.ContainsKey(LogDataKey.Operation))
             {
                 tenantLogData[LogDataKey.Operation] = DetailsOperation;
-                tenantLogData[LogDataKey.EventName] = tenantLogData[LogDataKey.EventName] + "-" + DetailsOperation;
+                tenantLogData[LogDataKey.CustomEventName] = trackingEvent.ToString() + "-" + DetailsOperation;
             }
-            _logger.LogInformation((int)trackingEvent, tenantLogData);
+            _logger.LogInformation(trackingEvent, tenantLogData);
         }
     }
 

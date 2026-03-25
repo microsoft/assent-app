@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.Model;
 using Microsoft.CFS.Approvals.SyntheticTransaction.API.Services;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Models;
@@ -46,20 +47,19 @@ public class LoadGeneratorHelper : ILoadGeneratorHelper
     /// <param name="payloadReceiverHelper"></param>
     /// <param name="azureStorageHelper"></param>
     /// <param name="actionContextAccessor"></param>
-    /// <param name="configurationSetting"></param>
+    /// <param name="configurationHelper"></param>
     public LoadGeneratorHelper(
         ISyntheticTransactionHelper syntheticTransactionHelper,
         IPayloadReceiverHelper payloadReceiverHelper,
-        Func<string, string, ITableHelper> azureStorageHelper,
+        Func<string, ITableHelper> azureStorageHelper,
         IActionContextAccessor actionContextAccessor,
-        ConfigurationSetting configurationSetting)
+        ConfigurationHelper configurationHelper)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _syntheticTransactionHelper = syntheticTransactionHelper;
         _payloadReceiverHelper = payloadReceiverHelper;
         _azureStorageHelper = azureStorageHelper(
-            configurationSetting.appSettings[_environment].StorageAccountName,
-            configurationSetting.appSettings[_environment].StorageAccountKey);
+            configurationHelper.appSettings[_environment]["StorageAccountName"]);
     }
 
     /// <summary>

@@ -21,6 +21,7 @@ using Swashbuckle.AspNetCore.Annotations;
 /// The UserPreferenceController class
 /// </summary>
 /// <seealso cref="BaseApiController" />
+[Route("api/v1/user/preferences")]
 public class UserPreferenceController : BaseApiController
 {
     /// <summary>
@@ -52,9 +53,9 @@ public class UserPreferenceController : BaseApiController
     }
 
     /// <summary>
-    /// HTTP GET api/UserPreference
+    /// HTTP GET api/v1/user/preferences
     /// </summary>
-    /// <param name="sessionId">Session Id </param>
+    /// <param name="sessionId">session Id </param>
     /// <returns>Http action result</returns>
     [SwaggerOperation(Tags = new[] { "User" })]
     [HttpGet]
@@ -65,7 +66,7 @@ public class UserPreferenceController : BaseApiController
         var logData = new Dictionary<LogDataKey, object>
         {
             { LogDataKey.Xcv, Xcv },
-            { LogDataKey.DXcv, Tcv },
+            { LogDataKey.DXcv, MessageId },
             { LogDataKey.StartDateTime, DateTime.UtcNow },
             { LogDataKey.SessionId, sessionId },
             { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() }
@@ -77,7 +78,7 @@ public class UserPreferenceController : BaseApiController
         {
             using (_performanceLogger.StartPerformanceLogger("PerfLog", Constants.WebClient, string.Format(Constants.PerfLogAction, "UserPreferenceController", "Get User Preference"), logData))
             {
-                var responseObject = _userPreferenceHelper.GetUserPreferences(LoggedInAlias.ToLowerInvariant(), Host);
+                var responseObject = _userPreferenceHelper.GetUserPreferences(SignedInUser.UserPrincipalName.ToLowerInvariant(), ClientDevice);
                 logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
                 _logProvider.LogInformation(TrackingEvent.WebApiUserPreferenceSuccess, logData);
                 return Ok(responseObject);
@@ -92,9 +93,9 @@ public class UserPreferenceController : BaseApiController
     }
 
     /// <summary>
-    /// HTTP POST api/UserPreference
+    /// HTTP POST api/v1/user/preferences
     /// </summary>
-    /// <param name="sessionId">Session Id</param>
+    /// <param name="sessionId">session Id</param>
     /// <returns>Http action result</returns>
     [SwaggerOperation(Tags = new[] { "User" })]
     [HttpPost]
@@ -105,7 +106,7 @@ public class UserPreferenceController : BaseApiController
         var logData = new Dictionary<LogDataKey, object>
         {
             { LogDataKey.Xcv, Xcv },
-            { LogDataKey.DXcv, Tcv },
+            { LogDataKey.DXcv, MessageId },
             { LogDataKey.StartDateTime, DateTime.UtcNow },
             { LogDataKey.SessionId, sessionId },
             { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() }
@@ -123,25 +124,64 @@ public class UserPreferenceController : BaseApiController
                     jsonData = await reader.ReadToEndAsync();
                 }
                 var userPreference = jsonData.FromJson<UserPreference>();
-                bool isPreferenceUpdateSuccess = _userPreferenceHelper.AddUpdateUserPreference(userPreference, LoggedInAlias.ToLowerInvariant(), Host);
+                bool isPreferenceUpdateSuccess = _userPreferenceHelper.AddUpdateUserPreference(userPreference, SignedInUser.UserPrincipalName.ToLowerInvariant(), ClientDevice, sessionId);
 
                 if (isPreferenceUpdateSuccess)
-                {
-                    logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
-                    _logProvider.LogInformation(TrackingEvent.WebApiAboutSuccess, logData);
                     return Ok();
-                }
                 else
-                {
                     throw new InvalidOperationException(Constants.UserPreferencePostError);
-                }
             }
         }
         catch (Exception ex)
         {
             logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
-            _logProvider.LogError(TrackingEvent.WebApiAboutFail, ex, logData);
-            return BadRequest(ex.Message);
+            _logProvider.LogError(TrackingEvent.WebApiUserPreferenceFail, ex, logData);
+            return BadRequest(Constants.UserPreferencePostError);
+        }
+    }
+
+    /// <summary>
+    /// HTTP PUT api/v1/user/preferences?userPreferenceColumn= for updating specific user preference data
+    /// </summary>
+    /// <param name="userPreferenceColumn"></param>
+    /// <param name="sessionId"></param>
+    /// <returns></returns>
+    [SwaggerOperation(Tags = new[] { "User" })]
+    [HttpPut]
+    public async Task<IActionResult> Put(string userPreferenceColumn, string sessionId = "")
+    {
+        #region Logging
+
+        var logData = new Dictionary<LogDataKey, object>
+        {
+            { LogDataKey.Xcv, Xcv },
+            { LogDataKey.DXcv, MessageId },
+            { LogDataKey.StartDateTime, DateTime.UtcNow },
+            { LogDataKey.SessionId, sessionId },
+            { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() }
+        };
+
+        #endregion Logging
+
+        try
+        {
+            string userPreferenceData;
+            using (var reader = new StreamReader(Request.Body))
+            {
+                userPreferenceData = await reader.ReadToEndAsync();
+            }
+            using (_performanceLogger.StartPerformanceLogger("PerfLog", Constants.WebClient, string.Format(Constants.PerfLogAction, "UserPreferenceController", "Post User Preference"), logData))
+            {
+                bool isPreferenceUpdateSuccess = _userPreferenceHelper.AddUpdateSpecificUserPreference(userPreferenceData, userPreferenceColumn, SignedInUser.UserPrincipalName.ToLowerInvariant(), ClientDevice, sessionId);
+                if (isPreferenceUpdateSuccess)
+                    return Ok();
+                else
+                    throw new InvalidOperationException(Constants.UserPreferencePostError);
+            }
+        }
+        catch
+        {
+            return BadRequest(Constants.UserPreferencePostError);
         }
     }
 }

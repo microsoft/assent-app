@@ -7,6 +7,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Utilities.Helpers;
 using Swashbuckle.AspNetCore.Annotations;
@@ -85,18 +86,18 @@ public class DocumentDownloadController : BaseApiController
             var httpResponseMessage = await _detailsHelper.GetDocuments
                (
                    tenantId,
-                   documentNumber,
-                   displayDocumentNumber,
-                   fiscalYear,
+                   new ApprovalIdentifier { DisplayDocumentNumber = displayDocumentNumber, DocumentNumber = documentNumber, FiscalYear = fiscalYear},
                    attachmentId,
                    isPreAttached,
                    sessionId,
                    tcv,
                    xcv,
-                   Alias,
-                   LoggedInAlias,
-                   Host,
-                   GetTokenOrCookie());
+                   OnBehalfUser.MailNickname,
+                   SignedInUser,
+                   ClientDevice,
+                   GetTokenOrCookie(),
+                   OnBehalfUser.Id,
+                   DomainName);
 
             return File(httpResponseMessage, "application/octet-stream");
         }
@@ -135,10 +136,12 @@ public class DocumentDownloadController : BaseApiController
                    sessionId,
                    tcv,
                    requestBody,
-                   Alias,
-                   LoggedInAlias,
-                   Host,
-                   GetTokenOrCookie());
+                   OnBehalfUser.MailNickname,
+                   SignedInUser.MailNickname,
+                   ClientDevice,
+                   GetTokenOrCookie(),
+                   OnBehalfUser.Id,
+                   DomainName);
 
             return File(httpResponseMessage, "application/octet-stream");
         }

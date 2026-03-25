@@ -57,18 +57,10 @@ public class PullTenantController : BaseApiController
             var parameters = GetFilterParameters();
             if (!parameters.ContainsKey("alias"))
             {
-                parameters.Add("alias", Alias);
+                parameters.Add("alias", OnBehalfUser.MailNickname);
             }
 
-            var summaryData = await _pullTenantHelper.GetSummaryAsync(Alias,
-                LoggedInAlias,
-                parameters,
-                tenantId,
-                Host,
-                sessionId,
-                Xcv,
-                Tcv
-                );
+            var summaryData = await _pullTenantHelper.GetSummaryAsync(SignedInUser, OnBehalfUser, GetTokenOrCookie(), parameters, tenantId, ClientDevice, sessionId, Xcv, MessageId);
             return Ok(summaryData);
         }
         catch (Exception ex)
@@ -103,7 +95,7 @@ public class PullTenantController : BaseApiController
             var parameters = GetFilterParameters();
             if (!parameters.ContainsKey("alias"))
             {
-                parameters.Add("alias", Alias);
+                parameters.Add("alias", OnBehalfUser.MailNickname);
             }
 
             if (!parameters.ContainsKey(Constants.DocumentNumber))
@@ -111,17 +103,7 @@ public class PullTenantController : BaseApiController
                 parameters.Add(Constants.DocumentNumber, documentNumber);
             }
 
-            return Ok(await _pullTenantHelper.GetDetailsAsync(
-                Alias,
-                LoggedInAlias,
-                operationType,
-                parameters,
-                tenantId,
-                Host,
-                sessionId,
-                Xcv,
-                Tcv
-                ));
+            return Ok(await _pullTenantHelper.GetDetailsAsync(SignedInUser, OnBehalfUser, GetTokenOrCookie(), operationType, parameters, tenantId, ClientDevice, sessionId, Xcv, MessageId));
         }
         catch (Exception ex)
         {

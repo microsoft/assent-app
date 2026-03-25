@@ -4,7 +4,7 @@
 namespace NotificationAzFunction;
 
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
+using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.WebJobs;
 using Microsoft.CFS.Approvals.Common.BL.Interface;
 using Microsoft.Extensions.Logging;
@@ -19,7 +19,9 @@ public class NotificationFunction
     }
 
     [FunctionName("Notification")]
-    public async Task Run([ServiceBusTrigger("%TopicNameNotification%", "%SubscriptionNameNotification%", Connection = "ServiceBusConnectionString")] Message message, ILogger logger)
+    public async Task Run(
+        [ServiceBusTrigger("%TopicNameNotification%", "%SubscriptionNameNotification%", Connection = "ServiceBusNamespace")] ServiceBusReceivedMessage message,
+        ILogger logger)
     {
         logger.LogInformation($"C# ServiceBus topic trigger function processed message: {message}");
         string blobId = System.Text.Encoding.UTF8.GetString(message.Body);

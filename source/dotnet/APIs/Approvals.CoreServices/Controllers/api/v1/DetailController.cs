@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
-using Microsoft.CFS.Approvals.Extensions;
+using Microsoft.CFS.Approvals.Utilities.Extension;
 using Microsoft.CFS.Approvals.Utilities.Helpers;
 using Newtonsoft.Json.Linq;
 using Swashbuckle.AspNetCore.Annotations;
@@ -88,8 +88,18 @@ public class DetailController : BaseApiController
             ArgumentGuard.NotNull(tenantId, nameof(tenantId));
             ArgumentGuard.NotNull(documentNumber, nameof(documentNumber));
 
-            DataCallType dataCallType = (DataCallType)Enum.Parse(typeof(DataCallType), callType, true);
-
+            // Validate and sanitize the callType parameter
+            // Allow only alphanumeric characters, spaces, and basic punctuation
+            string sanitizedInput = Extension.SanitizeInput(callType);
+            if (sanitizedInput == null)
+            {
+                return BadRequest("Invalid request: Input contains disallowed characters.");
+            }
+            if (!Enum.TryParse(typeof(DataCallType), sanitizedInput, true, out var dataCallType))
+            {
+                return BadRequest("Invalid callType parameter.");
+            }
+           
             JObject responseObject = await _detailsHelper.GetDetails(
                 tenantId,
                 documentNumber,
@@ -99,14 +109,16 @@ public class DetailController : BaseApiController
                 sessionId,
                 tcv,
                 xcv,
-                Alias,
-                LoggedInAlias,
-                Host,
+                OnBehalfUser.MailNickname,
+                SignedInUser.UserPrincipalName,
+                ClientDevice,
                 GetTokenOrCookie(),
                 false,
                 (int)dataCallType,
                 pageType,
-                source);
+                source,
+                OnBehalfUser.Id,
+                DomainName);
             return Ok(responseObject);
         }
         catch (Exception ex)

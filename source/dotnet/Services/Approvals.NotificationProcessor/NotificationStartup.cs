@@ -34,6 +34,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Hosting.Internal;
 using Microsoft.Extensions.Logging;
+using Microsoft.Internal.AntiSSRF;
 using NotificationAzFunction;
 using Polly;
 using Polly.Extensions.Http;
@@ -58,22 +59,22 @@ public class NotificationStartup : FunctionsStartup
         var azureCredential = new ManagedIdentityCredential();
 #endif
 
-        configurationBuilder.AddAzureAppConfiguration(options =>
-            {
-                options.Connect(new Uri(Environment.GetEnvironmentVariable(Constants.AzureAppConfigurationUrl)), azureCredential)
-                    // Load configuration values with no label
-                    .Select(KeyFilter.Any, Environment.GetEnvironmentVariable(Constants.AppConfigurationLabel))
-                    .ConfigureKeyVault(kv =>
-                    {
-                        kv.SetCredential(azureCredential);
-                    })
-                    .ConfigureRefresh(refreshOptions =>
-                    {
-                        refreshOptions.Register(Constants.MustUpdateConfig, true)
-                        .SetCacheExpiration(TimeSpan.FromMinutes(5));
-                        refresher = options.GetRefresher();
-                    });
-            });
+		configurationBuilder.AddAzureAppConfiguration(options =>
+        {
+            options.Connect(new Uri(Environment.GetEnvironmentVariable(Constants.AzureAppConfigurationUrl)), azureCredential)
+                // Load configuration values with no label
+                .Select(KeyFilter.Any, Environment.GetEnvironmentVariable(Constants.AppConfigurationLabel))
+                .ConfigureKeyVault(kv =>
+                {
+                    kv.SetCredential(azureCredential);
+                })
+                .ConfigureRefresh(refreshOptions =>
+                {
+                    refreshOptions.Register(Constants.MustUpdateConfig, true)
+                    .SetCacheExpiration(TimeSpan.FromMinutes(5));
+                    refresher = options.GetRefresher();
+                });
+        });
 
         // Build the config in order to access the appsettings for getting the Azure App Configuration connection settings
         var config = configurationBuilder.Build();
@@ -83,57 +84,60 @@ public class NotificationStartup : FunctionsStartup
         builder.Services.Replace(ServiceDescriptor.Singleton(typeof(IConfiguration), config));
         IConfiguration configuration = builder.Services.BuildServiceProvider().GetService<IConfiguration>();
 
-        builder.Services.AddLogging(configure =>
-        {
-            configure.AddApplicationInsights(Environment.GetEnvironmentVariable(Constants.AppinsightsInstrumentationkey));
-        });
+        var client = new BlobServiceClient(
+                        new Uri($"https://" + config?[Constants.StorageAccountName] + ".blob.core.windows.net/"),
+                        azureCredential);
+        var cosmosdbClient = new CosmosClient(config?[ConfigurationKey.CosmosDbEndPoint.ToString()],
+            azureCredential, new CosmosClientOptions() { AllowBulkExecution = true });
 
-            var client = new BlobServiceClient(
-                            new Uri($"https://" + config?[Constants.StorageAccountName] + ".blob.core.windows.net/"),
-                            azureCredential);
-            var cosmosdbClient = new CosmosClient(config?[ConfigurationKey.CosmosDbEndPoint.ToString()],
-                azureCredential, new CosmosClientOptions() { AllowBulkExecution = true });
+        //Add Services
+        builder.Services.AddSingleton<IPerformanceLogger, PerformanceLogger>();
+        builder.Services.AddScoped<IApprovalsTopicReceiver, NotificationReceiver>();
+        builder.Services.AddSingleton<ILogProvider, LogProvider>();
+        builder.Services.AddSingleton<ApplicationInsightsTarget>();
+        builder.Services.AddScoped<IEmailHelper, EmailHelper>();
+        builder.Services.AddScoped<ITenantFactory, TenantFactory>();
+        builder.Services.AddScoped<INotificationProvider, NotificationFrameworkProvider>();
+        builder.Services.AddScoped<INotificationProcessor, NotificationProcessor>();
+        builder.Services.AddScoped<IApprovalSummaryProvider, ApprovalSummaryProvider>();
+        builder.Services.AddScoped<IEmailHelper, EmailHelper>();
+        builder.Services.AddSingleton<ITableHelper, TableHelper>((provider) => { return new TableHelper(config?[Constants.StorageAccountName], azureCredential); });
+        builder.Services.AddScoped<IApprovalDetailProvider, ApprovalDetailProvider>();
+        builder.Services.AddScoped<IApprovalTenantInfoProvider, ApprovalTenantInfoProvider>();
+        builder.Services.AddScoped<IApprovalBlobDataProvider, ApprovalBlobDataProvider>();
+        builder.Services.AddScoped<INameResolutionHelper, NameResolutionHelper>();
+        builder.Services.AddScoped<IEmailTemplateHelper, EmailTemplateHelper>();
+        builder.Services.AddScoped<IApprovalHistoryProvider, ApprovalHistoryProvider>();
+        builder.Services.AddSingleton<ICosmosDbHelper, CosmosDbHelper>(x => new CosmosDbHelper(cosmosdbClient));
+        builder.Services.AddSingleton<IHistoryStorageFactory, HistoryStorageFactory>();
+        builder.Services.AddScoped<IDetailsHelper, DetailsHelper>();
+        builder.Services.AddSingleton<IBlobStorageHelper, BlobStorageHelper>(x => new BlobStorageHelper(client));
+        builder.Services.AddScoped<IImageRetriever, UserImageRetrieval>();
+        builder.Services.AddScoped<IDelegationHelper, DelegationHelper>();
+        builder.Services.AddScoped<IActionAuditLogHelper, ActionAuditLogHelper>();
+        builder.Services.AddScoped<IApprovalTenantInfoHelper, ApprovalTenantInfoHelper>();
+        builder.Services.AddScoped<IFlightingDataProvider, FlightingDataProvider>();
+        builder.Services.AddScoped<IEditableConfigurationHelper, EditableConfigurationHelper>();
+        builder.Services.AddScoped<ISummaryHelper, SummaryHelper>();
+        builder.Services.AddScoped<IUserDelegationProvider, UserDelegationProvider>();
+        builder.Services.AddScoped<IActionAuditLogger, ActionAuditLogger>();
+        builder.Services.AddScoped<ILocalFileCache, LocalFileCache>();
+        builder.Services.AddScoped<IHostingEnvironment, HostingEnvironment>();
+        builder.Services.AddScoped<IAuthenticationHelper, AuthenticationHelper>();
 
-            //Add Services
-            builder.Services.AddSingleton<IPerformanceLogger, PerformanceLogger>();
-            builder.Services.AddScoped<IApprovalsTopicReceiver, NotificationReceiver>();
-            builder.Services.AddSingleton<ILogProvider, LogProvider>();
-            builder.Services.AddSingleton<ApplicationInsightsTarget>();
-            builder.Services.AddScoped<IEmailHelper, EmailHelper>();
-            builder.Services.AddScoped<ITenantFactory, TenantFactory>();
-            builder.Services.AddScoped<INotificationProvider, NotificationFrameworkProvider>();
-            builder.Services.AddScoped<INotificationProcessor, NotificationProcessor>();
-            builder.Services.AddScoped<IApprovalSummaryProvider, ApprovalSummaryProvider>();
-            builder.Services.AddScoped<IEmailHelper, EmailHelper>();
-            builder.Services.AddSingleton<ITableHelper, TableHelper>((provider) => { return new TableHelper(config?[Constants.StorageAccountName], azureCredential); });
-            builder.Services.AddScoped<IApprovalDetailProvider, ApprovalDetailProvider>();
-            builder.Services.AddScoped<IApprovalTenantInfoProvider, ApprovalTenantInfoProvider>();
-            builder.Services.AddScoped<IApprovalBlobDataProvider, ApprovalBlobDataProvider>();
-            builder.Services.AddScoped<INameResolutionHelper, NameResolutionHelper>();
-            builder.Services.AddScoped<IEmailTemplateHelper, EmailTemplateHelper>();
-            builder.Services.AddScoped<IApprovalHistoryProvider, ApprovalHistoryProvider>();
-            builder.Services.AddSingleton<ICosmosDbHelper, CosmosDbHelper>(x => new CosmosDbHelper(cosmosdbClient));
-            builder.Services.AddSingleton<IHistoryStorageFactory, HistoryStorageFactory>();
-            builder.Services.AddScoped<IDetailsHelper, DetailsHelper>();
-            builder.Services.AddSingleton<IBlobStorageHelper, BlobStorageHelper>(x => new BlobStorageHelper(client));
-            builder.Services.AddScoped<IImageRetriever, UserImageRetrieval>();
-            builder.Services.AddScoped<IDelegationHelper, DelegationHelper>();
-            builder.Services.AddScoped<IActionAuditLogHelper, ActionAuditLogHelper>();
-            builder.Services.AddScoped<IApprovalTenantInfoHelper, ApprovalTenantInfoHelper>();
-            builder.Services.AddScoped<IFlightingDataProvider, FlightingDataProvider>();
-            builder.Services.AddScoped<IEditableConfigurationHelper, EditableConfigurationHelper>();
-            builder.Services.AddScoped<ISummaryHelper, SummaryHelper>();
-            builder.Services.AddScoped<IUserDelegationProvider, UserDelegationProvider>();
-            builder.Services.AddScoped<IActionAuditLogger, ActionAuditLogger>();
-            builder.Services.AddScoped<IApprovalSummaryHelper, ApprovalSummaryHelper>();
-            builder.Services.AddScoped<ILocalFileCache, LocalFileCache>();
-            builder.Services.AddScoped<IHostingEnvironment, HostingEnvironment>();
-            builder.Services.AddScoped<IAuthenticationHelper, AuthenticationHelper>();
-            builder.Services.AddSingleton<HttpClientHandler>();
-            builder.Services.AddHttpClient<IHttpHelper, HttpHelper>()
-                .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
-                .AddPolicyHandler(GetRetryPolicy());
-        }
+        var policy = new AntiSSRFPolicy();
+        policy.SetDefaults();
+        builder.Services.AddSingleton<HttpClientHandler>();
+        builder.Services
+            .AddHttpClient<IHttpHelper, HttpHelper>()
+            .ConfigurePrimaryHttpMessageHandler(_ =>
+            {
+                var handler = policy.GetHandler();
+                return handler;
+            })
+            .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
+            .AddPolicyHandler(GetRetryPolicy());
+    }
 
     private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
     {

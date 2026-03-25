@@ -11,5 +11,6 @@ public class UserPreference : BaseTableEntity
     public string FeaturePreferenceJson { get; set; }
     public string ReadNotificationsList { get; set; }
     public string PriorityPreferenceJson { get; set; }
+    public string QuickTourFeatureList { get; set; }
     public string ClientDevice { get; set; }
 }

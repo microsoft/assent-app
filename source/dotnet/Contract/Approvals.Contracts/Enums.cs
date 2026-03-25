@@ -48,6 +48,10 @@ namespace Microsoft.CFS.Approvals.Contracts
         ActionAlreadyTakenFromApprovalsMessage,
         ActionAlreadyTakenMessage,
         ActionAuditLogAzureTableName,
+        AIAnalysisSystemMessage,
+        AIAnalysisCompletionOptions,
+        AIAnalysisModelName,
+        AISummarizationAndInsightsSchema,
         AntiCorruptionMessage,
         APIUrlRoot,
         ApprovalEmailNotificationTemplatesAzureTableName,
@@ -58,15 +62,26 @@ namespace Microsoft.CFS.Approvals.Contracts
         ApprovalsCoreServicesURL,
         ApprovalSummaryAzureTableName,
         ApprovalTenantInfo,
+        SubmissionSummaryAzureTableName,
         ARConverterClass,
+        ARConverterExternalClass,
         ArxQueueWaitTime,
         AttachmentSizeLimit, // AttachmentSizeLimit beyond which, it will send normal email without attachment.
+        AuditLoggerClass,
         Authority,
         AzureSearchServiceName,
         AzureSearchServiceQueryApiKey,
         AzureSearchTransactionHistoryIndexName,
+        AzureOpenAIModelName,
+        AzureOpenAIDiscrepanciesModelName,
+        AzureOpenAICompletionsOptions,
+        AzureOpenAISystemMessage,
+        AzureOpenAiDetailsPrompt,
+        AzureOpenAiApiEndpoint,
+        AzureOpenAiApiKey,
         BulkActionConcurrentCallMessage,
         ComponentName,
+        CopilotDefaultPrompts,
         CosmosDbAuthKey,
         CosmosDbCollectionActionAuditLog,
         CosmosDbCollectionAuditAgent,
@@ -76,8 +91,18 @@ namespace Microsoft.CFS.Approvals.Contracts
         CosmosDbPartitionKeyPathAuditAgent,
         CosmosDbPartitionKeyPath,
         DaysForReminderMails, // No of days for which we need to send reminder mail
+        DeepSearchModelName,
+        DeepSearchScope,
+        DeepSearchOperatorsAndLogic,
+        DeepSearchIntentInterpretation,
+        DeepSearchDataRules,
+        DeepSearchExamples,
         DetailControllerExceptionMessage,
         DeviceDeepLinkUrl,
+        DiscrepanciesCompletionOptions,
+        DiscrepancyPrompt,
+        DiscrepancyRiskScoreExplanationPrompt,
+        DiscrepancySystemMessage,
         DocDBNameAuditAgent,
         DocDBCollectionAuditAgent,
         DomainName,
@@ -87,10 +112,16 @@ namespace Microsoft.CFS.Approvals.Contracts
         GraphAPIAuthString,
         GraphAPIClientId,
         GraphAPIClientSecret,
+        GraphAPIResourceUri,
+        GraphAPIMITokenEnabled,
+        GraphAPIUri,
+        GraphAPIUriFilter,
         HistoryPageSize,
         InvalidRequestException,
         IsAzureSearchEnabled,
         MainTopicFailCountThreshold,
+        ManagedIdentityClientId,
+        ManagedIdentityFederatedAudience,
         Message_NoTenantForDevice,
         Message_PageLessThan1,
         Message_ServiceNotRelayed,
@@ -101,33 +132,43 @@ namespace Microsoft.CFS.Approvals.Contracts
         Message_ValueNotExist,
         Message_ValueNullOrEmpty,
         MonthsOfHistoryDataValue,
+        NoConsentPrompt,
         NotificationBCCEmailAddress,
         NotificationBroadcastUri, // Notification Framework related configuration keys.
+        NotificationBroadcastUriMEO,
         NotificationFrameworkAuthKey,
         NotificationFrameworkClientId,
         NotificationFrameworkMaxRetries, // MaxRetries to Notification Framework.
         NotificationFrameworkResourceUrl, // ResourceUrl to make call to Notification Framework.
+        NotificationTopicDelaySeconds,
+        OCRAttachmentsContainer,
+        ReassignmentContainer,
+        OutOfSyncExplanation,
+        QueueNameSecondary,
+        QueueNameReassignment,
+        QuickTourFeatures,
         ReceiptAcknowledgmentMessage,
         ReconciliationAwaitTime,
         RelayServiceDownMessage,
         RetryPolicyRetryCount,
         SaveChangesOptionsContinueOnError,
-        ServiceBusConnectionString,
-        ServiceBusIssuerName,
-        ServiceBusIssuerSecret,
-        ServiceBusNamespace,
+        SearchFiltersSchema,
         ServiceComponentId,
         ServiceLineName,
         ServiceName,
         ServiceOfferingName,
         ServiceParameterAuthKey,
         ServiceParameterClientID,
+        SourcePrimary,
+        SourceOCR,
         StorageAccountKey,
         StorageAccountName,
         SubscriptionNameNotification,
+        SummaryPrioritizationCriteria,
         SupportEmailId,
         SyntheticTransactionsApproverAliasList,
         SyntheticTransactionsLoadBatchDelay,
+        TeamsNotificationMITokenEnabled,
 
         /// <summary>
         /// Teams AppKey which will be used to generate token
@@ -150,7 +191,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         TeamsResourceUrl,
 
         /// <summary>
-        /// Teams Tenant to generate OAuth 2.0 Toke
+        /// Teams Tenant to generate OAuth 2.0 Token
         /// </summary>
         TeamsTenant,
 
@@ -159,15 +200,41 @@ namespace Microsoft.CFS.Approvals.Contracts
         TopicNameMain,
         TopicNameNotification,
         TopicNameRetry,
+        TopicNameSecondary,
+        TopicNameAuxiliary,
+        TopicNameExternalMain,
         UnAuthorizedException,
         UrlPlaceholderTenants, // TenantIDs for which summary and detail URL contains placeholders with actual property names.
         UserMessageForComplianceAndAction,
         UserPreferenceAzureTableName,
+        UserDelegationSettingsAzureTableName,
+        UserDelegationSettingsHistoryAzureTableName,
         ValidateAliasUsingPayloadValidator,
+        PayloadProcessingFunctionURL,
         WatchDogBatchSize,
-        WatchDogMaxFailureCount
+        WatchDogMaxFailureCount,
+        DelegationPlatformApi,
+        DelegationPlatformResourceUrl,
+        DelegationPlatformAppId,
+        MSAInternalClientId,
+        PayloadReceiverResourceUrl,
+        PayloadReceiverUrl,
 
         #endregion Common
+
+        #region Domain
+
+        Message_ConfidentialPO,
+        Message_OverBudget,
+        MSAuthorizeUrl,
+        Message_ReceiptsRequired,
+        ApprovalsPluginResponseSchema,
+        ApprovalsPluginSystemMessageScope,
+        ApprovalsPluginSystemMessageTools,
+        ApprovalsPluginSystemMessageResponseBehavior,
+        ApprovalsPluginSystemMessageFormatting
+
+        #endregion Domain
     }
 
     public enum LogType
@@ -275,7 +342,8 @@ namespace Microsoft.CFS.Approvals.Contracts
         CorpSTS = 2,
         OAuth2OnBehalf = 3,
         UserOnBehalf = 4,
-        ManagedIdentityToken = 5
+        ManagedIdentityToken = 5,
+        OAuth2ClientCredentials = 6
     }
 
     public enum DataCallType
@@ -287,12 +355,12 @@ namespace Microsoft.CFS.Approvals.Contracts
 
     public enum FlightingFeatureName : int
     {
-        ManageOutOfSync = 14,
-        OutlookEmailApprovalMyOrder = 22,
-        ActionableEmailWithMobileFriendlyAdaptiveCard = 26,
-        ModernAdaptiveDetailsUI = 27,
-        MSTeamNotification = 28,
-        UploadAttachment = 29
+        UploadAttachment = 29,
+        AttachmentCopilot = 30,
+        DiscrepancySummarization = 33,
+        AIAnalysis = 39,
+        SubmitterView = 40,
+        AdaptiveCardCopilot = 41
     }
 
     public enum FlightingFeatureStatus : int
@@ -300,11 +368,6 @@ namespace Microsoft.CFS.Approvals.Contracts
         Disabled = 1, // The feature is disabled
         EnabledForAll = 2, // Not a flighting feature; feature in production
         InFlighting = 3 // The feature is a flighting feature
-    }
-
-    public enum Tenant
-    {
-        Invoice = 1
     }
 
     public enum TemplateType
@@ -330,6 +393,43 @@ namespace Microsoft.CFS.Approvals.Contracts
         DisableForAll = 0,
         EnableForFlightedUsers = 1,
         EnableForAll = 2
+    }
+
+    public enum TenantLevelFlighting : int
+    {
+        DisableForAll = 0,
+        EnableForFlightedUsers = 1,
+        EnableForAll = 2
+    }
+
+    public enum AdobeEventType : int
+    {
+        AGREEMENT_CREATED = 0,
+        AGREEMENT_ACTION_REQUESTED = 1,
+
+        AGREEMENT_ACTION_REPLACED_SIGNER = 2,
+        AGREEMENT_PARTICIPANT_REPLACED = 3,
+        AGREEMENT_ACTION_DELEGATED = 4,
+
+        AGREEMENT_PARTICIPANT_COMPLETED = 5,
+        AGREEMENT_ACTION_COMPLETED = 6,
+
+        AGREEMENT_EXPIRATION_UPDATED = 7,
+        AGREEMENT_MODIFIED = 8,
+        AGREEMENT_DOCUMENTS_DELETED = 9,
+
+        AGREEMENT_DELETED = 10,
+        AGREEMENT_RECALLED = 11,
+        AGREEMENT_REJECTED = 12,
+        AGREEMENT_EXPIRED = 13,
+        AGREEMENT_WORKFLOW_COMPLETED = 14
+    }
+
+    public static class CopilotMessageType
+    {
+        public static string Message = "Message";
+        public static string AdaptiveCard = "AdaptiveCard";
+        public static string WebComponent = "WebComponent";
     }
 
     public static class OfficeDocumentType
@@ -382,5 +482,78 @@ namespace Microsoft.CFS.Approvals.Contracts
     public static class TableOperators
     {
         public static string And = "and";
+    }
+
+    public enum AuditOperationType
+    {
+        Read = 1,
+        Update,
+        Create,
+        Delete
+    }
+
+    public enum AuditOperationResult
+    {
+        Success = 1,
+        Failure
+    }
+
+    public enum UserPreferenceType
+    {
+        FeaturePreferenceJson,
+        QuickTourFeatureList,
+        ReadNotificationsList,
+        None
+    }
+
+    public enum PageType
+    {
+        Summary,
+        History,
+        Details
+    }
+
+    public enum CopilotUserContextType
+    {
+        DASHBOARD,
+        SUMMARY,
+        DETAILS,
+        ATTACHMENT,
+        ACTION,
+        HISTORY,
+        HELP,
+        ERROR,
+        SEARCH,
+        ANALYSIS,
+        DEFAULT,
+        EXTERNAL,
+        APPROVALS // Combined context for Details, Attachment, Summary, Default
+    }
+
+    public enum CopilotErrorType
+    {
+        None = 0,
+        OutOfSync = 1,
+        SafeLimit = 2
+    }
+
+    public enum ChatToolFunctionNames
+    {
+        OnErrorOccurred,
+        ExplainAndAskPermission,
+        GetAIAssistedSearchResults,
+        GetRequestDetails,
+    }
+
+    public enum ActionConsentType
+    {
+        No = 0,
+        Yes = 1
+    }
+
+    public enum SearchResultReturnType
+    {
+        DocumentNumbers = 0, // Returns only document numbers
+        FullDetails = 1 // Returns full details of the search results
     }
 }

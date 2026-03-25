@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Extensions;
 using Microsoft.CFS.Approvals.LogManager.Model;
@@ -70,6 +71,8 @@ public class PullTenantHelper : IPullTenantHelper
     /// </summary>
     private readonly ITenantFactory _tenantFactory;
 
+    private readonly IDelegationHelper _delegationHelper;
+
     #endregion VARIABLES
 
     #region CONSTRUCTOR
@@ -94,7 +97,8 @@ public class PullTenantHelper : IPullTenantHelper
         IConfiguration config,
         IApprovalDetailProvider approvalDetailProvider,
         IFlightingDataProvider flightingDataProvider,
-        ITenantFactory tenantFactory)
+        ITenantFactory tenantFactory,
+        IDelegationHelper delegationHelper)
     {
         _approvalTenantInfoHelper = approvalTenantInfoHelper;
         _performanceLogger = performanceLogger;
@@ -105,6 +109,7 @@ public class PullTenantHelper : IPullTenantHelper
         _approvalDetailProvider = approvalDetailProvider;
         _flightingDataProvider = flightingDataProvider;
         _tenantFactory = tenantFactory;
+        _delegationHelper = delegationHelper;
     }
 
     #endregion CONSTRUCTOR
@@ -114,8 +119,9 @@ public class PullTenantHelper : IPullTenantHelper
     /// <summary>
     /// Get summary information for pending approval requests from tenant system.
     /// </summary>
-    /// <param name="approverAlias">Approver alias (Contains delegated user alias if operation is performed on behalf of delegated user).</param>
-    /// <param name="loggedInAlias">Logged-in user alias.</param>
+    /// <param name="signedInUser">signed-in user</param>
+    /// <param name="onBehalfUser">on-behalf user</param>
+    /// <param name="oauth2UserToken">OAuth2 user token.</param></param>
     /// <param name="parameters">Input filter parameters.</param>
     /// <param name="tenantId">Tenant Id.</param>
     /// <param name="clientDevice">Client Device.</param>
@@ -123,15 +129,7 @@ public class PullTenantHelper : IPullTenantHelper
     /// <param name="xcv">XCV.</param>
     /// <param name="tcv">TCV.</param>
     /// <returns>Summary records.</returns>
-    public async Task<JObject> GetSummaryAsync(string approverAlias,
-                                      string loggedInAlias,
-                                      Dictionary<string, object> parameters,
-                                      int tenantId,
-                                      string clientDevice,
-                                      string sessionId,
-                                      string xcv,
-                                      string tcv
-                                     )
+    public async Task<JObject> GetSummaryAsync(User signedInUser, User onBehalfUser, string oauth2UserToken, Dictionary<string, object> parameters, int tenantId, string clientDevice, string sessionId, string xcv, string tcv)
     {
         #region Logging
 
@@ -145,8 +143,8 @@ public class PullTenantHelper : IPullTenantHelper
             { LogDataKey.Tcv, tcv },
             { LogDataKey.SessionId, sessionId },
             { LogDataKey.TenantId, tenantId },
-            { LogDataKey.UserAlias, approverAlias },
-            { LogDataKey.UserRoleName, loggedInAlias },
+            { LogDataKey.UserAlias, onBehalfUser.MailNickname },
+            { LogDataKey.UserRoleName, signedInUser.MailNickname },
             { LogDataKey.EventType, Constants.BusinessProcessEvent },
             { LogDataKey.IsCriticalEvent, CriticalityLevel.Yes.ToString() },
             { LogDataKey.ClientDevice, clientDevice }
@@ -178,7 +176,7 @@ public class PullTenantHelper : IPullTenantHelper
                 var tenantAdapter = _tenantFactory.GetTenant(tenant);
 
                 // Get all the pending approval requests for the user from tenant system.
-                var httpResponseMessage = await tenantAdapter.GetTenantSummaryAsync(parameters, approverAlias, loggedInAlias, xcv, tcv, sessionId);
+                var httpResponseMessage = await tenantAdapter.GetTenantSummaryAsync(parameters, onBehalfUser.MailNickname, signedInUser.MailNickname, xcv, tcv, sessionId);
                 logData.Add(LogDataKey.EndDateTime, DateTime.UtcNow);
 
                 if (!tenantAdapter.TreatNotFoundAsError() && httpResponseMessage.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -211,8 +209,9 @@ public class PullTenantHelper : IPullTenantHelper
     /// <summary>
     /// Get details information for an approval request from tenant system.
     /// </summary>
-    /// <param name="approverAlias">Approver alias (Contains delegated user alias if operation is performed on behalf of delegated user).</param>
-    /// <param name="loggedInAlias">Logged-in user alias.</param>
+    /// <param name="signedInUser">signed-in user</param>
+    /// <param name="onBehalfUser">on-behalf user</param>
+    /// <param name="oauth2UserToken">OAuth2 user token.</param>
     /// <param name="operationType">Type of operation which needs to be executed from tenant info configuration.</param>
     /// <param name="parameters">Input filter parameters.</param>
     /// <param name="tenantId">Tenant Id.</param>
@@ -221,16 +220,7 @@ public class PullTenantHelper : IPullTenantHelper
     /// <param name="xcv">XCV.</param>
     /// <param name="tcv">TCV.</param>
     /// <returns>Details of a request.</returns>
-    public async Task<JObject> GetDetailsAsync(
-        string approverAlias,
-        string loggedInAlias,
-        string operationType,
-        Dictionary<string, object> parameters,
-        int tenantId,
-        string clientDevice,
-        string sessionId,
-        string xcv,
-        string tcv)
+    public async Task<JObject> GetDetailsAsync(User signedInUser, User onBehalfUser, string oauth2UserToken, string operationType, Dictionary<string, object> parameters, int tenantId, string clientDevice, string sessionId, string xcv, string tcv)
     {
         #region Logging
 
@@ -243,8 +233,8 @@ public class PullTenantHelper : IPullTenantHelper
             { LogDataKey.Tcv, tcv },
             { LogDataKey.SessionId, sessionId },
             { LogDataKey.TenantId, tenantId },
-            { LogDataKey.UserAlias, approverAlias },
-            { LogDataKey.UserRoleName , loggedInAlias },
+            { LogDataKey.UserAlias, onBehalfUser.MailNickname },
+            { LogDataKey.UserRoleName , signedInUser.MailNickname },
             { LogDataKey.OperationType, operationType },
             { LogDataKey.EventType, Constants.BusinessProcessEvent },
             { LogDataKey.IsCriticalEvent, CriticalityLevel.Yes.ToString() },
@@ -288,7 +278,7 @@ public class PullTenantHelper : IPullTenantHelper
                 var tenantAdapter = _tenantFactory.GetTenant(tenant);
 
                 // Get the details of an approval request from tenant system.
-                var httpResponseMessage = await tenantAdapter.GetTenantDetailsAsync(operationType, parameters, approverAlias, loggedInAlias, clientDevice, xcv, tcv, sessionId);
+                var httpResponseMessage = await tenantAdapter.GetTenantDetailsAsync(operationType, parameters, onBehalfUser.MailNickname, signedInUser.MailNickname, clientDevice, xcv, tcv, sessionId);
                 logData.Add(LogDataKey.EndDateTime, DateTime.UtcNow);
 
                 if (!tenantAdapter.TreatNotFoundAsError() && httpResponseMessage.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -320,22 +310,16 @@ public class PullTenantHelper : IPullTenantHelper
     /// <summary>
     /// Get summary count for pull tenants.
     /// </summary>
+    /// <param name="signedInUser">Logged-in user</param>
+    /// <param name="onBehalfUser">On-behalf user</param>
+    /// <param name="oauth2UserToken">OAuth2 user token.</param>
     /// <param name="operationType">Type of operation which needs to be executed from tenant info configuration.</param>
-    /// <param name="approverAlias">Approver alias (Contains delegated user alias if operation is performed on behalf of delegated user).</param>
-    /// <param name="loggedInAlias">Logged-in user alias.</param>
     /// <param name="sessionId">Session Id.</param>
     /// <param name="xcv">XCV.</param>
     /// <param name="tcv">TCV.</param>
     /// <param name="clientDevice">Client Device.</param>
     /// <returns>Array of summary count.</returns>
-    public async Task<JArray> GetSummaryCountAsync(
-        string operationType,
-        string approverAlias,
-        string loggedInAlias,
-        string sessionId,
-        string xcv,
-        string tcv,
-        string clientDevice)
+    public async Task<JArray> GetSummaryCountAsync(User signedInUser, User onBehalfUser, string oauth2UserToken, string operationType, string sessionId, string xcv, string tcv, string clientDevice)
     {
         tcv = !string.IsNullOrWhiteSpace(tcv) ? tcv : Guid.NewGuid().ToString();
 
@@ -345,8 +329,8 @@ public class PullTenantHelper : IPullTenantHelper
             { LogDataKey.Xcv, xcv },
             { LogDataKey.Tcv, tcv },
             { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserAlias, approverAlias },
-            { LogDataKey.UserRoleName , loggedInAlias },
+            { LogDataKey.UserAlias, onBehalfUser.MailNickname },
+            { LogDataKey.UserRoleName , signedInUser.MailNickname },
             { LogDataKey.OperationType, operationType },
             { LogDataKey.EventType, Constants.BusinessProcessEvent },
             { LogDataKey.IsCriticalEvent, CriticalityLevel.Yes.ToString() },
@@ -376,12 +360,12 @@ public class PullTenantHelper : IPullTenantHelper
 
                         var parameters = new Dictionary<string, object>
                     {
-                        { "alias", loggedInAlias }
+                        { "alias", onBehalfUser.MailNickname }
                     };
 
                         // Get the details of an approval request from tenant system.
                         var httpResponseMessage = await tenantAdapter.GetTenantDetailsAsync(operationType, parameters,
-                            approverAlias, loggedInAlias, clientDevice, xcv, tcv, sessionId);
+                            onBehalfUser.MailNickname, signedInUser.MailNickname, clientDevice, xcv, tcv, sessionId);
                         if (httpResponseMessage == null)
                         {
                             continue;

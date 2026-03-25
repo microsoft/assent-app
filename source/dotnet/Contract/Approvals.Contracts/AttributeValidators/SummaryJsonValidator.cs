@@ -36,7 +36,7 @@ namespace Microsoft.CFS.Approvals.Contracts.AttributeValidators
             if (summaryJson.ApprovalIdentifier != null)
                 results.AddRange(new ApprovalIdentifierValidator().Validator(summaryJson.ApprovalIdentifier));
             if (summaryJson.Submitter != null)
-                results.AddRange(new NameAliasEntityValidator().Validator(summaryJson.Submitter, "ApprovalRequestExpression.SummaryJson.Submitter"));
+                results.AddRange(new UserValidator().Validator(summaryJson.Submitter, "ApprovalRequestExpression.SummaryJson.Submitter"));
             if (summaryJson.CustomAttribute != null)
                 results.AddRange(new CustomAttributeValidator().Validator(summaryJson.CustomAttribute));
             if (summaryJson.ApprovalHierarchy != null)

@@ -87,6 +87,11 @@ public class ApprovalSummaryData
     public bool IsOfflineApproval { get; set; }
 
     public bool LobPending { get; set; }
+
+    /// <summary>
+    /// Condition to evaluate whether a request is allowed for bulk approval
+    /// </summary>
+    public string AllowBulkApprovalCondition { get; set; }
 }
 
 public class TenantCustomAttribute

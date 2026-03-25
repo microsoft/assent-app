@@ -32,6 +32,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Internal.AntiSSRF;
 using Polly;
 using Polly.Extensions.Http;
 
@@ -105,9 +106,18 @@ namespace AuditAgentAzFunction
             builder.Services.AddScoped<IApprovalTenantInfoProvider, ApprovalTenantInfoProvider>();
             builder.Services.AddScoped<IApprovalTenantInfoHelper, ApprovalTenantInfoHelper>();
             builder.Services.AddScoped<IFlightingDataProvider, FlightingDataProvider>();
-            builder.Services.AddSingleton<HttpClientHandler>();
+            builder.Services.AddScoped<IAuthenticationHelper, AuthenticationHelper>(); // Register IAuthenticationHelper for HttpHelper.
+
+            var policy = new AntiSSRFPolicy();
+            policy.SetDefaults();
+
+            var handler = policy.GetHandler();
+            builder.Services.AddSingleton(handler);
+
+            builder.Services.AddScoped<HttpClientHandler>();
             builder.Services.AddHttpClient<IHttpHelper, HttpHelper>()
-                .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
+                .ConfigurePrimaryHttpMessageHandler(() => handler)
+                            .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
                 .AddPolicyHandler(GetRetryPolicy());
         }
 

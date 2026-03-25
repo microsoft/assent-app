@@ -9,6 +9,7 @@ using System.Linq;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.Extensions;
 using Microsoft.CFS.Approvals.Model;
 using Microsoft.Extensions.Configuration;
 
@@ -60,23 +61,31 @@ public class TenantDownTimeMessagesProvider : ITenantDownTimeMessagesProvider
     /// <summary>
     /// Get all down time notifications group by buckets.
     /// </summary>
-    /// <param name="tdMessages"></param>
-    /// <param name="loggedInAlias"></param>
-    /// <param name="clientDevice"></param>
+    /// <param name="loggedInUpn"></param>
     /// <returns></returns>
-    public IEnumerable<UserPreference> GetUserPreferencesByAlias(string loggedInAlias)
+    public IEnumerable<UserPreference> GetUserPreferencesByAlias(string loggedInUpn)
     {
         var tableName = _config[ConfigurationKey.UserPreferenceAzureTableName.ToString()];
-        return _tableHelper.GetTableEntityListByPartitionKey<UserPreference>(tableName, loggedInAlias.ToLowerInvariant()).ToList();
+        var userPreferences = _tableHelper.GetTableEntityListByPartitionKey<UserPreference>(tableName, loggedInUpn.ToLowerInvariant()).ToList();
+        
+        //Backward compatibility
+        if(_config[Constants.OldWhitelistedDomains].Contains(loggedInUpn.GetDomainFromUPN(), StringComparison.InvariantCultureIgnoreCase))
+        {
+            if (userPreferences == null)
+                userPreferences = _tableHelper.GetTableEntityListByPartitionKey<UserPreference>(tableName, loggedInUpn.GetAliasFromUPN().ToLowerInvariant()).ToList();
+            else
+                userPreferences.AddRange(_tableHelper.GetTableEntityListByPartitionKey<UserPreference>(tableName, loggedInUpn.GetAliasFromUPN().ToLowerInvariant()).ToList());
+        }
+        return userPreferences;
     }
 
     /// <summary>
     /// Insert or Update Tenant Down Time Message.
     /// </summary>
     /// <param name="realtimeTenantInfo"></param>
-    /// <param name="loggedInAlias"></param>
+    /// <param name="loggedInUpn"></param>
     /// <returns></returns>
-    public bool InsertOrUpdateTenantDowntimeMessage(ApprovalTenantInfoRealTime realtimeTenantInfo, string loggedInAlias)
+    public bool InsertOrUpdateTenantDowntimeMessage(ApprovalTenantInfoRealTime realtimeTenantInfo, string loggedInUpn)
     {
         try
         {
@@ -92,7 +101,7 @@ public class TenantDownTimeMessagesProvider : ITenantDownTimeMessagesProvider
                 //insert a new row with some changes in existing property values
                 tenantDownTimeMessage.PartitionKey = realtimeTenantInfo.IsTenantServicesDown.ToString();
                 tenantDownTimeMessage.NotificationBody = realtimeTenantInfo.CurrentTenantServiceInformation;
-                tenantDownTimeMessage.CreatedBy = loggedInAlias;
+                tenantDownTimeMessage.CreatedBy = loggedInUpn;
                 _tableHelper.InsertOrReplace(_config[ConfigurationKey.TenantDownTimeMessagesAzureTableName.ToString()],
                     tenantDownTimeMessage);
             }
@@ -103,7 +112,7 @@ public class TenantDownTimeMessagesProvider : ITenantDownTimeMessagesProvider
                     PartitionKey = realtimeTenantInfo.IsTenantServicesDown.ToString(),
                     RowKey = realtimeTenantInfo.DocTypeId,
                     BannerType = "warning",
-                    CreatedBy = loggedInAlias,
+                    CreatedBy = loggedInUpn,
                     CreatedDate = DateTime.UtcNow,
                     EventEndTime = DateTime.UtcNow,
                     EventStartTime = DateTime.UtcNow,

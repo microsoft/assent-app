@@ -19,12 +19,14 @@ using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
 using Microsoft.CFS.Approvals.Domain.BL.Interface;
 using Microsoft.CFS.Approvals.Extensions;
+using Microsoft.CFS.Approvals.LogManager.Interface;
 using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.Model;
 using Microsoft.CFS.Approvals.Utilities.Extension;
 using Microsoft.CFS.Approvals.Utilities.Interface;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 /// <summary>
@@ -35,10 +37,12 @@ public class DocumentActionHelper : IDocumentActionHelper
 {
     #region Variables
 
+    private readonly object lockobj = new object();
+
     /// <summary>
-    /// The approval summary provider
+    /// The summary helper
     /// </summary>
-    protected readonly IApprovalSummaryProvider _approvalSummaryProvider = null;
+    protected readonly ISummaryHelper _summaryHelper = null;
 
     /// <summary>
     /// The configuration
@@ -91,9 +95,14 @@ public class DocumentActionHelper : IDocumentActionHelper
     protected readonly ITenantFactory _tenantFactory;
 
     /// <summary>
-    /// Attachment helper.
+    /// OpenTelemetry audit logger
     /// </summary>
-    protected readonly IAttachmentHelper _attachmentHelper;
+    private readonly IAuditLogger _auditLogger;
+
+    /// <summary>
+    /// Delegation helper
+    /// </summary>
+    private readonly IDelegationHelper _delegationHelper;
 
     #endregion Variables
 
@@ -102,7 +111,7 @@ public class DocumentActionHelper : IDocumentActionHelper
     /// <summary>
     /// Initializes a new instance of the <see cref="DocumentActionHelper"/> class.
     /// </summary>
-    /// <param name="approvalSummaryProvider">The approval summary provider.</param>
+    /// <param name="summaryHelper">The approval summary provider.</param>
     /// <param name="config">The configuration.</param>
     /// <param name="logProvider">The logger.</param>
     /// <param name="nameResolutionHelper">The name resolution helper.</param>
@@ -113,9 +122,10 @@ public class DocumentActionHelper : IDocumentActionHelper
     /// <param name="tableHelper">The table helper.</param>
     /// <param name="approvalTenantInfoHelper"> The approval tenantinfo helper.</param>
     /// <param name="tenantFactory">The tenant factory.</param>
-    /// <param name="attachmentHelper">Attachment helper.</param>
+    /// <param name="auditLogger"></param>
+    /// <param name="delegationHelper"></param>
     public DocumentActionHelper(
-        IApprovalSummaryProvider approvalSummaryProvider,
+        ISummaryHelper summaryHelper,
         IConfiguration config,
         ILogProvider logProvider,
         INameResolutionHelper nameResolutionHelper,
@@ -126,9 +136,10 @@ public class DocumentActionHelper : IDocumentActionHelper
         ITableHelper tableHelper,
         IApprovalTenantInfoHelper approvalTenantInfoHelper,
         ITenantFactory tenantFactory,
-        IAttachmentHelper attachmentHelper)
+        IAuditLogger auditLogger,
+        IDelegationHelper delegationHelper)
     {
-        _approvalSummaryProvider = approvalSummaryProvider;
+        _summaryHelper = summaryHelper;
         _config = config;
         _logger = logProvider;
         _nameResolutionHelper = nameResolutionHelper;
@@ -139,7 +150,8 @@ public class DocumentActionHelper : IDocumentActionHelper
         _tableHelper = tableHelper;
         _approvalTenantInfoHelper = approvalTenantInfoHelper;
         _tenantFactory = tenantFactory;
-        _attachmentHelper = attachmentHelper;
+        _auditLogger = auditLogger;
+        _delegationHelper = delegationHelper;
     }
 
     #endregion Constructor
@@ -152,8 +164,8 @@ public class DocumentActionHelper : IDocumentActionHelper
     /// <param name="tenantId">The tenant map identifier.</param>
     /// <param name="userActionsString">The user actions string.</param>
     /// <param name="clientDevice">The client device.</param>
-    /// <param name="userAlias">The user alias.</param>
-    /// <param name="loggedInUser">The logged in user.</param>
+    /// <param name="onBehalfUser">The on-behalf user entity.</param>
+    /// <param name="signedInUser">The signed in user entity.</param>
     /// <param name="oauth2UserToken">The OAuth 2.0 user token.</param>
     /// <param name="xcv">The xcv.</param>
     /// <param name="tcv">The TCV.</param>
@@ -163,8 +175,8 @@ public class DocumentActionHelper : IDocumentActionHelper
             int tenantId,
             string userActionsString,
             string clientDevice,
-            string userAlias,
-            string loggedInUser,
+            User onBehalfUser,
+            User signedInUser,
             string oauth2UserToken,
             string xcv,
             string tcv,
@@ -189,9 +201,9 @@ public class DocumentActionHelper : IDocumentActionHelper
             { LogDataKey.Tcv, tcv },
             { LogDataKey.ReceivedTcv, tcv },
             { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, loggedInUser },
+            { LogDataKey.UserRoleName, signedInUser.UserPrincipalName },
             { LogDataKey.TenantId, tenantId },
-            { LogDataKey.UserAlias, userAlias },
+            { LogDataKey.UserAlias, onBehalfUser.MailNickname },
             { LogDataKey.ClientDevice, clientDevice },
             { LogDataKey.UserActionsString, userActionsString }
         };
@@ -203,6 +215,7 @@ public class DocumentActionHelper : IDocumentActionHelper
             #region Get Tenant Info
 
             ApprovalTenantInfo tenantInfo = _approvalTenantInfoHelper.GetTenantInfo(tenantId);
+            _auditLogger.LogAudit("TakeAction", AuditOperationType.Read, signedInUser.MailNickname, "CoreServices", "TableStorage", "ApprovalTenantInfo", AuditOperationResult.Success, $"DocumentActionHelper.cs - TakeAction - GetTenantInfo, tenantId:{tenantId}, sessionId:{sessionId}, tcv:{tcv}, xcv:{xcv}");
 
             #endregion Get Tenant Info
 
@@ -237,7 +250,7 @@ public class DocumentActionHelper : IDocumentActionHelper
 
             #region Get type of Tenant
 
-            ITenant tenantAdaptor = _tenantFactory.GetTenant(tenantInfo, userAlias, clientDevice, oauth2UserToken);
+            ITenant tenantAdaptor = _tenantFactory.GetTenant(tenantInfo, onBehalfUser.MailNickname, clientDevice, oauth2UserToken, onBehalfUser.Id, onBehalfUser.UserPrincipalName.GetDomainFromUPN());
 
             #endregion Get type of Tenant
 
@@ -249,13 +262,14 @@ public class DocumentActionHelper : IDocumentActionHelper
                                                             tenantAdaptor,
                                                             tenantInfo,
                                                             tenantId,
-                                                            userAlias,
-                                                            loggedInUser,
+                                                            onBehalfUser,
+                                                            signedInUser,
                                                             clientDevice,
                                                             approvalRequests,
                                                             xcv,
                                                             tcv,
-                                                            sessionId);
+                                                            sessionId,
+                                                            oauth2UserToken);
 
                 #endregion Process User Actions and Await Tenant and Approvals Internal Response
             }
@@ -269,6 +283,7 @@ public class DocumentActionHelper : IDocumentActionHelper
         {
             logData.Add(LogDataKey.EndDateTime, DateTime.UtcNow);
             _logger.LogError(TrackingEvent.WebApiDocumentActionFail, exception, logData);
+            _auditLogger.LogAudit("TakeAction", AuditOperationType.Read, signedInUser.MailNickname, "CoreServices", "NA", "NA", AuditOperationResult.Failure, $"DocumentActionHelper.cs - TakeAction, tenantId:{tenantId}, sessionId:{sessionId}, tcv:{tcv}, xcv:{xcv}, errorMessage:{exception.Message}");
             throw;
         }
     }
@@ -285,25 +300,27 @@ public class DocumentActionHelper : IDocumentActionHelper
     /// <param name="tenantAdapter">The tenant adapter.</param>
     /// <param name="tenantInfo">The tenant information.</param>
     /// <param name="tenantId">The tenant map identifier.</param>
-    /// <param name="alias">The alias.</param>
-    /// <param name="loggedInAlias">The logged in alias.</param>
+    /// <param name="onBehalfUser">The on-behalf user.</param>
+    /// <param name="signedInUser">The signed in user.</param>
     /// <param name="clientDevice">The client device.</param>
     /// <param name="approvalRequests">The approval requests.</param>
     /// <param name="xcv">The Xcv.</param>
     /// <param name="tcv">The TCV.</param>
     /// <param name="sessionId">The session identifier.</param>
+    /// <param name="oauth2UserToken">User token</param>
     /// <returns>Task of JObject.</returns>
     protected virtual async Task<JObject> ProcessUserActionsAsync(
             ITenant tenantAdapter,
             ApprovalTenantInfo tenantInfo,
             int tenantId,
-            string alias,
-            string loggedInAlias,
+            User onBehalfUser,
+            User signedInUser,
             string clientDevice,
             List<ApprovalRequest> approvalRequests,
             string xcv,
             string tcv,
-            string sessionId)
+            string sessionId,
+            string oauth2UserToken)
     {
         JArray userActionsResponseArray = new JArray();
         JObject userActionsResponseObject = new JObject();
@@ -311,25 +328,33 @@ public class DocumentActionHelper : IDocumentActionHelper
         // Resolve dependencies
         List<Task<JToken>> allTasks = new List<Task<JToken>>();
 
+        #region Fetch Object Id and Domain for alias
+
+        string approverDomain = string.IsNullOrWhiteSpace(onBehalfUser.UserPrincipalName) ? (await _nameResolutionHelper.GetUserPrincipalName(onBehalfUser.MailNickname)).GetDomainFromUPN() : onBehalfUser.UserPrincipalName.GetDomainFromUPN();
+        string approverId = onBehalfUser.Id;
+        if (string.IsNullOrWhiteSpace(onBehalfUser.Id) && !string.IsNullOrWhiteSpace(onBehalfUser.UserPrincipalName))
+            approverId = (await _nameResolutionHelper.GetUser(onBehalfUser.UserPrincipalName))?.Id;
+
+        #endregion Fetch Object Id and Domain for alias
+
         #region Process each user action separately
 
-        ApprovalSummaryRow approvalSummaryRow = null;
         foreach (var approvalRequest in approvalRequests)
         {
             var logData = new Dictionary<LogDataKey, object>
                     {
                         { LogDataKey.GlobalTcv, tcv },
                         { LogDataKey.Tcv, approvalRequest?.Telemetry?.Tcv },
-                        { LogDataKey.ReceivedTcv, approvalSummaryRow != null ? approvalSummaryRow.Tcv : tcv },
+                        { LogDataKey.ReceivedTcv, tcv },
                         { LogDataKey.SessionId, sessionId },
                         { LogDataKey.Xcv, approvalRequest?.Telemetry?.Xcv },
                         { LogDataKey.DXcv, approvalRequest.ApprovalIdentifier.DisplayDocumentNumber },
-                        { LogDataKey.UserRoleName, loggedInAlias },
-                        { LogDataKey.Approver, loggedInAlias },
+                        { LogDataKey.UserRoleName, signedInUser.MailNickname },
+                        { LogDataKey.Approver, signedInUser.MailNickname },
                         { LogDataKey.BusinessProcessName, string.Format(tenantInfo.BusinessProcessName, Constants.BusinessProcessNameApprovalAction, approvalRequest.Action) },
                         { LogDataKey.TenantId, tenantId },
                         { LogDataKey.TenantName, tenantInfo.AppName },
-                        { LogDataKey.UserAlias, alias },
+                        { LogDataKey.UserAlias, onBehalfUser.MailNickname },
                         { LogDataKey.DocumentNumber, approvalRequest.ApprovalIdentifier.DisplayDocumentNumber },
                         { LogDataKey.DisplayDocumentNumber, approvalRequest.ApprovalIdentifier.DisplayDocumentNumber },
                         { LogDataKey.FiscalYear, approvalRequest.ApprovalIdentifier.FiscalYear },
@@ -340,7 +365,8 @@ public class DocumentActionHelper : IDocumentActionHelper
             try
             {
                 // This is done to fetch the ReceivedTcv value from SummaryRow
-                approvalSummaryRow = _approvalSummaryProvider.GetApprovalSummaryByDocumentNumberAndApprover(tenantInfo.DocTypeId, approvalRequest.ApprovalIdentifier.DisplayDocumentNumber, alias);
+                var approvalSummaryRow = _summaryHelper.GetApprovalSummaryByDocumentNumberAndApprover(tenantInfo.DocTypeId, approvalRequest.ApprovalIdentifier.DisplayDocumentNumber, onBehalfUser.MailNickname, approverId, approverDomain);
+                _auditLogger.LogAudit("ProcessUserActionsAsync", AuditOperationType.Read, signedInUser.MailNickname, "CoreServices", "TableStorage", "ApprovalSummary", AuditOperationResult.Success, $"DocumentActionHelper.cs - ProcessUserActionsAsync - GetApprovalSummaryByDocumentNumberAndApprover, tenantId:{tenantId}, sessionId:{sessionId}, tcv:{tcv}, xcv:{xcv}");
 
                 List<TenOpsDetails> tenantOperations = tenantInfo.DetailOperations.DetailOpsList;
                 var operation = tenantOperations.Where(item => item.operationtype == Constants.OperationTypeOutOfSync).ToList().FirstOrDefault();
@@ -350,7 +376,7 @@ public class DocumentActionHelper : IDocumentActionHelper
                 {
                     #region Update Summary record to mark the request a Out Of Sync
 
-                    _approvalSummaryProvider.UpdateSummaryIsOutOfSyncChallenged(tenantInfo, approvalSummaryRow, DateTime.Parse(approvalRequest.ActionDetails[Constants.ActionDateKey]), approvalRequest.Action);
+                    _summaryHelper.UpdateSummary(tenantInfo, approvalSummaryRow, DateTime.Parse(approvalRequest.ActionDetails[Constants.ActionDateKey]), approvalRequest.Action);
 
                     TenantAction action = tenantInfo.ActionDetails.Secondary.FirstOrDefault(a => a.Code.Equals(approvalRequest.Action.ToString(), StringComparison.InvariantCultureIgnoreCase));
 
@@ -378,13 +404,14 @@ public class DocumentActionHelper : IDocumentActionHelper
                                     tenantInfo,
                                     approvalSummaryRow,
                                     tenantId,
-                                    alias,
-                                    loggedInAlias,
+                                    onBehalfUser,
+                                    signedInUser,
                                     clientDevice,
                                     approvalRequest,
                                     sessionId,
                                     xcv,
-                                    tcv));
+                                    tcv,
+                                    oauth2UserToken));
                     allTasks.Add(processUserAction);
                 }
 
@@ -395,6 +422,7 @@ public class DocumentActionHelper : IDocumentActionHelper
                 // Handle this exception and allow the process to continue
                 // Log all information and then proceed with next documentKey in the collection
                 _logger.LogError(TrackingEvent.ProcessUserActionsFailed, exception, logData);
+                _auditLogger.LogAudit("TakeAction", AuditOperationType.Read, signedInUser.MailNickname, "CoreServices", "NA", "NA", AuditOperationResult.Failure, $"DocumentActionHelper.cs - TakeAction, tenantId:{tenantId}, sessionId:{sessionId}, tcv:{tcv}, xcv:{xcv}, errorMessage:{exception.Message}");
             }
         }
 
@@ -418,15 +446,32 @@ public class DocumentActionHelper : IDocumentActionHelper
     /// If the record genuinely belongs to the user, the user will receive an appropriate message
     /// If the record is being hacked, then the checks are safe but limited to Approvals knowledge of the record because the tenants do not support custom security checks
     /// </summary>
-    /// <param name="alias">Approver alias</param>
+    /// <param name="onBehalfUser">on-behalf user entity</param>
+    /// <param name="signedInUser">signed-in user entity</param>
     /// <param name="approvalRequest">Approval request object</param>
     /// <param name="approvalSummaryRow">Approval summary row data</param>
     /// <param name="tenantInfo"></param>
-    protected async Task CheckAuthorization(string alias, ApprovalRequest approvalRequest, ApprovalSummaryRow approvalSummaryRow, ApprovalTenantInfo tenantInfo)
+    /// <param name="sessionId"></param>
+    /// <param name="xcv"></param>
+    /// <param name="tcv"></param>
+    /// <param name="clientDevice"></param>
+    /// <param name="oauth2UserToken"></param>
+    protected async Task CheckAuthorization(User onBehalfUser, User signedInUser, ApprovalRequest approvalRequest, ApprovalSummaryRow approvalSummaryRow, ApprovalTenantInfo tenantInfo, string sessionId, string xcv, string tcv, string clientDevice, string oauth2UserToken)
     {
+        if (!signedInUser.UserPrincipalName.Equals((onBehalfUser.UserPrincipalName), StringComparison.OrdinalIgnoreCase))
+        {
+            // check if entry made from support portal
+            if (_delegationHelper.GetUserDelegationsForCurrentUser(onBehalfUser)?.FirstOrDefault(d => d.DelegateUpn == signedInUser.UserPrincipalName && d.IsHidden == true) == null)
+            {
+                if (_delegationHelper.GetUserDelegation(signedInUser, onBehalfUser, oauth2UserToken, clientDevice, sessionId, xcv, tcv).Result?.FirstOrDefault(t => t.AppId.Equals(tenantInfo.DocTypeId) && t.Delegator.UserPrincipalName.Equals(onBehalfUser.UserPrincipalName)) == null)
+                    throw new UnauthorizedAccessException("User doesn't have permission to see the report.");
+            }
+
+        }
+
         if (approvalSummaryRow == null)
         {
-            var actionAuditLog = (await _actionAuditLogHelper.GetActionAuditLogsByDocumentNumberAndApprover(approvalRequest.ApprovalIdentifier.DisplayDocumentNumber, alias)).OrderByDescending(a => a.ActionDateTime).FirstOrDefault();
+            var actionAuditLog = (await _actionAuditLogHelper.GetActionAuditLogsByDocumentNumberAndApprover(approvalRequest.ApprovalIdentifier.DisplayDocumentNumber, onBehalfUser.MailNickname)).OrderByDescending(a => a.ActionDateTime).FirstOrDefault();
             if (actionAuditLog != null)
             {
                 // You have already taken action "{0}" on this request on {1} from {2}. No further action is required.
@@ -439,7 +484,7 @@ public class DocumentActionHelper : IDocumentActionHelper
             }
         }
 
-        if (!string.IsNullOrEmpty(approvalRequest.ActionByAlias) && !approvalRequest.ActionByAlias.Equals(alias, StringComparison.InvariantCultureIgnoreCase))
+        if (!string.IsNullOrEmpty(approvalRequest.ActionByAlias) && !approvalRequest.ActionByAlias.Equals(onBehalfUser.MailNickname, StringComparison.InvariantCultureIgnoreCase))
         {
             // You do not have permission to act on this approval request.
             throw new UnauthorizedAccessException(_config[ConfigurationKey.UnAuthorizedException.ToString()]);
@@ -472,6 +517,14 @@ public class DocumentActionHelper : IDocumentActionHelper
                 approvalRequest.ActionDetails[Constants.ActionDateKey] = DateTime.UtcNow.ToString("o");
             }
         }
+
+        // checks for invalid request - stale request
+        if (approvalSummaryRow != null)
+        {
+            var summaryRowValidationError = Extension.ValidateSummaryRow(approvalSummaryRow);
+            if (summaryRowValidationError != null)
+                throw new InvalidOperationException(summaryRowValidationError);
+        }
     }
 
     /// <summary>
@@ -480,18 +533,19 @@ public class DocumentActionHelper : IDocumentActionHelper
     /// <param name="tenantAdapter">tenant Adapter</param>
     /// <param name="tenantInfo">approval tenant info for selected request</param>
     /// <param name="tenantId">tenant id for selected request</param>
-    /// <param name="alias">Approver alias</param>
-    /// <param name="loggedInAlias">logged-in alias</param>
+    /// <param name="onBehalfUser">Approver entity</param>
+    /// <param name="signedInUser">signed-in entity</param>
     /// <param name="sessionId">Session Id</param>
     /// <param name="tcv">Transaction vector</param>
     /// <param name="logData">log Data</param>
     /// <param name="approvalRequest">Approval request object</param>
     /// <param name="approvalSummaryRow">Approval summary row data</param>
-    protected void AddMetadataToApprovalRequest(ITenant tenantAdapter, ApprovalTenantInfo tenantInfo, int tenantId, string alias, string loggedInAlias, string sessionId, string tcv, Dictionary<LogDataKey, object> logData, ApprovalRequest approvalRequest, ApprovalSummaryRow approvalSummaryRow)
+    /// <param name="domain">user alias domain</param>
+    protected void AddMetadataToApprovalRequest(ITenant tenantAdapter, ApprovalTenantInfo tenantInfo, int tenantId, User onBehalfUser, User signedInUser, string sessionId, string tcv, Dictionary<LogDataKey, object> logData, ApprovalRequest approvalRequest, ApprovalSummaryRow approvalSummaryRow)
     {
         #region Get Edited details data for given document
 
-        ApprovalDetailsEntity editedDetailsRow = _approvalDetailProvider.GetApprovalsDetails(tenantId, approvalRequest.ApprovalIdentifier.DisplayDocumentNumber, Constants.EditedDetailsOperationType + "|" + alias);
+        ApprovalDetailsEntity editedDetailsRow = _approvalDetailProvider.GetApprovalDetailsByOperation(tenantId, approvalRequest.ApprovalIdentifier.DisplayDocumentNumber, Constants.EditedDetailsOperationType + "|" + onBehalfUser.MailNickname, tenantInfo.DocTypeId).Result;
         JObject detailsData = null;
         if (editedDetailsRow != null)
         {
@@ -502,11 +556,19 @@ public class DocumentActionHelper : IDocumentActionHelper
 
         var editableFieldAuditLog = _tableHelper.GetTableEntityListByPartitionKey<EditableFieldAuditEntity>(Constants.EditableFieldAuditLogs, approvalRequest.ApprovalIdentifier.GetDocNumber(tenantInfo));
 
-        lock (approvalRequest)
+        lock (lockobj)
         {
             #region Add delegation information
 
-            approvalRequest.ActionByDelegateInMSApprovals = loggedInAlias;
+            approvalRequest.ActionByDelegateInMSApprovals = signedInUser.MailNickname;
+
+            approvalRequest.ActionByDelegate = new User()
+            {
+                Alias = signedInUser?.MailNickname,
+                Id = signedInUser?.Id,
+                UserPrincipalName = signedInUser?.UserPrincipalName,
+                MailNickname = signedInUser?.MailNickname,
+            };
 
             // This is done just to handle older requests where the OriginalApprovers is stored as 'null' as a string type
             if (approvalSummaryRow.OriginalApprovers != null && approvalSummaryRow.OriginalApprovers.Equals("null", StringComparison.InvariantCultureIgnoreCase))
@@ -557,6 +619,38 @@ public class DocumentActionHelper : IDocumentActionHelper
             logData[LogDataKey.Tcv] = approvalRequest?.Telemetry?.Tcv;
             logData[LogDataKey.GlobalTcv] = tcv;
             logData[LogDataKey.ReceivedTcv] = approvalSummaryRow.Tcv;
+
+            if (tenantInfo.AppendAdditionaDataToUserActionString)
+            {
+                var summary = approvalSummaryRow.SummaryJson.FromJson<SummaryJson>();
+                if (approvalRequest?.AdditionalData == null)
+                {
+                    approvalRequest.AdditionalData = new Dictionary<string, string>();
+                    approvalRequest.AdditionalData = summary?.AdditionalData;
+                }
+                else if (summary?.AdditionalData != null)
+                {
+                    foreach (var additionaData in summary?.AdditionalData)
+                    {
+                        if (!approvalRequest.AdditionalData.ContainsKey(additionaData.Key))
+                            approvalRequest.AdditionalData.Add(additionaData.Key, additionaData.Value);
+                    }
+                }
+            }
+
+            // Add the blob urls for the user document as an additional data for tenants to consume.
+            if (tenantInfo.IsUploadAttachmentsEnabled)
+                AddUserDocumentsInfo(approvalSummaryRow, tenantId, approvalRequest, logData);
+
+            // Added elevated approver upn in additional data
+            var elevatedApproverUpn = approvalSummaryRow.IsBackupApprover ? approvalSummaryRow.PartitionKey + approvalSummaryRow.ApproverDomain : string.Empty;
+            if (!string.IsNullOrWhiteSpace(elevatedApproverUpn))
+            {
+                if (approvalRequest.AdditionalData != null)
+                    approvalRequest.AdditionalData.Add("ElevatedApproverUpn", elevatedApproverUpn);
+                else
+                    approvalRequest.AdditionalData = new Dictionary<string, string> { { "ElevatedApproverUpn", elevatedApproverUpn } };
+            }
         }
     }
 
@@ -724,6 +818,40 @@ public class DocumentActionHelper : IDocumentActionHelper
             // Based on the TargetPage property and delay time, the UI either navigates to the Summary or calling page or stays on the details page
             AddTargetPageInformation(tenantInfo, actionResponseContentObject, approvalRequest);
         }
+        else if (actionResponse.StatusCode == HttpStatusCode.Conflict)
+        {
+            // The actionResponse will always contain List<ApprovalResponse> as it is handled in TenantBase.cs
+            var approvalResponse = tenantAdapter.ParseResponseString<List<ApprovalResponse>>(await actionResponse.Content.ReadAsStringAsync()).FirstOrDefault();
+
+            logData.Add(LogDataKey.Tcv, approvalResponse?.Telemetry?.Tcv);
+            logData.Add(LogDataKey.Xcv, approvalResponse?.Telemetry?.Xcv);
+
+            // Add Tracking ID to the action response string.
+            if (actionResponseContentObject.Property("ErrorMessage") == null)
+            {
+                // DisplayMessage will always contain value
+                actionResponseContentObject.Add("ErrorMessage", "Tracking ID:" + tcv + " :: " + approvalResponse?.DisplayMessage + ".");
+            }
+
+            // Failed Telemtry should receive the response received from Tenant
+            var actionAuditLogInfo = new ActionAuditLogInfo
+            {
+                DisplayDocumentNumber = approvalRequest?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
+                ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
+                ActionStatus = Constants.FailedStatus,
+                ActionTaken = approvalRequest?.Action,
+                Approver = alias,
+                ImpersonatedUser = loggedInAlias,
+                ClientType = clientDevice,
+                TenantId = tenantInfo?.TenantId.ToString(),
+                UnitValue = summaryJson?.UnitValue ?? string.Empty,
+                UnitOfMeasure = summaryJson?.UnitOfMeasure ?? string.Empty,
+                ErrorMessage = approvalResponse?.E2EErrorInformation?.ErrorMessages?.ToJson(),
+                Id = Guid.NewGuid()
+            };
+            await LogActionDetailsAsync(actionAuditLogInfo, tenantInfo, clientDevice, tcv, sessionId, loggedInAlias, alias);
+            _logger.LogError(TrackingEvent.DocumentActionFailure, new Exception(approvalResponse?.E2EErrorInformation?.ErrorMessages?.ToJson()), logData);
+        }
         else if (!actionResponse.IsSuccessStatusCode || !bTenantCallSuccess)
         {
             List<ApprovalSummaryRow> summaryRowsToUpdateInBatch = new List<ApprovalSummaryRow>();
@@ -782,7 +910,7 @@ public class DocumentActionHelper : IDocumentActionHelper
 
             if (summaryRowsToUpdateInBatch.Count > 0)
             {
-                await _approvalSummaryProvider.UpdateSummaryInBatchAsync(summaryRowsToUpdateInBatch, tcv, sessionId, tcv,
+                await _summaryHelper.UpdateSummaryInBatchAsync(summaryRowsToUpdateInBatch, tcv, sessionId, tcv,
                     tenantInfo, approvalRequest.Action);
             }
 
@@ -1113,27 +1241,28 @@ public class DocumentActionHelper : IDocumentActionHelper
     /// <param name="tenantInfo">The tenant information.</param>
     /// <param name="approvalSummaryRow">The approval summary row</param>
     /// <param name="tenantId">The tenant map identifier.</param>
-    /// <param name="alias">The alias.</param>
-    /// <param name="loggedInAlias">The logged in alias.</param>
+    /// <param name="onBehalfUser">The one-behalf user entity.</param>
+    /// <param name="signedInUser">The signed in user entity.</param>
     /// <param name="clientDevice">The client device.</param>
     /// <param name="approvalRequest">The approval request.</param>
     /// <param name="sessionId">The session identifier.</param>
     /// <param name="xcv">The Xcv.</param>
     /// <param name="tcv">The Tcv.</param>
+    /// <param name="oauth2UserToken">User token</param>
     /// <returns>Task of JToken.</returns>
     private async Task<JToken> ProcessUserActionAsync(
                                 ITenant tenantAdapter,
                                 ApprovalTenantInfo tenantInfo,
                                 ApprovalSummaryRow approvalSummaryRow,
                                 int tenantId,
-                                string alias,
-                                string loggedInAlias,
+                                User onBehalfUser,
+                                User signedInUser,
                                 string clientDevice,
                                 ApprovalRequest approvalRequest,
                                 string sessionId,
                                 string xcv,
-                                string tcv
-                                )
+                                string tcv,
+                                string oauth2UserToken)
     {
         #region Logging Prep
 
@@ -1147,12 +1276,12 @@ public class DocumentActionHelper : IDocumentActionHelper
                 { LogDataKey.SessionId, sessionId },
                 { LogDataKey.Xcv, approvalRequest?.Telemetry?.Xcv },
                 { LogDataKey.DXcv, approvalRequest?.ApprovalIdentifier?.DisplayDocumentNumber },
-                { LogDataKey.UserRoleName, loggedInAlias },
-                { LogDataKey.Approver, alias },
+                { LogDataKey.UserRoleName, signedInUser.MailNickname },
+                { LogDataKey.Approver, onBehalfUser.MailNickname },
                 { LogDataKey.BusinessProcessName, string.Format(tenantInfo?.BusinessProcessName, Constants.BusinessProcessNameApprovalAction, approvalRequest?.Action) },
                 { LogDataKey.TenantId, tenantId },
                 { LogDataKey.TenantName, tenantInfo?.AppName },
-                { LogDataKey.UserAlias, alias },
+                { LogDataKey.UserAlias, onBehalfUser.MailNickname },
                 { LogDataKey.DocumentNumber, approvalRequest?.ApprovalIdentifier?.DisplayDocumentNumber },
                 { LogDataKey.DisplayDocumentNumber, approvalRequest?.ApprovalIdentifier?.DisplayDocumentNumber },
                 { LogDataKey.FiscalYear, approvalRequest?.ApprovalIdentifier?.FiscalYear },
@@ -1193,7 +1322,7 @@ public class DocumentActionHelper : IDocumentActionHelper
         {
             // Authorization check
             // If this fails, user gets a 401 status code (Unauthorized)
-            await CheckAuthorization(alias, approvalRequest, approvalSummaryRow, tenantInfo);
+            await CheckAuthorization(onBehalfUser, signedInUser, approvalRequest, approvalSummaryRow, tenantInfo, xcv, tcv, clientDevice, sessionId, oauth2UserToken);
 
             // Version check
             // If this fails, user gets a 400 status code (Invalid data - Stale request)
@@ -1202,10 +1331,13 @@ public class DocumentActionHelper : IDocumentActionHelper
             LogMessageProgress(TrackingEvent.ApprovalActionInitiated, null, CriticalityLevel.Yes, logData);
 
             // Add metadata like Edited information and delegation information to the approval request object
-            AddMetadataToApprovalRequest(tenantAdapter, tenantInfo, tenantId, alias, loggedInAlias, sessionId, tcv, logData, approvalRequest, approvalSummaryRow);
+            AddMetadataToApprovalRequest(tenantAdapter, tenantInfo, tenantId, onBehalfUser, signedInUser, sessionId, tcv, logData, approvalRequest, approvalSummaryRow);
+
+            //backup SummaryJson before updating summary row
+            var summaryJson = approvalSummaryRow.SummaryJson;
 
             // Mark the record as soft-deleted
-            Tuple<ApprovalSummaryRow, List<ApprovalDetailsEntity>> returnTuple = tenantAdapter.UpdateTransactionalDetails(approvalRequest, true, string.Empty, loggedInAlias, sessionId, approvalSummaryRow);
+            Tuple<ApprovalSummaryRow, List<ApprovalDetailsEntity>> returnTuple = tenantAdapter.UpdateTransactionalDetails(approvalRequest, true, string.Empty, signedInUser.MailNickname, sessionId, approvalSummaryRow);
 
             if (returnTuple != null)
             {
@@ -1222,7 +1354,7 @@ public class DocumentActionHelper : IDocumentActionHelper
 
             if (summaryRowsToUpdateInBatch.Count > 0)
             {
-                await _approvalSummaryProvider.UpdateSummaryInBatchAsync(summaryRowsToUpdateInBatch, approvalRequest.Telemetry.Xcv, sessionId,
+                await _summaryHelper.UpdateSummaryInBatchAsync(summaryRowsToUpdateInBatch, approvalRequest.Telemetry.Xcv, sessionId,
                    approvalRequest.Telemetry.Tcv, tenantInfo, approvalRequest.Action);
             }
 
@@ -1232,36 +1364,18 @@ public class DocumentActionHelper : IDocumentActionHelper
                     approvalRequest.Telemetry.Tcv, tenantInfo, approvalRequest.Action);
             }
 
+            //Adding back summaryJson in case empty
+            if (string.IsNullOrWhiteSpace(approvalSummaryRow.SummaryJson))
+                approvalSummaryRow.SummaryJson = summaryJson;
+
             // Adding this for logging in ActionAuditLogs in CosmosDB
             summaryJsonList.Add(approvalSummaryRow.SummaryJson.FromJson<SummaryJson>());
 
             #region Call the tenant service to submit document action and receive response.
 
-            if (tenantInfo.AppendAdditionaDataToUserActionString)
-            {
-                var summary = approvalSummaryRow.SummaryJson.FromJson<SummaryJson>();
-                if (approvalRequest?.AdditionalData == null)
-                {
-                    approvalRequest.AdditionalData = new Dictionary<string, string>();
-                    approvalRequest.AdditionalData = summary?.AdditionalData;
-                }
-                else if (summary?.AdditionalData != null)
-                {
-                    foreach (var additionaData in summary?.AdditionalData)
-                    {
-                        if (!approvalRequest.AdditionalData.ContainsKey(additionaData.Key))
-                            approvalRequest.AdditionalData.Add(additionaData.Key, additionaData.Value);
-                    }
-                }
-            }
-
-            // Add the blob urls for the user document as an additional data for tenants to consume.
-            if (tenantInfo.IsUploadAttachmentsEnabled)
-                AddUserDocumentsInfo(approvalSummaryRow, tenantId, approvalRequest);
-
             // Making a call into the async method which in turn will call tenant service to post user action and wait for result
             var approvalRequests = new List<ApprovalRequest>() { approvalRequest };
-            actionResponse = await tenantAdapter.ExecuteActionAsync(approvalRequests, loggedInAlias, sessionId, clientDevice, xcv, tcv, approvalSummaryRow);
+            actionResponse = await tenantAdapter.ExecuteActionAsync(approvalRequests, signedInUser.MailNickname, sessionId, clientDevice, xcv, tcv, approvalSummaryRow);
 
             #endregion Call the tenant service to submit document action and receive response.
 
@@ -1284,8 +1398,6 @@ public class DocumentActionHelper : IDocumentActionHelper
             bTenantCallSuccess = false;
             bIsHandledException = true;
 
-            logData.Modify(LogDataKey.EventId, (int)TrackingEvent.DocumentActionFailure);
-            logData.Modify(LogDataKey.EventName, TrackingEvent.DocumentActionFailure.ToString());
             _logger.LogError(TrackingEvent.DocumentActionFailure, unauthorizedException, logData);
             LogMessageProgress(TrackingEvent.ApprovalActionFailed, new FailureData() { Message = unauthorizedException.Message }, CriticalityLevel.Yes, logData);
             approvalResponses.FirstOrDefault().E2EErrorInformation = new ApprovalResponseErrorInfo { ErrorMessages = new List<string>() { unauthorizedException.InnerException != null ? unauthorizedException.InnerException.Message : unauthorizedException.Message } };
@@ -1302,8 +1414,6 @@ public class DocumentActionHelper : IDocumentActionHelper
             bTenantCallSuccess = false;
             bIsHandledException = true;
 
-            logData.Modify(LogDataKey.EventId, (int)TrackingEvent.DocumentActionFailure);
-            logData.Modify(LogDataKey.EventName, TrackingEvent.DocumentActionFailure.ToString());
             _logger.LogError(TrackingEvent.DocumentActionFailure, invalidDataException, logData);
             LogMessageProgress(TrackingEvent.ApprovalActionFailed, new FailureData() { Message = invalidDataException.Message }, CriticalityLevel.Yes, logData);
 
@@ -1315,14 +1425,28 @@ public class DocumentActionHelper : IDocumentActionHelper
                 StatusCode = HttpStatusCode.BadRequest
             };
         }
+        catch (InvalidOperationException invalidOperationException)
+        {
+            bTenantCallSuccess = false;
+            bIsHandledException = true;
+
+            _logger.LogError(TrackingEvent.DocumentActionFailure, invalidOperationException, logData);
+            LogMessageProgress(TrackingEvent.ApprovalActionFailed, new FailureData() { Message = invalidOperationException.Message }, CriticalityLevel.Yes, logData);
+
+            approvalResponses.FirstOrDefault().E2EErrorInformation = new ApprovalResponseErrorInfo { ErrorMessages = new List<string>() { invalidOperationException.InnerException != null ? invalidOperationException.InnerException.Message : invalidOperationException.Message } };
+            approvalResponses.FirstOrDefault().DisplayMessage = invalidOperationException.Message;
+            actionResponse = new HttpResponseMessage()
+            {
+                Content = new StringContent(approvalResponses.ToJson(), new UTF8Encoding(), Constants.ContentTypeJson),
+                StatusCode = HttpStatusCode.Conflict
+            };
+        }
         catch (Exception ex)
         {
             // This is to handle the tenant service call related exception
             bTenantCallSuccess = false;
             bIsHandledException = false;
 
-            logData.Modify(LogDataKey.EventId, (int)TrackingEvent.DocumentActionFailure);
-            logData.Modify(LogDataKey.EventName, TrackingEvent.DocumentActionFailure.ToString());
             _logger.LogError(TrackingEvent.DocumentActionFailure, ex, logData);
             LogMessageProgress(TrackingEvent.ApprovalActionFailed, new FailureData() { Message = ex.Message }, CriticalityLevel.Yes, logData);
 
@@ -1342,8 +1466,8 @@ public class DocumentActionHelper : IDocumentActionHelper
                 await PostProcessActionResponses(
                     tenantInfo,
                     tenantId,
-                    alias,
-                    loggedInAlias,
+                    onBehalfUser.MailNickname,
+                    signedInUser.MailNickname,
                     clientDevice,
                     approvalRequests,
                     tcv,
@@ -1366,11 +1490,45 @@ public class DocumentActionHelper : IDocumentActionHelper
     /// <param name="approvalSummaryRow">Approval summary.</param>
     /// <param name="tenantId">Tenant Id.</param>
     /// <param name="approvalRequest">Approval Request.</param>
-    private void AddUserDocumentsInfo(ApprovalSummaryRow approvalSummaryRow, int tenantId, ApprovalRequest approvalRequest)
+    protected void AddUserDocumentsInfo(ApprovalSummaryRow approvalSummaryRow, int tenantId, ApprovalRequest approvalRequest, Dictionary<LogDataKey, object> logData)
     {
         if (approvalSummaryRow != null)
         {
-            var userDocuments = _attachmentHelper.GetAttachmentDetailsForTenantNotification(tenantId, approvalSummaryRow.DocumentNumber);
+            var userDocuments = ((Func<List<Attachment>>)(() =>
+            {
+                try
+                {
+                    List<Attachment> attachmentsList = new List<Attachment>();
+
+                    //Get ApprovalTenantInfo for given TenantId
+                    string docTypeId = _approvalTenantInfoHelper.GetTenantInfo(tenantId)?.DocTypeId;
+
+                    // Get the transaction details for the given document id.
+                    var transactionalDetails = _approvalDetailProvider.GetAllApprovalDetailsByTenantAndDocumentNumber(tenantId, approvalSummaryRow.DocumentNumber).Result;
+
+                    if (transactionalDetails != null && transactionalDetails.Any())
+                    {
+                        // Filter to get only the row which has TransactionalDetails
+                        var existingAttachmentsRecord = transactionalDetails.FirstOrDefault(x => x.RowKey.Equals(string.Format(Constants.UploadAttachmentsOperationTypeNew, docTypeId), StringComparison.InvariantCultureIgnoreCase) 
+                                                                            || x.RowKey.Equals(Constants.UploadAttachmentsOperationType, StringComparison.InvariantCultureIgnoreCase));
+
+                        if (existingAttachmentsRecord != null)
+                        {
+                            attachmentsList = JsonConvert.DeserializeObject<List<Attachment>>(existingAttachmentsRecord?.JSONData);
+                            logData[LogDataKey.EndDateTime] = DateTime.UtcNow;
+                            _logger.LogInformation(TrackingEvent.AttachmentConsolidationForTenantNotificationSuccess, logData);
+                        }
+                    }
+
+                    return attachmentsList;
+                }
+                catch (Exception ex)
+                {
+                    logData[LogDataKey.EndDateTime] = DateTime.UtcNow;
+                    _logger.LogError(TrackingEvent.AttachmentConsolidationForTenantNotificationFailure, ex, logData);
+                    throw;
+                }
+            }))();
             if (approvalRequest?.AdditionalData == null)
             {
                 if (userDocuments != null)

@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.DevTools.Model.Models;
 using Microsoft.CFS.Approvals.SupportServices.Helper.ExtensionMethods;
@@ -34,14 +35,13 @@ public class MarkRequestOutOfSyncHelper : IMarkRequestOutOfSyncHelper
     /// <param name="configurationHelper"></param>
     /// <param name="actionContextAccessor"></param>
     public MarkRequestOutOfSyncHelper(
-        Func<string, string, ITableHelper> azureTableStorageHelper,
+        Func<string, ITableHelper> azureTableStorageHelper,
         ConfigurationHelper configurationHelper,
         IActionContextAccessor actionContextAccessor)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _azureTableStorageHelper = azureTableStorageHelper(
-            configurationHelper.appSettings[_environment]["StorageAccountName"],
-            configurationHelper.appSettings[_environment]["StorageAccountKey"]);
+            configurationHelper.appSettings[_environment]["StorageAccountName"]);
         _configurationHelper = configurationHelper;
     }
 
@@ -134,7 +134,7 @@ public class MarkRequestOutOfSyncHelper : IMarkRequestOutOfSyncHelper
         string invalidTenantSelection = string.Empty;
         if (string.IsNullOrWhiteSpace(approver))
         {
-            List<string> currentApprover = GetCurrentApprover(Convert.ToInt32(tenant.RowKey), document);
+            List<string> currentApprover = GetCurrentApprover(Convert.ToInt32(tenant.RowKey), document, tenant.DocTypeId);
             if (!currentApprover.Any())
             {
                 var summaryData = _azureTableStorageHelper.GetTableEntityListByfield<SummaryEntity>(_configurationHelper.appSettings[_environment]["ApprovalSummaryTable"], "DocumentNumber", document);
@@ -221,10 +221,10 @@ public class MarkRequestOutOfSyncHelper : IMarkRequestOutOfSyncHelper
     /// <param name="tenantId">tenantId</param>
     /// <param name="documentNumber">document number</param>
     /// <returns>List<string> current approver alias list</returns>
-    private List<string> GetCurrentApprover(int tenantId, string documentNumber)
+    private List<string> GetCurrentApprover(int tenantId, string documentNumber, string docTypeId)
     {
         List<string> currentApprovers = new List<string>();
-        var detailsData = _azureTableStorageHelper.GetTableEntityListByPartitionKey<ApprovalDetailEntity>("ApprovalDetails", documentNumber).Where(d => d.RowKey == Constants.CurrentApprover && d.TenantID == tenantId).FirstOrDefault();
+        var detailsData = _azureTableStorageHelper.GetTableEntityListByPartitionKey<ApprovalDetailEntity>("ApprovalDetails", documentNumber).Where(d => (d.RowKey == Constants.CurrentApprover || d.RowKey == Constants.CurrentApprover + "|" + docTypeId) && d.TenantID == tenantId).FirstOrDefault();
         if (detailsData != null)
         {
             var approverAlias = detailsData.JSONData.FromJson<JArray>();

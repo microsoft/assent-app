@@ -53,13 +53,13 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
         /// </summary>
         // Validation for ActionBy null
         [Required(ErrorMessage = Constants.ActionDetailActionByMessage)]
-        public NameAliasEntity ActionBy
+        public User ActionBy
         { get; set; }
 
         /// <summary>
         /// This property contains the name and the alias of the approver for whom this approval is intended for in future.
         /// </summary>
-        public NameAliasEntity NewApprover
+        public User NewApprover
         { get; set; }
 
         /// <summary>

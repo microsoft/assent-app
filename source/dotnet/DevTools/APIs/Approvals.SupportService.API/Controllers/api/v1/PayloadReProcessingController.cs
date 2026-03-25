@@ -9,8 +9,8 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.SupportServices.Helper.ExtensionMethods;
-using Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper;
 using Microsoft.CFS.Approvals.Utilities.Interface;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -52,15 +52,19 @@ public class PayloadReProcessingController : ControllerBase
     {
         try
         {
+            var isMITokenEnabled = Convert.ToBoolean(_configurationHelper.appSettings[_environment]["PayloadProcessingMITokenEnabled"]);
+            var clientId = isMITokenEnabled == false ? _configurationHelper.appSettings[_environment]["IdentityProviderClientID"] : _configurationHelper.appSettings[_environment]["ManagedIdentityClientId"];
             var response = await _httpHelper.SendRequestAsync(
                 HttpMethod.Get,
-                _configurationHelper.appSettings[_environment]["IdentityProviderClientID"],
+                clientId,
                 _configurationHelper.appSettings[_environment]["IdentityProviderSecrets"],
                 _configurationHelper.appSettings[_environment]["IdentityProviderInstance"],
                 _configurationHelper.appSettings[_environment]["Resource"],
                 _configurationHelper.appSettings[_environment]["PayloadProcessingFunctionURL"],
                 null,
-                requestBody);
+                requestBody,
+                isMITokenEnabled
+                );
 
             var result = await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode)
@@ -88,15 +92,18 @@ public class PayloadReProcessingController : ControllerBase
     {
         try
         {
+            var isMITokenEnabled = Convert.ToBoolean(_configurationHelper.appSettings[_environment]["PayloadProcessingMITokenEnabled"]);
+            var clientId = isMITokenEnabled == false ? _configurationHelper.appSettings[_environment]["IdentityProviderClientID"] : _configurationHelper.appSettings[_environment]["ManagedIdentityClientId"];
             var response = await _httpHelper.SendRequestAsync(
                 HttpMethod.Post,
-                _configurationHelper.appSettings[_environment]["IdentityProviderClientID"],
+                clientId,
                 _configurationHelper.appSettings[_environment]["IdentityProviderSecrets"],
                 _configurationHelper.appSettings[_environment]["IdentityProviderInstance"],
                 _configurationHelper.appSettings[_environment]["Resource"],
                 _configurationHelper.appSettings[_environment]["PayloadProcessingFunctionURL"],
                 null,
-                JsonConvert.SerializeObject(requestBody));
+                JsonConvert.SerializeObject(requestBody),
+                isMITokenEnabled);
 
             if (response.IsSuccessStatusCode)
             {

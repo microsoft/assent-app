@@ -5,9 +5,14 @@ namespace Microsoft.CFS.Approvals.WatchdogProcessor.BL.Helpers;
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.CFS.Approvals.Common.DL;
+using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.Domain.BL.Interface;
 using Microsoft.CFS.Approvals.Extensions;
 using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
@@ -37,16 +42,30 @@ public class ReminderData : IReminderData
     private readonly ITableHelper _tableHelper = null;
 
     /// <summary>
+    /// The approval blob data provider
+    /// </summary>
+    private readonly IApprovalBlobDataProvider _approvalBlobDataProvider = null;
+
+    /// <summary>
+    /// The approval detail provider
+    /// </summary>
+    private readonly IApprovalDetailProvider _approvalDetailProvider = null;
+
+    /// <summary>
     /// Constructor of ReminderData
     /// </summary>
     /// <param name="config"></param>
     /// <param name="logger"></param>
     /// <param name="tableHelper"></param>
-    public ReminderData(IConfiguration config, ILogProvider logger, ITableHelper tableHelper)
+    /// <param name="approvalBlobDataProvider"></param>
+    /// <param name="approvalDetailProvider"></param>
+    public ReminderData(IConfiguration config, ILogProvider logger, ITableHelper tableHelper, IApprovalBlobDataProvider approvalBlobDataProvider, IApprovalDetailProvider approvalDetailProvider)
     {
         _config = config;
         _logger = logger;
         _tableHelper = tableHelper;
+        _approvalBlobDataProvider = approvalBlobDataProvider;
+        _approvalDetailProvider = approvalDetailProvider;
     }
 
     #region Implemented Methods
@@ -64,7 +83,7 @@ public class ReminderData : IReminderData
         string query = "NextReminderTime le datetime'" + currentTime.ToString("yyyy-MM-ddTHH:mm:ssZ") + "' and NextReminderTime ge datetime'" + currentTime.Subtract(new TimeSpan(daysForReminderMails, 0, 0, 0)).ToString("yyyy-MM-ddTHH:mm:ssZ") + "'";
 
         List<ApprovalSummaryRow> approvals = _tableHelper.GetDataCollectionByTableQuerySegmented<ApprovalSummaryRow>(_config[ConfigurationKey.ApprovalSummaryAzureTableName.ToString()], query);
-        return approvals;
+        return (approvals.Select(row => !string.IsNullOrEmpty(row.BlobPointer) ? _approvalBlobDataProvider.GetApprovalSummaryJsonFromBlob(row).Result : row))?.ToList();
     }
 
     /// <summary>
@@ -72,7 +91,7 @@ public class ReminderData : IReminderData
     /// </summary>
     /// <param name="approvalTenantInfo"></param>
     /// <param name="summaryToUpdate">summary row to be updated</param>
-    public void UpdateReminderInfo(ApprovalTenantInfo approvalTenantInfo, ApprovalSummaryRow summaryToUpdate)
+    public async Task UpdateReminderInfo(ApprovalTenantInfo approvalTenantInfo, ApprovalSummaryRow summaryToUpdate)
     {
         var logData = new Dictionary<LogDataKey, object>
     {
@@ -86,13 +105,32 @@ public class ReminderData : IReminderData
 
         List<ApprovalSummaryRow> summaryRows = new List<ApprovalSummaryRow>() { summaryToUpdate };
         var summaryJson = summaryToUpdate?.SummaryJson?.FromJson<SummaryJson>();
-        ApprovalDetailsEntity approvalDetails = new ApprovalDetailsEntity() { PartitionKey = summaryJson?.ApprovalIdentifier?.GetDocNumber(approvalTenantInfo), RowKey = Constants.SummaryOperationType, ETag = global::Azure.ETag.All, JSONData = summaryRows.ToJson(), TenantID = approvalTenantInfo.TenantId };
+
+        // Get all approval details data and check if it has row key = SUM or SUM|doctypeid
+        var allApprovalDetails = await _approvalDetailProvider.GetAllApprovalDetailsByTenantAndDocumentNumber(approvalTenantInfo.TenantId, summaryJson?.ApprovalIdentifier?.GetDocNumber(approvalTenantInfo));
+        var summaryOperationRowFromDetails = allApprovalDetails?.FirstOrDefault(detail =>
+            detail.RowKey.Equals(Constants.SummaryOperationType, StringComparison.InvariantCultureIgnoreCase) ||
+            detail.RowKey.Equals(string.Format(Constants.SummaryOperationTypeNew, approvalTenantInfo.DocTypeId), StringComparison.InvariantCultureIgnoreCase));
+
+        ApprovalDetailsEntity approvalDetails = new ApprovalDetailsEntity() 
+        { 
+            PartitionKey = summaryJson?.ApprovalIdentifier?.GetDocNumber(approvalTenantInfo), 
+            RowKey = summaryOperationRowFromDetails?.RowKey ?? string.Format(Constants.SummaryOperationTypeNew, approvalTenantInfo.DocTypeId), 
+            ETag = global::Azure.ETag.All, 
+            JSONData = summaryRows.ToJson(), 
+            TenantID = approvalTenantInfo.TenantId 
+        };
 
         var summaryTableName = _config[ConfigurationKey.ApprovalSummaryAzureTableName.ToString()];
         try
-        {
+        {   
+            //setting this to empty to avoid insertion error in case summaryJson exceeds 64kb
+            if (!string.IsNullOrWhiteSpace(summaryToUpdate.BlobPointer))
+                summaryToUpdate.SummaryJson = string.Empty;
             _tableHelper.ReplaceRow(summaryTableName, summaryToUpdate);
-            _tableHelper.ReplaceRow(Constants.ApprovalDetailsAzureTableName, approvalDetails);
+
+            _approvalDetailProvider.AddTransactionalAndHistoricalDataInApprovalsDetails(approvalDetails, approvalTenantInfo, new ApprovalsTelemetry() { Xcv = summaryToUpdate.Xcv, Tcv = string.Empty, BusinessProcessName = string.Empty }).Wait();
+
             _logger.LogInformation(TrackingEvent.WatchDogUpdateReminderInfoComplete, logData);
         }
         catch (Exception ex)
@@ -120,6 +158,8 @@ public class ReminderData : IReminderData
         try
         {
             var approval = _tableHelper.GetTableEntityByPartitionKeyAndRowKey<ApprovalSummaryRow>(_config[ConfigurationKey.ApprovalSummaryAzureTableName.ToString()], partitionKey, rowKey);
+            if (!string.IsNullOrEmpty(approval.BlobPointer))
+                approval = _approvalBlobDataProvider.GetApprovalSummaryJsonFromBlob(approval).Result;
 
             _logger.LogInformation(TrackingEvent.WatchDogReminderRetrieveSummaryRowsSuccess, logData);
             return approval;

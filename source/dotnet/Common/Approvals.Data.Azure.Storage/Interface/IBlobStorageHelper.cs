@@ -149,4 +149,5 @@ public interface IBlobStorageHelper
     /// <param name="storageAccountKey">Storage Account Key</param>
     /// <returns>Task</returns>
     Task DeleteBlob(string containerName, string blobName, string storageAccountName = "", string storageAccountKey = "");
+
 }

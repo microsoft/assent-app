@@ -78,12 +78,14 @@ public interface IEmailHelper
     /// <param name="tenantInfo"></param>
     /// <param name="tenant"></param>
     /// <param name="logData"></param>
+    /// <param name="approverUpn"></param>
     /// <param name="isAttachmentDownloadSuccess"></param>
     /// <returns></returns>
     List<NotificationDataAttachment> GetAttachmentsToAttachInEmail(JObject responseJObject,
                     ApprovalIdentifier approvalIdentifier,
                     ApprovalTenantInfo tenantInfo,
                     ITenant tenant, Dictionary<LogDataKey, object> logData,
+                    string approverUpn,
                     ref bool isAttachmentDownloadSuccess);
 
     /// <summary>

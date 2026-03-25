@@ -8,10 +8,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Models;
 using Microsoft.CFS.Approvals.SupportService.API.Filters;
 using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
-using Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper;
 using Newtonsoft.Json.Linq;
 
 /// <summary>
@@ -42,15 +42,14 @@ public class SubscribeFeaturesController : ControllerBase
     /// <param name="actionContextAccessor"></param>
     /// <param name="subscribeFeaturesHelper"></param>
     public SubscribeFeaturesController(
-        Func<string, string, ITableHelper> azureTableStorageHelper,
+        Func<string, ITableHelper> azureTableStorageHelper,
         ConfigurationHelper configurationHelper,
         IActionContextAccessor actionContextAccessor,
         ISubscribeFeaturesHelper subscribeFeaturesHelper)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _azureTableStorageHelper = azureTableStorageHelper(
-            configurationHelper.appSettings[_environment]["StorageAccountName"],
-            configurationHelper.appSettings[_environment]["StorageAccountKey"]);
+            configurationHelper.appSettings[_environment]["StorageAccountName"]);
         _subscribeFeaturesHelper = subscribeFeaturesHelper;
     }
 

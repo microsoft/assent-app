@@ -3,7 +3,7 @@
 
 namespace Microsoft.CFS.Approvals.Model;
 
-public class UserDelegationSettingsHistory: BaseTableEntity
+public class UserDelegationSettingsHistory : BaseTableEntity
 {
     public int Id { get; set; }
     public string ManagerAlias { get; set; }
@@ -16,4 +16,8 @@ public class UserDelegationSettingsHistory: BaseTableEntity
     public string Action { get; set; }
     public string ModifiedBy { get; set; }
     public System.DateTime ModifiedDate { get; set; }
+    public string DelegateId { get; set; }
+    public string DelegatorId { get; set; }
+    public string DelegateUpn { get; set; }
+    public string DelegatorUpn { get; set; }
 }

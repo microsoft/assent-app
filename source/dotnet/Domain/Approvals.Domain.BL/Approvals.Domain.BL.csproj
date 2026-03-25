@@ -1,20 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Microsoft.CFS.Approvals.Domain.BL</AssemblyName>
     <RootNamespace>Microsoft.CFS.Approvals.Domain.BL</RootNamespace>
   </PropertyGroup>
-
+  <ItemGroup>
+    <PackageReference Include="OpenTelemetry.Audit.Geneva" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Common\Approvals.LogManager\Approvals.LogManager.csproj" />
     <ProjectReference Include="..\..\Common\Approvals.Utilities\Approvals.Utilities.csproj" />
     <ProjectReference Include="..\..\Contract\Approvals.Model\Approvals.Model.csproj" />
     <ProjectReference Include="..\..\Core\Approvals.Common.BL\Approvals.Common.BL.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Tenants\Model\" />
-  </ItemGroup>
-
 </Project>

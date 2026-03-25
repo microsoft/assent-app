@@ -70,6 +70,51 @@ public class ApprovalBlobDataProvider : IApprovalBlobDataProvider
 
     #endregion Methods for Details data.
 
+    #region Methods for Summary data
+
+    /// <summary>
+    /// Get summary json data from blob.
+    /// </summary>
+    /// <param name="approvalSummaryRow"></param>
+    /// <returns></returns>
+    public async Task<ApprovalSummaryRow> GetApprovalSummaryJsonFromBlob(ApprovalSummaryRow approvalSummaryRow)
+    {
+        approvalSummaryRow.SummaryJson = await _blobStorageHelper.DownloadText(Constants.ApprovalSummaryBlobContainerName, approvalSummaryRow.BlobPointer);
+        return approvalSummaryRow;
+    }
+
+    /// <summary>
+    /// Get List of summary json data from blob by approver.
+    /// </summary>
+    /// <param name="approver"></param>
+    /// <returns></returns>
+    public async Task<Dictionary<string, string>> GetListOfSummaryJsonFromBlobByApprover(string approver)
+    {
+        var templateList = new Dictionary<string, string>();
+        var listSummaryJsonBlobs = await _blobStorageHelper.ListBlobsHierarchicalListing(Constants.ApprovalSummaryBlobContainerName, approver, null);
+        foreach (var item in listSummaryJsonBlobs)
+        {
+            var blobItemName = item.Name;
+            var summaryJson = await _blobStorageHelper.DownloadText(Constants.ApprovalSummaryBlobContainerName, blobItemName);
+            blobItemName = blobItemName.Split('/')[1].ToString();
+            templateList.Add(blobItemName, summaryJson);
+        }
+        return templateList;
+    }
+
+    /// <summary>
+    /// Add Blob entry for summary json
+    /// </summary>
+    /// <param name="row"></param>
+    /// <param name="blobPointer"></param>
+    /// <returns></returns>
+    public async Task AddApprovalSummaryJson(ApprovalSummaryRow row, string blobPointer)
+    {
+        await _blobStorageHelper.UploadText(row.SummaryJson.ToString(), Constants.ApprovalSummaryBlobContainerName, blobPointer);
+    }
+
+    #endregion Methods for Summary data
+
     #region Common methods for both summary and details.
 
     /// <summary>

@@ -4,6 +4,7 @@
 namespace Microsoft.CFS.Approvals.SyntheticTransaction.Common.Helper;
 using System;
 using System.Collections.Generic;
+using Microsoft.CFS.Approvals.Extensions;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Interface;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -197,7 +198,7 @@ public class RandomFormDetails : IRandomFormDetails
         {
             try
             {
-                var obj = JToken.Parse(strInput);
+                var obj = strInput.ToJToken();
                 return true;
             }
             catch (JsonReaderException)

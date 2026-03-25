@@ -5,6 +5,7 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers;
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
@@ -60,6 +61,11 @@ public class DocumentApprovalStatusHelper : IDocumentApprovalStatusHelper
     /// </summary>
     protected readonly IApprovalHistoryProvider _approvalHistoryProvider = null;
 
+    /// <summary>
+    /// The delegation helper
+    /// </summary>
+    protected readonly IDelegationHelper _delegationHelper;
+
     #endregion Variables
 
     #region Constructor
@@ -76,6 +82,7 @@ public class DocumentApprovalStatusHelper : IDocumentApprovalStatusHelper
         IApprovalSummaryProvider approvalSummaryProvider,
         IConfiguration config,
         ILogProvider logger,
+        IDelegationHelper delegationHelper,
         INameResolutionHelper nameResolutionHelper,
         IPerformanceLogger performanceLogger,
         IApprovalTenantInfoHelper approvalTenantInfoHelper,
@@ -84,6 +91,7 @@ public class DocumentApprovalStatusHelper : IDocumentApprovalStatusHelper
         _approvalSummaryProvider = approvalSummaryProvider;
         _config = config;
         _logger = logger;
+        _delegationHelper = delegationHelper;
         _nameResolutionHelper = nameResolutionHelper;
         _performanceLogger = performanceLogger;
         _approvalTenantInfoHelper = approvalTenantInfoHelper;
@@ -95,16 +103,17 @@ public class DocumentApprovalStatusHelper : IDocumentApprovalStatusHelper
     /// <summary>
     /// Get the document status.
     /// </summary>
+    /// <param name="onBehalfUser"></param>
+    /// <param name="signedInUser"></param>
+    /// <param name="oauth2UserToken"></param>
     /// <param name="tenantId"></param>
     /// <param name="requestData"></param>
     /// <param name="clientDevice"></param>
-    /// <param name="userAlias"></param>
-    /// <param name="loggedInUser"></param>
     /// <param name="tcv"></param>
     /// <param name="sessionId"></param>
     /// <param name="xcv"></param>
     /// <returns>Document status response object.</returns>
-    public Task<DocumentStatusResponse> DocumentStatus(int tenantId, string requestData, string clientDevice, string userAlias, string loggedInUser, string tcv, string sessionId, string xcv)
+    public async Task<DocumentStatusResponse> DocumentStatus(User signedInUser, User onBehalfUser, string oauth2UserToken, int tenantId, string requestData, string clientDevice, string tcv, string sessionId, string xcv)
     {
         #region Logging Prep
 
@@ -122,9 +131,9 @@ public class DocumentApprovalStatusHelper : IDocumentApprovalStatusHelper
         {
             { LogDataKey.Tcv, tcv },
             { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, loggedInUser },
+            { LogDataKey.UserRoleName, onBehalfUser.MailNickname },
             { LogDataKey.TenantId, tenantId },
-            { LogDataKey.UserAlias, userAlias },
+            { LogDataKey.UserAlias, signedInUser.MailNickname },
             { LogDataKey.ClientDevice, clientDevice },
             { LogDataKey.Xcv, xcv },
             { LogDataKey.StartDateTime, DateTime.UtcNow }
@@ -140,11 +149,22 @@ public class DocumentApprovalStatusHelper : IDocumentApprovalStatusHelper
         {
             using (_performanceLogger.StartPerformanceLogger("PerfLog", "DocumentStatus", "DocumentStatusAPI", logData))
             {
+                await _delegationHelper.CheckUserAuthorization(signedInUser, onBehalfUser, oauth2UserToken, clientDevice, sessionId, xcv, tcv);
+                
                 #region Process Request Data
 
                 DocumentStatusRequest documentStatusRequest = requestData.FromJson<DocumentStatusRequest>();
 
                 #endregion Process Request Data
+
+                #region Fetch Object Id and Domain for alias
+
+                string approverDomain = string.IsNullOrWhiteSpace(onBehalfUser.UserPrincipalName.GetDomainFromUPN()) ? (await _nameResolutionHelper.GetUserPrincipalName(signedInUser.MailNickname)).GetDomainFromUPN() : onBehalfUser.UserPrincipalName.GetDomainFromUPN();
+                string approverId = onBehalfUser.Id;
+                if (string.IsNullOrWhiteSpace(onBehalfUser.Id) && !string.IsNullOrWhiteSpace(approverDomain))
+                    approverId = (await _nameResolutionHelper.GetUser(signedInUser.MailNickname + approverDomain))?.Id;
+
+                #endregion Fetch Object Id and Domain for alias
 
                 logData.Add(LogDataKey.Approver, documentStatusRequest.ApproverAlias);
                 logData.Add(LogDataKey.DocumentNumber, documentStatusRequest.DocumentNumber);
@@ -160,9 +180,9 @@ public class DocumentApprovalStatusHelper : IDocumentApprovalStatusHelper
 
                 logData.Add(LogDataKey.DocumentTypeId, tenantInfo.DocTypeId);
 
-                using (var summaryRowInsertTracer = _performanceLogger.StartPerformanceLogger("PerfLog", "_approvalSummaryProvider", string.Format(Constants.PerfLogAction, "Get Summary by DocumentNumber and Approver", "DocumentStatus"), logData))
+                using (var summaryRowInsertTracer = _performanceLogger.StartPerformanceLogger("PerfLog", "_summaryHelper", string.Format(Constants.PerfLogAction, "Get Summary by DocumentNumber and Approver", "DocumentStatus"), logData))
                 {
-                    summaryData = _approvalSummaryProvider.GetApprovalSummaryByDocumentNumberAndApprover(tenantInfo.DocTypeId, documentStatusRequest.DocumentNumber, userAlias);
+                    summaryData = _approvalSummaryProvider.GetApprovalSummaryByDocumentNumberAndApprover(tenantInfo.DocTypeId, documentStatusRequest.DocumentNumber, signedInUser.MailNickname, approverId, approverDomain);
                 }
 
                 //TODO:: Need to revisit the code for outlook actionable api
@@ -217,7 +237,7 @@ public class DocumentApprovalStatusHelper : IDocumentApprovalStatusHelper
 
                 _logger.LogInformation(TrackingEvent.WebApiDocumentStatusSuccess, logData);
                 logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
-                return Task.FromResult(documentStatusResponse);
+                return await Task.FromResult(documentStatusResponse);
             }
         }
         catch (Exception exception)
@@ -250,7 +270,8 @@ public class DocumentApprovalStatusHelper : IDocumentApprovalStatusHelper
             SubmitterName = summaryJson.Submitter.Name,
             TenantName = summaryRow.Application,
             ApproverAlias = summaryRow.Approver,
-            ApproverName = summaryRow.Approver
+            ApproverName = summaryRow.Approver,
+            IsRead = summaryRow.IsRead
         };
 
         return documentStatusResponse;

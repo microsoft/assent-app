@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.DevTools.Model.Models;
 using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
@@ -38,7 +39,7 @@ public class TenantOnBoardingHelper : ITenantOnBoardingHelper
     /// <param name="tokenGenerator"></param>
     /// <param name="blobStorageHelper"></param>
     /// <param name="httpHelper"></param>
-    public TenantOnBoardingHelper(Func<string, string, ITableHelper> azureTableStorageHelper,
+    public TenantOnBoardingHelper(Func<string, ITableHelper> azureTableStorageHelper,
         ConfigurationHelper configurationHelper,
         IActionContextAccessor actionContextAccessor,
         Func<string, IBlobStorageHelper> blobStorageHelper,
@@ -48,8 +49,7 @@ public class TenantOnBoardingHelper : ITenantOnBoardingHelper
 
         _configurationHelper = configurationHelper;
         _azureTableStorageHelper = azureTableStorageHelper(
-             configurationHelper.appSettings[_environment]["StorageAccountName"],
-            configurationHelper.appSettings[_environment]["StorageAccountKey"]);
+             configurationHelper.appSettings[_environment]["StorageAccountName"]);
         _blobStorageHelper = blobStorageHelper(configurationHelper.appSettings[_environment]["StorageAccountName"]);
         _httpHelper = httpHelper;
     }

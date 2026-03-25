@@ -74,10 +74,10 @@ public class TenantDownTimeMessagesHelper : ITenantDownTimeMessagesHelper
     /// Get all down time notifications group by buckets.
     /// </summary>
     /// <param name="tdMessages"></param>
-    /// <param name="loggedInAlias"></param>
+    /// <param name="loggedInUpn"></param>
     /// <param name="clientDevice"></param>
     /// <returns></returns>
-    public IEnumerable<NotificationGroup> GetAllDownTimeNotificationsGroupByBuckets(IEnumerable<TenantDownTimeMessages> tdMessages, string loggedInAlias, string clientDevice)
+    public IEnumerable<NotificationGroup> GetAllDownTimeNotificationsGroupByBuckets(IEnumerable<TenantDownTimeMessages> tdMessages, string loggedInUpn, string clientDevice)
     {
         var nContainer = new List<NotificationGroup>();
         if (tdMessages == null) return nContainer;
@@ -85,7 +85,7 @@ public class TenantDownTimeMessagesHelper : ITenantDownTimeMessagesHelper
         var yelloMessages = tdMessages.Where(t => t.BannerType.Equals(NotificationBannerType.Warning.ToString().ToLower())).ToList();
         var blueMessages = tdMessages.Where(t => t.BannerType.Equals(NotificationBannerType.Info.ToString().ToLower())).ToList();
 
-        var userPreferenceSetting = _tenantDownTimeMessagesProvider.GetUserPreferencesByAlias(loggedInAlias).ToList();
+        var userPreferenceSetting = _tenantDownTimeMessagesProvider.GetUserPreferencesByAlias(loggedInUpn).ToList();
 
         UserPreference userPreferenceForClient = null;
         if (userPreferenceSetting != null && userPreferenceSetting.Count > 0)
@@ -170,22 +170,22 @@ public class TenantDownTimeMessagesHelper : ITenantDownTimeMessagesHelper
     /// Insert or Update Tenant Down Time Message.
     /// </summary>
     /// <param name="realtimeTenantInfo"></param>
-    /// <param name="loggedInAlias"></param>
+    /// <param name="loggedInUpn"></param>
     /// <returns></returns>
-    public bool InsertOrUpdateTenantDowntimeMessage(ApprovalTenantInfoRealTime realtimeTenantInfo, string loggedInAlias)
+    public bool InsertOrUpdateTenantDowntimeMessage(ApprovalTenantInfoRealTime realtimeTenantInfo, string loggedInUpn)
     {
-        return _tenantDownTimeMessagesProvider.InsertOrUpdateTenantDowntimeMessage(realtimeTenantInfo, loggedInAlias);
+        return _tenantDownTimeMessagesProvider.InsertOrUpdateTenantDowntimeMessage(realtimeTenantInfo, loggedInUpn);
     }
 
     /// <summary>
     /// Get all alerts.
     /// </summary>
     /// <param name="SessionId"></param>
-    /// <param name="loggedInAlias"></param>
-    /// <param name="Alias"></param>
-    /// <param name="ClientDevice"></param>
+    /// <param name="loggedInUpn"></param>
+    /// <param name="alias"></param>
+    /// <param name="clientDevice"></param>
     /// <returns></returns>
-    public IEnumerable<NotificationGroup> GetAllAlerts(string SessionId, string loggedInAlias, string Alias, string ClientDevice)
+    public IEnumerable<NotificationGroup> GetAllAlerts(string SessionId, string loggedInUpn, string alias, string clientDevice)
     {
         #region Logging
 
@@ -201,10 +201,10 @@ public class TenantDownTimeMessagesHelper : ITenantDownTimeMessagesHelper
             { LogDataKey.Xcv, Tcv },
             { LogDataKey.Tcv, Tcv },
             { LogDataKey.SessionId, Tcv },
-            { LogDataKey.ClientDevice, ClientDevice },
-            { LogDataKey.UserRoleName, loggedInAlias },
+            { LogDataKey.ClientDevice, clientDevice },
+            { LogDataKey.UserRoleName, loggedInUpn },
             { LogDataKey.EventType, Constants.FeatureUsageEvent },
-            { LogDataKey.UserAlias, Alias },
+            { LogDataKey.UserAlias, alias },
             { LogDataKey.StartDateTime, DateTime.UtcNow },
             { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() }
         };
@@ -215,7 +215,7 @@ public class TenantDownTimeMessagesHelper : ITenantDownTimeMessagesHelper
         {
             var downTimeMessages = GetAllDownTimeNotifications();
             var filteredDtMessages = GetDownTimeNotifications(true, downTimeMessages);
-            var alerts = GetAllDownTimeNotificationsGroupByBuckets(filteredDtMessages, loggedInAlias, ClientDevice);
+            var alerts = GetAllDownTimeNotificationsGroupByBuckets(filteredDtMessages, loggedInUpn, clientDevice);
 
             // Log Success
             logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);

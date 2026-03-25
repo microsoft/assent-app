@@ -42,7 +42,7 @@ public class TenantActionController : BaseApiController
         try
         {
             string bulkActionConcurrentMessageFormat = _config[ConfigurationKey.BulkActionConcurrentCallMessage.ToString()];
-            var tenantActionString = await _approvalTenantInfoHelper.GetBulkViewTenantActions(bulkActionConcurrentMessageFormat, LoggedInAlias, Alias, Host, sessionId);
+            var tenantActionString = await _approvalTenantInfoHelper.GetBulkViewTenantActions(bulkActionConcurrentMessageFormat, SignedInUser.MailNickname, OnBehalfUser.MailNickname, ClientDevice, sessionId);
             return Ok(tenantActionString);
         }
         catch (Exception ex)

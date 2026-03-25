@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.LogManager.Model;
@@ -32,14 +33,14 @@ public interface ITenant
     /// <summary>
     /// Gets the delegated users asynchronously.
     /// </summary>
-    /// <param name="alias">User alias.</param>
+    /// <param name="onBehalfUser">On Behalf User entity.</param>
     /// <param name="parameters">Key-value pair for filtering parameters.</param>
     /// <param name="clientDevice">The clientDevice.</param>
     /// <param name="xcv">The XCV.</param>
     /// <param name="tcv">The TCV.</param>
     /// <param name="sessionId">Current user session Id.</param>
     /// <returns>returns delegated users.</returns>
-    Task<HttpResponseMessage> GetUsersDelegatedToAsync(string alias, Dictionary<string, object> parameters, string clientDevice, string xcv, string tcv, string sessionId);
+    Task<HttpResponseMessage> GetUsersDelegatedToAsync(User onBehalfUser, Dictionary<string, object> parameters, string clientDevice, string xcv, string tcv, string sessionId);
 
     /// <summary>
     /// Gets the tenant action details asynchronously.
@@ -170,8 +171,9 @@ public interface ITenant
     /// <param name="approvalIdentifier">The approval identifier.</param>
     /// <param name="attachmentId">The attachment identifier.</param>
     /// <param name="telemetry">The telemetry.</param>
+    /// <param name="approverUpn"></param>
     /// <returns>returns a Http response message</returns>
-    Task<byte[]> DownloadDocumentUsingAttachmentIdAsync(ApprovalIdentifier approvalIdentifier, string attachmentId, ApprovalsTelemetry telemetry);
+    Task<byte[]> DownloadDocumentUsingAttachmentIdAsync(ApprovalIdentifier approvalIdentifier, string attachmentId, ApprovalsTelemetry telemetry, string approverUpn = "");
 
     /// <summary>
     /// Previews the document using attachment identifier asynchronous.
@@ -198,8 +200,9 @@ public interface ITenant
     /// <param name="approvalIdentifier">The approval identifier.</param>
     /// <param name="attachmentId">The attachment identifier.</param>
     /// <param name="telemetry">The telemetry.</param>
+    /// <param name="approverUpn"></param>
     /// <returns>returns a Http response message</returns>
-    Task<byte[]> GetAttachmentContentFromLob(ApprovalIdentifier approvalIdentifier, string attachmentId, ApprovalsTelemetry telemetry);
+    Task<byte[]> GetAttachmentContentFromLob(ApprovalIdentifier approvalIdentifier, string attachmentId, ApprovalsTelemetry telemetry, string approverUpn = "");
 
     /// <summary>
     /// Updates the summary row and Approval details entity.
@@ -263,7 +266,7 @@ public interface ITenant
     /// </summary>
     /// <param name="requestExpressions">The request expressions.</param>
     /// <returns>returns a list containing Approval request expression ext.</returns>
-    List<ApprovalRequestExpressionExt> ModifyApprovalRequestExpression(List<ApprovalRequestExpressionExt> requestExpressions);
+    Task<List<ApprovalRequestExpressionExt>> ModifyApprovalRequestExpression(List<ApprovalRequestExpressionExt> requestExpressions);
 
     /// <summary>
     /// Method to extract AdditionalData from SummaryData and add it into DetailsData
@@ -425,10 +428,11 @@ public interface ITenant
     /// </summary>
     /// <param name="method">The method.</param>
     /// <param name="uri">The URI.</param>
+    /// <param name="templateId">MEO Email Template Id</param>
     /// <param name="Xcv">Xcv</param>
     /// <param name="Tcv">Tcv</param>
     /// <returns>returns Http Request Message</returns>
-    Task<HttpRequestMessage> CreateRequestForNotification(HttpMethod method, string uri, string Xcv = "", string Tcv = "");
+    Task<HttpRequestMessage> CreateRequestForNotification(HttpMethod method, string uri, string templateId, string Xcv = "", string Tcv = "");
 
     /// <summary>
     /// Gets the summary asynchronously for pull-model tenants.
@@ -460,9 +464,75 @@ public interface ITenant
     /// Get Approval Summary By RowKey And Approver
     /// </summary>
     /// <param name="rowKey"></param>
-    /// <param name="approver"></param>
+    /// <param name="approverAlias"></param>
+    /// <param name="approverId"></param>
+    /// <param name="approverDomain"></param>
     /// <param name="fiscalYear"></param>
     /// <param name="tenantInfo"></param>
     /// <returns></returns>
-    ApprovalSummaryRow GetApprovalSummaryByRowKeyAndApprover(string rowKey, string approver, string fiscalYear, ApprovalTenantInfo tenantInfo);
+    ApprovalSummaryRow GetApprovalSummaryByRowKeyAndApprover(string rowKey, string approverAlias, string approverId, string approverDomain, string fiscalYear, ApprovalTenantInfo tenantInfo);
+
+    /// <summary>
+    /// Check if Attachment flighting feature is enable for user.
+    /// This Method will get removed once this feature enable for all users.
+    /// </summary>
+    /// <param name="userAlias">Alias of the Approver of this request</param>
+    /// <param name="uploadAttachmentFeaureId">Attachment flighting feature id.</param>
+    /// <returns>return true/false</returns>
+    bool CheckUserAttachmentFlightingFeature(string userAlias, int uploadAttachmentFeaureId);
+
+    /// <summary>
+    /// Validation for the file attachment.
+    /// </summary>
+    /// <param name="files">Uploaded attachment collecion.</param>
+    /// <param name="existingAttachments">List of Existing uploaded attachments.</param>
+    /// <param name="attachmentProperties">Attachment properties for the tenant.</param>
+    /// <param name="attachmentUploadInfo">List of Uploaded Attachment Details.</param>
+    /// <param name="tcv">Transaction Id for the attachment.</param>
+    /// <param name="xcv">Document number for the approval request.</param>
+    /// <returns>Return List of AttachmentUploadStatus And Valid Uploaded files</returns>
+    Tuple<List<AttachmentUploadStatus>, List<IFormFile>> ValidateAttachmentUpload(IFormFileCollection files,List<Attachment> existingAttachments,AttachmentProperties attachmentProperties,List<AttachmentUploadInfo> attachmentUploadInfo,string tcv,string xcv);
+
+    /// <summary>
+    /// Method to create HttpRequestMessage for Attachments.
+    /// </summary>
+    /// <param name="method">Http method</param>
+    /// <param name="uri">Attachment upload endpoint</param>
+    /// <returns>Http request message</returns>
+    Task<HttpRequestMessage> CreateAttachmentRequestForTenant(HttpMethod method, string uri);
+
+    /// <summary>
+    /// Method to add Attachment Metadata and Upload Attachment in Blob storage
+    /// </summary>
+    /// <param name="fileUploadStatuses">File upload status.</param>
+    /// <param name="files">Collection of Attachment.</param>
+    /// <param name="attachmentUploadInfo">Uploaded attachments details</param>
+    /// <param name="attachmentsSummary">List of Existing and uploaded attachment details.</param>
+    /// <param name="attachmentProperties">Attachment Property</param>
+    /// <param name="httpResponseMessage">Http Response : to get attachment additional data from response.</param>
+    /// <param name="documentNumber">Document Number</param>
+    /// <param name="loggedInAlias">Loggedin user alias</param>
+    /// <param name="xcv">Document number for the approval request.</param>
+    /// <param name="tcv">Transaction Id for the attachment.</param>
+    /// <returns></returns>
+    Task AddAttachmentMetadataAndUploadAttachmentInBlob(List<Attachment> uploadAttachmentsResponse, List<AttachmentUploadStatus> fileUploadStatuses, List<IFormFile> files, List<AttachmentUploadInfo> attachmentUploadInfo, List<Attachment> attachmentsSummary, AttachmentProperties attachmentProperties, HttpResponseMessage httpResponseMessage, string documentNumber, string loggedInAlias, string xcv, string tcv);
+
+    /// <summary>
+    /// Method to create HTTP request content body. This will be overridden in each LOB to add additional details in the form-data collection.
+    /// </summary>
+    /// <param name="reqMessage">The HTTP request message to which the content will be attached.</param>
+    /// <param name="fileCollection">Collection of attachments to include in the request.</param>
+    /// <param name="attachmentUploadInfo">Details of the attachments such as category and description.</param>
+    /// <param name="approvalIdentifier">The approval identifier associated with the attachments.</param>
+    void CreateAttachmentContentForTenant(HttpRequestMessage reqMessage, List<IFormFile> fileCollection, List<AttachmentUploadInfo> attachmentUploadInfo, ApprovalIdentifier approvalIdentifier, string docTypeId, string loggedInAlias);
+
+
+    /// <summary>
+    /// Checks whether NotifyWatchDogEmailWithApprovalFunctionality and NotifyEmailWithApprovalFunctionality are configured for the specific Tenant or not.
+    /// Return true if enabled, else returns false
+    /// </summary>
+    /// <param name="summaryRow"></param>
+    /// <param name="tenant"></param>
+    /// <returns>returns EmailType</returns>
+    EmailType GetEmailType(List<ApprovalSummaryRow> summaryRow, ITenant tenant);
 }

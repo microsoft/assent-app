@@ -35,19 +35,16 @@ public class UserDelegationSettingsController : BaseApiController
     /// <summary>
     /// Gets the specified logged in alias.
     /// </summary>
-    /// <param name="loggedInAlias">The logged in alias.</param>
     /// <param name="sessionId">The session identifier.</param>
     /// <returns>returns list</returns>
     [SwaggerOperation(Tags = new[] { "User" })]
     [HttpGet]
-    [Route("{loggedInAlias}")]
-    public async Task<IEnumerable<dynamic>> Get(string loggedInAlias,string sessionId = "")
+    [Route("/api/v1/me/delegations")]
+    public async Task<IEnumerable<dynamic>> Get(string sessionId = "")
     {
         try
         {
-            ArgumentGuard.NotNullAndEmpty(loggedInAlias, nameof(loggedInAlias));
-
-            var results = await _delegationHelper.GetInfoOfPeopleDelegatedToMe(loggedInAlias, Alias, Host, sessionId, Xcv, Tcv);
+            var results = await _delegationHelper.GetMergedDelegationData(SignedInUser, OnBehalfUser, GetTokenOrCookie(), ClientDevice, sessionId, Xcv, MessageId);
             return results;
         }
         catch
@@ -57,29 +54,26 @@ public class UserDelegationSettingsController : BaseApiController
     }
 
     /// <summary>
-    /// This method will retrieve delegated users for the loggedInAlias
+    /// This method retrieves delegated users for the specified userPrincipalName or objectId.
     /// </summary>
-    /// <param name="tenantId">The tenantId</param>
-    /// <param name="loggedInAlias">The logged in alias</param>
+    /// <param name="tenantId">tenantId</param>
     /// <param name="sessionId">The session Id</param>
-    /// <returns>returns HttpResponse Object</returns>
+    /// <returns>Returns HttpResponse Object</returns>
     /// <remarks>
     /// <para>
     /// e.g.
-    /// HTTP GET api/UserDelegationSettings/[tenantId]/loggedInAlias]?SessionId=[userSessionId]
+    /// HTTP GET api/v1/users/delegations?tenantId=[tenantId]
     /// </para>
     /// </remarks>
     [SwaggerOperation(Tags = new[] { "User" })]
     [HttpGet]
-    [Route("{tenantId}/{loggedInAlias}")]
-    public async Task<IActionResult> Get(int tenantId, string loggedInAlias,string sessionId = "")
+    [Route("/api/v1/users/delegations")]
+    public async Task<IActionResult> Get(int tenantId, string sessionId = "")
     {
         try
         {
             ArgumentGuard.NotNull(tenantId, nameof(tenantId));
-            ArgumentGuard.NotNullAndEmpty(loggedInAlias, nameof(loggedInAlias));
-
-            var responseObject = await _delegationHelper.GetUsersDelegatedToAsync(loggedInAlias, Alias, tenantId, Host, sessionId, Xcv, Tcv);
+            var responseObject = await _delegationHelper.GetUsersDelegatedToAsync(SignedInUser, OnBehalfUser, tenantId, ClientDevice, sessionId, Xcv, MessageId);
             return Ok(responseObject);
         }
         catch

@@ -158,6 +158,20 @@ public class EmailHelper : IEmailHelper
 
         try
         {
+            #region Checking if SummaryJson is stored in blob. If yes fetch and assign to summaryRows
+
+            string summaryJson = string.Empty;
+            if (summaryRows != null && summaryRows.Count > 0)
+            {
+                summaryJson = string.IsNullOrEmpty(summaryRows.FirstOrDefault().BlobPointer) ?
+                                    summaryRows.FirstOrDefault()?.SummaryJson :
+                                    _blobStorageHelper.DownloadText(Constants.ApprovalSummaryBlobContainerName, summaryRows.FirstOrDefault().BlobPointer).Result;
+            }
+            summaryRows.ForEach(row => row.SummaryJson = summaryJson);
+
+            #endregion Checking if SummaryJson is stored in blob. If yes fetch and assign to summaryRows
+
+
             JObject responseJObject = null;
             List<NotificationDataAttachment> notificationDataAttachment = new List<NotificationDataAttachment>();
 
@@ -197,7 +211,8 @@ public class EmailHelper : IEmailHelper
                     _logProvider.LogInformation(TrackingEvent.ActionableEmailGetAttachments, logData);
                     // Flag to determine if all downloadable attachments are downloaded successfully using ID
                     bool isAttachmentDownloadSuccess = false;
-                    notificationDataAttachment = GetAttachmentsToAttachInEmail(responseJObject, deviceNotificationInfo.ApprovalIdentifier, tenantInfo, tenant, logData, ref isAttachmentDownloadSuccess);
+                    string approverUpn = summaryRows?.FirstOrDefault()?.Approver + summaryRows?.FirstOrDefault()?.ApproverDomain;
+                    notificationDataAttachment = GetAttachmentsToAttachInEmail(responseJObject, deviceNotificationInfo.ApprovalIdentifier, tenantInfo, tenant, logData, approverUpn, ref isAttachmentDownloadSuccess);
 
                     if (!isAttachmentDownloadSuccess)
                     {
@@ -367,7 +382,9 @@ public class EmailHelper : IEmailHelper
             true,
             callType,
             Constants.DetailPageType,
-            Constants.SourcePendingApproval);
+            Constants.SourcePendingApproval,
+            summaryRow.PartitionKey,
+            summaryRow.ApproverDomain);
 
         Task task = detailsInfo;
         task.Wait();
@@ -422,8 +439,9 @@ public class EmailHelper : IEmailHelper
         {
             Parallel.ForEach(urls, (url) =>
             {
+                string lastSegment = url.Value<string>().Split('/').Last();
                 // operationName is like HDR,DTL,LINE
-                string operationName = url.Value<string>().Split('/').Last();
+                string operationName = lastSegment.Split('?', 2)[0];
 
                 // Fetch missing details from LOB system and store it in azuretable
                 missingDataResponseJObject = GetDetailsDataforApprovalRequest(tenantInfo, approvalIdentifier, summaryRow, logData, operationName);
@@ -449,6 +467,7 @@ public class EmailHelper : IEmailHelper
     /// <param name="tenantInfo">The tenant information.</param>
     /// <param name="tenant">Tenant object.</param>
     /// <param name="logData">Log Data information</param>
+    /// <param name="approverUpn"></param>
     /// <param name="isAttachmentDownloadSuccess">Flag to identify if all downloadable attachments are downloaded successfully</param>
     /// <returns>returns a list of NotificationDataAttachment</returns>
     public List<NotificationDataAttachment> GetAttachmentsToAttachInEmail(
@@ -457,6 +476,7 @@ public class EmailHelper : IEmailHelper
         ApprovalTenantInfo tenantInfo,
         ITenant tenant,
         Dictionary<LogDataKey, object> logData,
+        string approverUpn,
         ref bool isAttachmentDownloadSuccess)
     {
         var attachmentList = new List<NotificationDataAttachment>();
@@ -501,7 +521,7 @@ public class EmailHelper : IEmailHelper
                     };
 
                     // fetch attachment from Lob
-                    var lobResponse = tenant.GetAttachmentContentFromLob(approvalIdentifier, attachment.ID.ToString(), telemetry).Result;
+                    var lobResponse = tenant.GetAttachmentContentFromLob(approvalIdentifier, attachment.ID.ToString(), telemetry, approverUpn).Result;
                     if (lobResponse != null)
                     {
                         byte[] contentArray = lobResponse;
@@ -1097,6 +1117,16 @@ public class EmailHelper : IEmailHelper
                         template = _emailTemplateHelper.GetTemplates().Where(emailtemplate => (emailtemplate.PartitionKey.Equals(tenantId.ToString(), StringComparison.InvariantCultureIgnoreCase)) && Regex.IsMatch(emailtemplate.RowKey, templatePattern)).FirstOrDefault();
                     }
 
+                    #region Adding MEO related Template keys
+
+                    if (templateData.TryGetValue("Approver.Name", out string approverName))
+                        templateData.Add("ApproverName", approverName);
+                    else
+                        templateData.Add("ApproverName", deviceNotificationInfo.Approver);
+                    templateData.Add("ApprovalIdentifierDisplayDocumentNumber", deviceNotificationInfo.ApprovalIdentifier.DisplayDocumentNumber);
+
+                    #endregion
+
                     var emailData = new NotificationItem
                     {
                         Bcc = BCCEmailAddress,
@@ -1166,12 +1196,12 @@ public class EmailHelper : IEmailHelper
         StringBuilder finalEmailList = new StringBuilder();
         if (!String.IsNullOrEmpty(mailId))
         {
-            String[] emailIds = mailId.Split(',');
+            String[] emailIds = mailId.Split(',', StringSplitOptions.RemoveEmptyEntries);
             if (emailIds.Any())
             {
                 foreach (string emailId in emailIds)
                 {
-                    finalEmailList.Append(emailId);
+                    finalEmailList.Append(emailId.Trim());
                     if (!Regex.IsMatch(emailId, @"\w+([-+.']\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*"))
                         finalEmailList.Append("@Microsoft.com");
                     finalEmailList.Append(";");
@@ -1238,7 +1268,7 @@ public class EmailHelper : IEmailHelper
         ApprovalSummaryRow summaryData;
         //Check if there were no summary rows. Fetch them, if not.
         if (summaryRows.Count == 0)
-            summaryData = _approvalSummaryProvider.GetApprovalSummaryByDocumentNumber(deviceNotificationInfo.DocumentTypeId.ToString(), deviceNotificationInfo.ApprovalIdentifier.DisplayDocumentNumber, deviceNotificationInfo.Approver);
+            summaryData = _approvalSummaryProvider.GetApprovalSummaryByDocumentNumber(deviceNotificationInfo.DocumentTypeId.ToString(), deviceNotificationInfo.ApprovalIdentifier.DisplayDocumentNumber, deviceNotificationInfo.Approver, deviceNotificationInfo.ApproverId, deviceNotificationInfo.ApproverDomain);
         else
             summaryData = summaryRows.Where(x => deviceNotificationInfo.ApprovalIdentifier.DisplayDocumentNumber.Equals(x.DocumentNumber) && x.Approver != null && deviceNotificationInfo.Approver.Equals(x.Approver)).FirstOrDefault();
         List<TransactionHistoryExt> historyDataExt = await _approvalHistoryProvider.GetApproverChainHistoryDataAsync(tenantInfo, deviceNotificationInfo.ApprovalIdentifier.DisplayDocumentNumber, string.Empty, Environment.UserName, Xcv, Tcv, string.Empty);
@@ -1248,7 +1278,7 @@ public class EmailHelper : IEmailHelper
             //Adding additional data to SummaryRow.SummaryJson to populate the email placeholders
             var summaryJson = summaryData.SummaryJson.FromJson<SummaryJson>();
             summaryJson.AdditionalData = (additionalData != null && additionalData.Count > 0) ? additionalData : null;
-            summaryData.SummaryJson = summaryJson.ToJson();
+            summaryData.SummaryJson = summaryJson.ToJson(new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore});
 
             JObject summaryWithApprover = (summaryData.SummaryJson).ToJObject();
             await AddApprover(summaryData.Approver, summaryWithApprover);
@@ -1269,7 +1299,7 @@ public class EmailHelper : IEmailHelper
                 //Adding additional data to SummaryRow.SummaryJson to populate the email placeholders
                 var summaryJsonHistory = historyRow.JsonData.FromJson<SummaryJson>();
                 summaryJsonHistory.AdditionalData = (additionalData != null && additionalData.Count > 0) ? additionalData : null;
-                historyRow.JsonData = summaryJsonHistory.ToJson();
+                historyRow.JsonData = summaryJsonHistory.ToJson(new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
 
                 JObject historyRowWithApprover = (historyRow.JsonData).ToJObject();
                 await AddApprover(historyRow.Approver, historyRowWithApprover);

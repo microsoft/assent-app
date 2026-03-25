@@ -2,10 +2,10 @@
 // Licensed under the MIT License.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using Azure.AI.OpenAI;
 using Azure.Identity;
 using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Builder;
@@ -19,6 +19,7 @@ using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Core.BL.Factory;
 using Microsoft.CFS.Approvals.Core.BL.Helpers;
+using Microsoft.CFS.Approvals.Core.BL.Helpers.ChatToolHandlers;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.CoreServices.BL.Helpers;
 using Microsoft.CFS.Approvals.CoreServices.BL.Interface;
@@ -30,6 +31,8 @@ using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
 using Microsoft.CFS.Approvals.Domain.BL.Interface;
 using Microsoft.CFS.Approvals.Domain.BL.Tenants.Validations;
 using Microsoft.CFS.Approvals.LogManager;
+using Microsoft.CFS.Approvals.LogManager.Interface;
+using Microsoft.CFS.Approvals.LogManager.OpenTelemetry;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.Utilities.Helpers;
 using Microsoft.CFS.Approvals.Utilities.Interface;
@@ -38,6 +41,7 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Internal.AntiSSRF;
 using Microsoft.OpenApi.Models;
 using Polly;
 using Polly.Extensions.Http;
@@ -47,16 +51,15 @@ IConfigurationRefresher refresher;
 IConfiguration config = builder.Services.BuildServiceProvider().GetService<IConfiguration>();
 
 #if DEBUG
-        var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
 #else
         var azureCredential = new ManagedIdentityCredential();
 #endif
 
-
 builder.WebHost.ConfigureAppConfiguration((hostingContext, config) =>
 {
     var configuration = config.Build();
-    configuration = config.AddEnvironmentVariables().Build(); ;
+    configuration = config.AddEnvironmentVariables().Build();
 
     config.AddAzureAppConfiguration(options =>
     {
@@ -76,11 +79,8 @@ builder.WebHost.ConfigureAppConfiguration((hostingContext, config) =>
     configuration = config.Build();
 });
 
-// Add Logging
-builder.Services.AddLogging(configure =>
-{
-    configure.AddApplicationInsights(config?[Constants.AppinsightsInstrumentationkey]);
-});
+// Add Logging and Telemetry
+builder.Services.AddApplicationInsightsTelemetry(config?[Constants.AppinsightsInstrumentationkey]);
 
 builder.Services.AddControllers().AddNewtonsoftJson(options =>
 {
@@ -105,13 +105,14 @@ builder.Services.AddSwaggerGen(c =>
     c.EnableAnnotations();
 });
 
+var openAIClient = new AzureOpenAIClient(new Uri(config?[ConfigurationKey.AzureOpenAiApiEndpoint.ToString()]), azureCredential);
+
 var client = new BlobServiceClient(
                             new Uri($"https://" + config?[Constants.StorageAccountName] + ".blob.core.windows.net/"),
                             azureCredential);
 var cosmosdbClient = new CosmosClient(config?[ConfigurationKey.CosmosDbEndPoint.ToString()],
                 azureCredential, new CosmosClientOptions() { AllowBulkExecution = true });
 builder.Services.AddSingleton<ApplicationInsightsTarget>();
-builder.Services.AddScoped<IClientActionHelper, ClientActionHelper>();
 builder.Services.AddScoped<IOfficeDocumentCreator, OfficeDocumentCreator>();
 builder.Services.AddSingleton<ILogProvider, LogProvider>();
 builder.Services.AddSingleton<IPerformanceLogger, PerformanceLogger>();
@@ -121,8 +122,13 @@ builder.Services.AddScoped<INameResolutionHelper, NameResolutionHelper>();
 builder.Services.AddSingleton<ITableHelper, TableHelper>(x => new TableHelper(config?[Constants.StorageAccountName].ToString(), azureCredential));
 builder.Services.AddSingleton<IBlobStorageHelper, BlobStorageHelper>(x => new BlobStorageHelper(client));
 builder.Services.AddScoped<IFlightingDataProvider, FlightingDataProvider>();
+builder.Services.AddScoped<IFlightingHelper, FlightingHelper>();
 builder.Services.AddSingleton<ICosmosDbHelper, CosmosDbHelper>(x => new CosmosDbHelper(cosmosdbClient));
 builder.Services.AddSingleton<IHistoryStorageFactory, HistoryStorageFactory>();
+builder.Services.AddScoped<IAuditFactory, AuditFactory>();
+var auditLoggerFactory = builder.Services.BuildServiceProvider().GetService<IAuditFactory>();
+var auditLoggerAdaptor = auditLoggerFactory.GetAuditLogger();
+builder.Services.AddSingleton<IAuditLogger>((provider) => { return auditLoggerAdaptor; });
 
 var tableHelper = builder.Services.BuildServiceProvider().GetService<ITableHelper>();
 var logger = builder.Services.BuildServiceProvider().GetService<ILogProvider>();
@@ -135,6 +141,7 @@ if (bool.Parse(config?[ConfigurationKey.IsAzureSearchEnabled.ToString()]))
     builder.Services.AddScoped<IApprovalHistoryProvider, ApprovalHistoryAzureSearchProvider>(h => new ApprovalHistoryAzureSearchProvider(config, tableHelper, logger, performanceLogger, approvalTenantInfoProvider, historyStorageFactory, cosmosDbHelper));
 else
     builder.Services.AddScoped<IApprovalHistoryProvider, ApprovalHistoryProvider>(h => new ApprovalHistoryProvider(config, approvalTenantInfoProvider, logger, performanceLogger, cosmosDbHelper, historyStorageFactory));
+
 builder.Services.AddScoped<ITenantFactory, TenantFactory>();
 builder.Services.AddScoped<IApprovalTenantInfoHelper, ApprovalTenantInfoHelper>();
 builder.Services.AddScoped<IAboutHelper, AboutHelper>();
@@ -144,9 +151,9 @@ builder.Services.AddScoped<IDocumentApprovalStatusHelper, DocumentApprovalStatus
 builder.Services.AddScoped<IAdaptiveDetailsHelper, AdaptiveDetailsHelper>();
 builder.Services.AddScoped<ITenantDownTimeMessagesProvider, TenantDownTimeMessagesProvider>();
 builder.Services.AddScoped<ITenantDownTimeMessagesHelper, TenantDownTimeMessagesHelper>();
+builder.Services.AddScoped<IQuickTourHelper, QuickTourHelper>();
 builder.Services.AddSingleton<ILocalFileCache, LocalFileCache>();
 builder.Services.AddScoped<IImageRetriever, UserImageRetrieval>();
-builder.Services.AddScoped<IApprovalSummaryHelper, ApprovalSummaryHelper>();
 builder.Services.AddScoped<ISummaryHelper, SummaryHelper>();
 builder.Services.AddScoped<IEditableConfigurationHelper, EditableConfigurationHelper>();
 builder.Services.AddScoped<IActionAuditLogger, ActionAuditLogger>();
@@ -154,11 +161,9 @@ builder.Services.AddScoped<IActionAuditLogHelper, ActionAuditLogHelper>();
 builder.Services.AddScoped<IUserDelegationProvider, UserDelegationProvider>();
 builder.Services.AddScoped<IDelegationHelper, DelegationHelper>();
 builder.Services.AddScoped<IDetailsHelper, DetailsHelper>();
-builder.Services.AddScoped<IAttachmentHelper, AttachmentHelper>();
 builder.Services.AddScoped<IApprovalHistoryHelper, ApprovalHistoryHelper>();
 builder.Services.AddScoped<IDocumentActionHelper, DocumentActionHelper>();
 builder.Services.AddScoped<IClientActionHelper, ClientActionHelper>();
-builder.Services.AddScoped<IFlightingDataProvider, FlightingDataProvider>();
 builder.Services.AddScoped<IPullTenantHelper, PullTenantHelper>();
 builder.Services.AddScoped<IReadDetailsHelper, ReadDetailsHelper>();
 builder.Services.AddScoped<ISaveEditableDetailsHelper, SaveEditableDetailsHelper>();
@@ -168,6 +173,9 @@ builder.Services.AddScoped<DocumentActionHelper>();
 builder.Services.AddScoped<BulkDocumentActionHelper>();
 builder.Services.AddScoped<BulkExternalDocumentActionHelper>();
 builder.Services.AddScoped<IValidation, ValidationBase>();
+
+// Register feedback services
+builder.Services.AddScoped<IFeedbackHelper, FeedbackHelper>();
 
 builder.Services.AddScoped<Func<string, IDocumentActionHelper>>(serviceProvider => key =>
 {
@@ -181,14 +189,57 @@ builder.Services.AddScoped<Func<string, IDocumentActionHelper>>(serviceProvider 
     };
 });
 builder.Services.AddScoped<AuthorizationMiddleware, AuthorizationMiddleware>();
+
+var policy = new AntiSSRFPolicy();
+policy.SetDefaults();
+
 builder.Services.AddSingleton<HttpClientHandler>();
-builder.Services.AddHttpClient<IHttpHelper, HttpHelper>()
+
+builder.Services
+    .AddHttpClient<IHttpHelper, HttpHelper>()
+    .ConfigurePrimaryHttpMessageHandler(_ =>
+    {
+        var handler = policy.GetHandler();
+        return handler;
+    })
     .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
     .AddPolicyHandler(HttpPolicyExtensions
                 .HandleTransientHttpError()
                 .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
                 .WaitAndRetryAsync(6, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2,
                     retryAttempt))));
+
+var tenantInfoHelper = builder.Services.BuildServiceProvider().GetService<IApprovalTenantInfoHelper>();
+var summaryHelper = builder.Services.BuildServiceProvider().GetService<ISummaryHelper>();
+var delegationHelper = builder.Services.BuildServiceProvider().GetService<IDelegationHelper>();
+var approvalSummaryProvider = builder.Services.BuildServiceProvider().GetService<IApprovalSummaryProvider>();
+
+builder.Services.AddScoped<IErrorHandlerHelper, ErrorHandlerHelper>();
+builder.Services.AddScoped<IInsightsHelper, InsightsHelper>();
+builder.Services.AddScoped<IAdaptiveCardResponseHelper, AdaptiveCardResponseHelper>();
+builder.Services.AddScoped<ISearchHelper, SearchHelper>(_ => new SearchHelper(logger, performanceLogger, config, summaryHelper, tenantInfoHelper, approvalSummaryProvider));
+
+// Register chat tool handlers
+builder.Services.AddScoped<IChatToolHandler, ExplainAndAskPermissionToolHandler>();
+builder.Services.AddScoped<IChatToolHandler, OnErrorOccurredToolHandler>();
+builder.Services.AddScoped<IChatToolHandler, RequestDetailsToolHandler>();
+builder.Services.AddScoped<IChatToolHandler, SearchToolHandler>();
+
+builder.Services.AddScoped<IAIAnalysisHelper, AIAnalysisHelper>();
+builder.Services.AddScoped<IAIAssistedSearchHelper, AIAssistedSearchHelper>();
+builder.Services.AddScoped<IIntelligenceHelper, IntelligenceHelper>(sp => new IntelligenceHelper(openAIClient, config, logger));
+builder.Services.AddScoped<IApprovalsPluginHelper>(sp => new ApprovalsPluginHelper(
+    config,
+    sp.GetRequiredService<IIntelligenceHelper>(),
+    sp.GetRequiredService<IDelegationHelper>(),
+    sp.GetServices<IChatToolHandler>(),
+    sp.GetRequiredService<ILogProvider>(),
+    sp.GetRequiredService<IPerformanceLogger>()));
+var errorHandlerHelper = builder.Services.BuildServiceProvider().GetService<IErrorHandlerHelper>();
+var intelligenceHelper = builder.Services.BuildServiceProvider().GetService<IIntelligenceHelper>();
+
+// Register the event handler
+OnErrorOccurredToolHandler.ErrorOccurred += errorHandlerHelper.ErrorOrchestrator;
 
 var app = builder.Build();
 if (app.Environment.IsDevelopment())
@@ -205,7 +256,7 @@ app.UseSwagger(c =>
 {
     c.PreSerializeFilters.Add((swagger, httpReq) =>
     {
-        swagger.Servers = new List<OpenApiServer> { new OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host.Value}" } };
+        swagger.Servers = [new OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host.Value}" }];
     });
 });
 

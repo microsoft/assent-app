@@ -16,14 +16,14 @@ namespace Microsoft.CFS.Approvals.Contracts.AttributeValidators
         /// The Validation of Notification Detail.
         /// </summary>
         /// <param name="notificationDetails"></param>
+        /// <param name="operation"></param>
         /// <returns>List of validation results</returns>
-        public List<ValidationResult> Validator(NotificationDetail notificationDetails)
+        public List<ValidationResult> Validator(NotificationDetail notificationDetails, ApprovalRequestOperation? operation = null)
         {
             var results = new List<ValidationResult>();
 
             System.ComponentModel.DataAnnotations.Validator.TryValidateObject(notificationDetails, new ValidationContext(notificationDetails), results);
-
-            if (notificationDetails.Reminder != null)
+            if (notificationDetails.Reminder != null && operation != ApprovalRequestOperation.Delete)
                 results.AddRange(new ReminderDetailsValidator().Validator(notificationDetails.Reminder));
             return results;
         }

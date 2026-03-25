@@ -1,17 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Microsoft.CFS.Approvals.PrimaryProcessor.BL</AssemblyName>
     <RootNamespace>Microsoft.CFS.Approvals.PrimaryProcessor.BL</RootNamespace>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="Azure.Identity" Version="1.10.2" />
+    <PackageReference Include="Azure.Identity" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\Common\Approvals.Data.Azure.Storage\Approvals.Data.Azure.Storage.csproj" />
+    <ProjectReference Include="..\..\Common\Approvals.Messaging.Azure.ServiceBus\Approvals.Messaging.Azure.ServiceBus.csproj" />
     <ProjectReference Include="..\..\Domain\Approvals.Domain.BL\Approvals.Domain.BL.csproj" />
     <ProjectReference Include="..\Approvals.Common.BL\Approvals.Common.BL.csproj" />
     <ProjectReference Include="..\..\Contract\Approvals.Contracts\Approvals.Contracts.csproj" />
@@ -19,5 +17,4 @@
     <ProjectReference Include="..\..\Common\Approvals.Utilities\Approvals.Utilities.csproj" />
     <ProjectReference Include="..\Approvals.Core.BL\Approvals.Core.BL.csproj" />
   </ItemGroup>
-
 </Project>

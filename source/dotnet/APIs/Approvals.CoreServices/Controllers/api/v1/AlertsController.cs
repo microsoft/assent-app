@@ -54,7 +54,7 @@ public class AlertsController : BaseApiController
         var logData = new Dictionary<LogDataKey, object>
         {
             { LogDataKey.Xcv, Xcv },
-            { LogDataKey.DXcv, Tcv },
+            { LogDataKey.DXcv, MessageId },
             { LogDataKey.StartDateTime, DateTime.UtcNow },
             { LogDataKey.SessionId, sessionId },
             { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() }
@@ -66,7 +66,7 @@ public class AlertsController : BaseApiController
         {
             using (_performanceLogger.StartPerformanceLogger("PerfLog", Constants.WebClient, string.Format(Constants.PerfLogAction, "AlertsController", "Get Alert Notification"), logData))
             {
-                return Ok(new { Alerts = _tenantDownTimeMessagesHelper.GetAllAlerts(sessionId, LoggedInAlias, Alias, Host) });
+                return Ok(new { Alerts = _tenantDownTimeMessagesHelper.GetAllAlerts(sessionId, SignedInUser.UserPrincipalName, OnBehalfUser.MailNickname, ClientDevice) });
             }
         }
         catch (Exception ex)

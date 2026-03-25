@@ -64,9 +64,11 @@ public class TenantInfoController : BaseApiController
         var logData = new Dictionary<LogDataKey, object>
         {
             { LogDataKey.Xcv, Xcv },
-            { LogDataKey.DXcv, Tcv },
+            { LogDataKey.DXcv, MessageId },
             { LogDataKey.StartDateTime, DateTime.UtcNow },
-            { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() }
+            { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() },
+            { LogDataKey.ObjectId, OnBehalfUser.Id },
+            { LogDataKey.Domain, DomainName}
         };
 
         #endregion Logging
@@ -123,7 +125,7 @@ public class TenantInfoController : BaseApiController
     {
         try
         {
-            var approvalTenantInfo = await _approvalTenantInfoHelper.GetTenantActionDetails(tenantId, LoggedInAlias, Alias, Host, sessionId, Xcv, Tcv, GetTokenOrCookie());
+            var approvalTenantInfo = await _approvalTenantInfoHelper.GetTenantActionDetails(tenantId, SignedInUser.MailNickname, OnBehalfUser.MailNickname, ClientDevice, sessionId, Xcv, MessageId, GetTokenOrCookie(), OnBehalfUser.Id, DomainName);
             approvalTenantInfo.ServiceParameter = string.Empty;
             return Ok(approvalTenantInfo);
         }

@@ -72,12 +72,14 @@ public class TenantFactory : ITenantFactory
     /// <param name="alias"></param>
     /// <param name="clientDevice"></param>
     /// <param name="oauth2Token"></param>
+    /// <param name="objectId"></param>
+    /// <param name="domain"></param>
     /// <returns></returns>
-    public ITenant GetTenant(ApprovalTenantInfo tenantInfo, string alias, string clientDevice, string oauth2Token)
+    public ITenant GetTenant(ApprovalTenantInfo tenantInfo, string alias, string clientDevice, string oauth2Token, string objectId, string domain)
     {
         try
         {
-            return (ITenant)Activator.CreateInstance(Type.GetType(tenantInfo.ClassName), tenantInfo, alias, clientDevice, oauth2Token, _logProvider, _performanceLogger, _approvalSummaryProvider, _config, _nameResolutionHelper, _approvalDetailProvider, _flightingDataProvider, _approvalHistoryProvider, _blobStorageHelper, _authenticationHelper, _httpHelper);
+            return (ITenant)Activator.CreateInstance(Type.GetType(tenantInfo.ClassName), tenantInfo, alias, clientDevice, oauth2Token, _logProvider, _performanceLogger, _approvalSummaryProvider, _config, _nameResolutionHelper, _approvalDetailProvider, _flightingDataProvider, _approvalHistoryProvider, _blobStorageHelper, _authenticationHelper, _httpHelper, objectId, domain);
         }
         catch
         {

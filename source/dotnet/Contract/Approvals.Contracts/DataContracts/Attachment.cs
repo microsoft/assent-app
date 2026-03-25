@@ -4,6 +4,7 @@
 namespace Microsoft.CFS.Approvals.Contracts.DataContracts
 {
     using System;
+    using System.Collections.Generic;
 
     /// <summary>
     /// Attachment object
@@ -39,7 +40,7 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
 
         /// <summary>
         /// Gets or sets user who uploaded attachment
-        /// </summary>
+        /// </summary> 
         public string UploadedBy { get; set; }
 
         /// <summary>
@@ -56,5 +57,10 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
         /// Gets or sets Description
         /// </summary>
         public string Description { get; set; }
+
+        /// <summary>
+        /// Gets or sets AdditionalData
+        /// </summary>
+        public Dictionary<string, object> AdditionalData { get; set; }
     }
 }

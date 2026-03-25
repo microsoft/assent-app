@@ -1,13 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Microsoft.CFS.Approvals.CoreServices.BL</AssemblyName>
     <RootNamespace>Microsoft.CFS.Approvals.CoreServices.BL</RootNamespace>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Approvals.Common.BL\Approvals.Common.BL.csproj" />
   </ItemGroup>
-
 </Project>

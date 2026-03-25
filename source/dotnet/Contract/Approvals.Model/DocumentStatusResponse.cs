@@ -54,4 +54,9 @@ public class DocumentStatusResponse
     /// Approver alias
     /// </summary>
     public string ApproverAlias { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether document is read.
+    /// </summary>
+    public bool IsRead { get; set; }
 }

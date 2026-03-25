@@ -13,6 +13,7 @@ using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Extensions;
+using Microsoft.CFS.Approvals.LogManager.Interface;
 using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.Utilities.Helpers;
 using Newtonsoft.Json.Linq;
@@ -46,22 +47,30 @@ public class DocumentActionController : BaseApiController
     private readonly IPerformanceLogger _performanceLogger = null;
 
     /// <summary>
+    /// OpenTelemetry audit logger
+    /// </summary>
+    private readonly IAuditLogger _auditLogger;
+
+    /// <summary>
     /// Constructor of DocumentActionController
     /// </summary>
     /// <param name="approvalTenantInfoHelper"></param>
     /// <param name="clientActionHelper"></param>
     /// <param name="documentActionHelperDelegate"></param>
     /// <param name="performanceLogger"></param>
+    /// <param name="auditLogger"></param>
     public DocumentActionController(
         IApprovalTenantInfoHelper approvalTenantInfoHelper,
         IClientActionHelper clientActionHelper,
         Func<string, IDocumentActionHelper> documentActionHelperDelegate,
-        IPerformanceLogger performanceLogger)
+        IPerformanceLogger performanceLogger,
+        IAuditLogger auditLogger)
     {
         _approvalTenantInfoHelper = approvalTenantInfoHelper;
         _clientActionHelper = clientActionHelper;
         _documentActionHelperDelegate = documentActionHelperDelegate;
         _performanceLogger = performanceLogger;
+        _auditLogger = auditLogger;
     }
 
     /// <summary>
@@ -93,11 +102,11 @@ public class DocumentActionController : BaseApiController
         var logData = new Dictionary<LogDataKey, object>
         {
             { LogDataKey.StartDateTime, DateTime.UtcNow },
-            { LogDataKey.ReceivedTcv, Tcv },
+            { LogDataKey.ReceivedTcv, MessageId },
             { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, LoggedInAlias },
+            { LogDataKey.UserRoleName, SignedInUser.MailNickname },
             { LogDataKey.TenantId, tenantId },
-            { LogDataKey.UserAlias, Alias },
+            { LogDataKey.UserAlias, OnBehalfUser.MailNickname },
             { LogDataKey.ClientDevice, clientDevice },
             { LogDataKey.DisplayDocumentNumber, string.Empty },
             { LogDataKey.DocumentNumber, string.Empty }
@@ -112,17 +121,18 @@ public class DocumentActionController : BaseApiController
             var tenantInfo = _approvalTenantInfoHelper.GetTenantInfo(tenantId);
             var submissionType = (ActionSubmissionType)tenantInfo.ActionSubmissionType;
             var documentActionHelper = _documentActionHelperDelegate(submissionType.ToString());
+            _auditLogger.LogAudit("Post", AuditOperationType.Read, SignedInUser.MailNickname, "CoreServices", "TableStorage", "ApprovalTenantInfo", AuditOperationResult.Success, $"DocumentActionController.cs - Post - GetTenantInfo, tenantId:{tenantId}, sessionId:{sessionId}, tcv:{MessageId}, xcv:{Xcv}");
 
             if (string.IsNullOrWhiteSpace(clientDevice))
             {
-                clientDevice = Host;
+                clientDevice = ClientDevice;
             }
 
             if (!string.IsNullOrEmpty(clientDevice) && (clientDevice.Equals(Constants.OutlookClient) || clientDevice.Equals(Constants.TeamsClient)))
             {
                 using (_performanceLogger.StartPerformanceLogger("PerfLog", clientDevice, string.Format(Constants.PerfLogAction, "DocumentActionController", "Post Action From Non WebClient"), logData))
                 {
-                    var result = await _clientActionHelper.TakeActionFromNonWebClient(tenantId, Request, clientDevice, Alias, LoggedInAlias, GetTokenOrCookie(), submissionType, Xcv, Tcv, sessionId);
+                    var result = await _clientActionHelper.TakeActionFromNonWebClient(tenantId, Request, clientDevice, OnBehalfUser, SignedInUser, GetTokenOrCookie(), submissionType, Xcv, MessageId, sessionId);
                     logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
                     return result;
                 }
@@ -136,7 +146,7 @@ public class DocumentActionController : BaseApiController
                     {
                         content = await reader.ReadToEndAsync();
                     }
-                    var result = Ok(await documentActionHelper.TakeAction(tenantId, content, clientDevice, Alias, LoggedInAlias, GetTokenOrCookie(), Xcv, Tcv, sessionId));
+                    var result = Ok(await documentActionHelper.TakeAction(tenantId, content, clientDevice, OnBehalfUser, SignedInUser, GetTokenOrCookie(), Xcv, MessageId, sessionId));
                     logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
                     return result;
                 }
@@ -144,6 +154,7 @@ public class DocumentActionController : BaseApiController
         }
         catch (Exception exception)
         {
+            _auditLogger.LogAudit("Post", AuditOperationType.Read, SignedInUser.MailNickname, "CoreServices", "NA", "NA", AuditOperationResult.Failure, $"DocumentActionController.cs - Post, tenantId:{tenantId}, sessionId:{sessionId}, tcv:{MessageId}, xcv:{Xcv}, exception:{exception.Message}, logData:{logData}");
             return BadRequest(exception.InnerException != null ? exception.InnerException.Message : exception.Message);
         }
     }
@@ -183,15 +194,15 @@ public class DocumentActionController : BaseApiController
 
             if (string.IsNullOrWhiteSpace(clientDevice))
             {
-                clientDevice = Host;
+                clientDevice = ClientDevice;
             }
             if (!string.IsNullOrEmpty(clientDevice) && clientDevice.Equals(Constants.OutlookClient) || clientDevice.Equals(Constants.TeamsClient))
             {
-                return await _clientActionHelper.TakeActionFromNonWebClient(tenantId, Request, clientDevice, Alias, LoggedInAlias, GetTokenOrCookie(), submissionType, Xcv, Tcv, sessionId);
+                return await _clientActionHelper.TakeActionFromNonWebClient(tenantId, Request, clientDevice, OnBehalfUser, SignedInUser, GetTokenOrCookie(), submissionType, Xcv, MessageId, sessionId);
             }
             else
             {
-                return Ok(await documentActionHelper.TakeAction(tenantId, actionString?.ToString(), clientDevice, Alias, LoggedInAlias, GetTokenOrCookie(), Xcv, Tcv, sessionId));
+                return Ok(await documentActionHelper.TakeAction(tenantId, actionString?.ToString(), clientDevice, OnBehalfUser, SignedInUser, GetTokenOrCookie(), Xcv, MessageId, sessionId));
             }
         }
         catch (Exception exception)

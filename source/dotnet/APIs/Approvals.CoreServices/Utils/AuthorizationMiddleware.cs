@@ -12,10 +12,15 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.CFS.Approvals.Contracts;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
+using Microsoft.CFS.Approvals.Extensions;
+using Microsoft.CFS.Approvals.Model;
+using Microsoft.CFS.Approvals.Utilities.Interface;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+
 
 /// <summary>
 /// Custom Authorization Middleware class which takes care of additional security checks
@@ -24,17 +29,20 @@ public class AuthorizationMiddleware : IMiddleware
 {
     private readonly IDelegationHelper _delegationHelper;
     private readonly IApprovalTenantInfoHelper _approvalTenantInfoHelper;
+    private readonly INameResolutionHelper _nameResolutionHelper;
     private readonly IConfiguration _configuration;
     private static readonly string XMsClientPrincipalIdp = "X-MS-CLIENT-PRINCIPAL-IDP";
+    private static readonly string XMsClientPrincipalId = "X-MS-CLIENT-PRINCIPAL-ID";
     private static readonly string XMsClientPrincipal = "X-MS-CLIENT-PRINCIPAL";
 
     /// <summary>
     /// Constructor
     /// </summary>
-    public AuthorizationMiddleware(IApprovalTenantInfoHelper approvalTenantInfoHelper, IDelegationHelper delegationHelper, IConfiguration configuration)
+    public AuthorizationMiddleware(IApprovalTenantInfoHelper approvalTenantInfoHelper, IDelegationHelper delegationHelper, INameResolutionHelper nameResolutionHelper, IConfiguration configuration)
     {
         _delegationHelper = delegationHelper;
         _approvalTenantInfoHelper = approvalTenantInfoHelper;
+        _nameResolutionHelper = nameResolutionHelper;
         _configuration = configuration;
     }
 
@@ -48,19 +56,25 @@ public class AuthorizationMiddleware : IMiddleware
     {
         var claims = new List<Claim>();
         var userAlias = string.Empty;
+        var userPrincipalName = string.Empty;
+        string currentDomain = string.Empty;
+        List<UserDelegationSetting> currentUserDelegation = null;
 
         // Get UserPrincipalName /alias from Header
         if (context.Request.Headers.Keys.Contains("X-MS-CLIENT-PRINCIPAL-NAME"))
         {
-            userAlias = context.Request.Headers["X-MS-CLIENT-PRINCIPAL-NAME"].ToString();
+            userPrincipalName = context.Request.Headers["X-MS-CLIENT-PRINCIPAL-NAME"].ToString();
             var whitelistedDomains = _configuration[Constants.WhitelistedDomains]?.Split(";").ToList();
             whitelistedDomains.ForEach(domain =>
             {
-                if (userAlias.EndsWith(domain, StringComparison.InvariantCultureIgnoreCase))
+                if (userPrincipalName.EndsWith(domain, StringComparison.InvariantCultureIgnoreCase))
                 {
-                    userAlias = new MailAddress(userAlias).User;
+                    userAlias = new MailAddress(userPrincipalName).User;
+                    currentDomain = domain;
                 }
             });
+
+            context.Request.Headers.Add(Constants.LoggedInUserUpn, userPrincipalName);
         }
 
         // Authorize after the user has been authenticated by App Service Authentication Service
@@ -94,11 +108,11 @@ public class AuthorizationMiddleware : IMiddleware
                     await context.Response.WriteAsync("Unauthorized request");
                     return;
                 }
-            }   
+            }
 
-        #endregion Check for Valid AppID
+            #endregion Check for Valid AppID
 
-        #region Check for Reserved Headers
+            #region Check for Reserved Headers
 
             if (context.Request.Headers.ContainsKey(Constants.LoggedInUserAlias))
             {
@@ -113,12 +127,27 @@ public class AuthorizationMiddleware : IMiddleware
             else
             {
                 context.Request.Headers.Add(Constants.LoggedInUserAlias, userAlias);
+                if (context.Request.Headers.ContainsKey(Constants.LoggedInUserUpn))
+                    context.Request.Headers[Constants.LoggedInUserUpn] = userPrincipalName;
+                else
+                    context.Request.Headers.Add(Constants.LoggedInUserUpn, userPrincipalName);
             }
 
             #endregion Check for Reserved Headers
 
             #region Check for Delegation Headers
 
+            if (!string.IsNullOrWhiteSpace(currentDomain))
+            {
+                if (context.Request.Headers.ContainsKey(Constants.Domain))
+                {
+                    context.Request.Headers[Constants.Domain] = currentDomain;
+                }
+                else
+                {
+                    context.Request.Headers.Add(Constants.Domain, currentDomain);
+                }
+            }
             if (!string.IsNullOrWhiteSpace(userAlias))
             {
                 // Check for External Delegation
@@ -155,18 +184,7 @@ public class AuthorizationMiddleware : IMiddleware
                 }
                 else
                 {
-                    string delegatedUser = context.Request.Headers.FirstOrDefault(x => x.Key.ToLower().Equals(Constants.UserAlias.ToLower())).Value.FirstOrDefault();
-                    if (!string.Equals(userAlias, delegatedUser, StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        var currentUserDelegation = _delegationHelper.GetUserDelegationsForCurrentUser(delegatedUser);
-                        if (currentUserDelegation == null || currentUserDelegation.Where(d => d.DelegatedToAlias == userAlias).Count() == 0)
-                        {
-                            // Throwing back a unauthorized so that this message is not processed
-                            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                            await context.Response.WriteAsync("Unauthorized: You do not have permission to see delegated user's data.");
-                            return;
-                        }
-                    }
+                    context.Request.Headers[Constants.Domain] = context.Request.Headers[Constants.OnBehalfUserUpn].ToString().GetDomainFromUPN();
                 }
             }
 

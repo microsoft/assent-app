@@ -1,17 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Microsoft.CFS.Approvals.DevTools.Model</AssemblyName>
     <RootNamespace>Microsoft.CFS.Approvals.DevTools.Model</RootNamespace>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="Azure.Data.Tables" Version="12.8.0" />
+    <PackageReference Include="Azure.Data.Tables" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\..\Contract\Approvals.Model\Approvals.Model.csproj" />
   </ItemGroup>
-
 </Project>

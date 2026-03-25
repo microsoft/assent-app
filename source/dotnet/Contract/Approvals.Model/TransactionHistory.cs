@@ -56,6 +56,8 @@ public partial class TransactionHistory : BaseTableEntity
     }
 
     public string Approver { get; set; }
+    public string ApproverDomain { get; set; }
+    public string ApproverId { get; set; }
     public string ApproversNote { get; set; }
     public string DocumentNumber { get; set; }
     public string DocumentTypeID { get; set; }
@@ -76,4 +78,5 @@ public partial class TransactionHistory : BaseTableEntity
     public string MessageId { get; set; }
     public string DelegateUser { get; set; }
     public string Xcv { get; set; }
+    public string BlobPointer { get; set; }
 }

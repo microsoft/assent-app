@@ -1,16 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Microsoft.CFS.Approvals.PayloadReceiver.BL</AssemblyName>
     <RootNamespace>Microsoft.CFS.Approvals.PayloadReceiver.BL</RootNamespace>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="Azure.Identity" Version="1.10.2" />
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.9.0" />
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\Common\Approvals.Messaging.Azure.ServiceBus\Approvals.Messaging.Azure.ServiceBus.csproj" />
     <ProjectReference Include="..\Approvals.Common.BL\Approvals.Common.BL.csproj" />
@@ -18,5 +15,4 @@
     <ProjectReference Include="..\..\Common\Approvals.Utilities\Approvals.Utilities.csproj" />
     <ProjectReference Include="..\Approvals.Core.BL\Approvals.Core.BL.csproj" />
   </ItemGroup>
-
 </Project>

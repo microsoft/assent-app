@@ -8,16 +8,21 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
-using System.Net.Mail;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Extensions;
 using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
-using Microsoft.CFS.Approvals.Model.Flighting;
+using Microsoft.CFS.Approvals.Model;
+using Microsoft.CFS.Approvals.Utilities.Helpers;
 using Microsoft.CFS.Approvals.Utilities.Interface;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 /// <summary>
@@ -41,6 +46,11 @@ public class DelegationHelper : IDelegationHelper
     private readonly IApprovalTenantInfoHelper _approvalTenantInfoHelper;
 
     /// <summary>
+    /// The Http Helper
+    /// </summary>
+    private readonly IHttpHelper _httpHelper;
+
+    /// <summary>
     /// The log provider
     /// </summary>
     private readonly ILogProvider _logProvider;
@@ -51,107 +61,76 @@ public class DelegationHelper : IDelegationHelper
     private readonly IPerformanceLogger _logger;
 
     /// <summary>
+    /// The configuration
+    /// </summary>
+    private readonly IConfiguration _config;
+
+    /// <summary>
     /// The tenant factory
     /// </summary>
     private readonly ITenantFactory _tenantFactory;
 
     /// <summary>
+    /// The authentication helper
+    /// </summary>
+    private readonly IAuthenticationHelper _authenticationHelper;
+
+    /// <summary>
     /// Constructor of DelegationHelper
     /// </summary>
-    /// <param name="_userDelegationProvider"></param>
-    /// <param name="_logProvider"></param>
-    /// <param name="_nameResolutionHelper"></param>
-    /// <param name="_logger"></param>
-    /// <param name="_approvalTenantInfoHelper"></param>
-    /// <param name="_tenantFactory"></param>
+    /// <param name="userDelegationProvider"></param>
+    /// <param name="httpHelper"></param>
+    /// <param name="logProvider"></param>
+    /// <param name="nameResolutionHelper"></param>
+    /// <param name="logger"></param>
+    /// <param name="config"></param>
+    /// <param name="approvalTenantInfoHelper"></param>
+    /// <param name="tenantFactory"></param>
+    /// <param name="authenticationHelper"></param>
     public DelegationHelper(IUserDelegationProvider userDelegationProvider,
+        IHttpHelper httpHelper,
         ILogProvider logProvider,
         INameResolutionHelper nameResolutionHelper,
         IPerformanceLogger logger,
+        IConfiguration config,
         IApprovalTenantInfoHelper approvalTenantInfoHelper,
-        ITenantFactory tenantFactory)
+        ITenantFactory tenantFactory,
+        IAuthenticationHelper authenticationHelper)
     {
         _userDelegationProvider = userDelegationProvider;
+        _httpHelper = httpHelper;
         _logProvider = logProvider;
         _nameResolutionHelper = nameResolutionHelper;
         _logger = logger;
+        _config = config;
         _approvalTenantInfoHelper = approvalTenantInfoHelper;
         _tenantFactory = tenantFactory;
-    }
-
-    /// <summary>
-    /// Delete Delegation Settings.
-    /// </summary>
-    /// <param name="delegationRow"></param>
-    /// <param name="sessionId"></param>
-    /// <param name="clientDevice"></param>
-    public void DeleteDelegationSettings(UserDelegationSetting delegationRow, string sessionId = "", string clientDevice = "")
-    {
-        #region Logging
-
-        var Tcv = Guid.NewGuid().ToString();
-
-        // Add common data items to LogData
-        var logData = new Dictionary<LogDataKey, object>
-        {
-            { LogDataKey.Xcv, Tcv },
-            { LogDataKey.Tcv, Tcv },
-            { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, delegationRow.PartitionKey },
-            { LogDataKey.ClientDevice, clientDevice },
-            { LogDataKey.EventType, Constants.FeatureUsageEvent },
-            { LogDataKey.UserAlias, delegationRow.DelegatedToAlias },
-            { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() }
-        };
-
-        #endregion Logging
-
-        _userDelegationProvider.DeleteDelegationSettings(delegationRow);
-        _logProvider.LogInformation(TrackingEvent.WebApiImpersonationSettingsDeleteSuccess, logData);
-    }
-
-    /// <summary>
-    /// Gets all user delegation settings.
-    /// </summary>
-    /// <returns></returns>
-    public List<UserDelegationSetting> GetAllUserDelegationSettings()
-    {
-        return _userDelegationProvider.GetAllUserDelegationSettings();
+        _authenticationHelper = authenticationHelper;
     }
 
     /// <summary>
     /// Gets the delegation access level.
     /// </summary>
-    /// <param name="managerAlias">The manager alias.</param>
-    /// <param name="delegateToAlias">The delegate to alias.</param>
+    /// <param name="manager">The manager user entity.</param>
+    /// <param name="delegateToUser">The delegate to user entity.</param>
     /// <returns></returns>
-    public DelegationAccessLevel GetDelegationAccessLevel(string managerAlias, string delegateToAlias)
+    public DelegationAccessLevel GetDelegationAccessLevel(User manager, User delegateToUser)
     {
-        return _userDelegationProvider.GetDelegationAccessLevel(managerAlias, delegateToAlias);
-    }
-
-    /// <summary>
-    /// Gets the delegation from.
-    /// </summary>
-    /// <param name="delegatedToAlias">The delegated to alias.</param>
-    /// <returns></returns>
-    public UserDelegationSetting GetDelegationFrom(string delegatedToAlias)
-    {
-        return _userDelegationProvider.GetDelegationFrom(delegatedToAlias);
+        return _userDelegationProvider.GetDelegationAccessLevel(manager, delegateToUser);
     }
 
     /// <summary>
     /// Gets the information of people delegated to me.
     /// </summary>
-    /// <param name="loggedInUserAlias">The logged in user alias.</param>
-    /// <param name="alias">The alias.</param>
+    /// <param name="signedInUser">The logged in user entity.</param>
+    /// <param name="onBehalfUser">The on behalf user entity.</param>
     /// <param name="clientDevice">The client device.</param>
     /// <param name="sessionId">The session identifier.</param>
     /// <param name="xcv">The xcv</param>
     /// <param name="tcv">The tcv</param>
     /// <returns>Returns delegated users in forms of dynamic list</returns>
     /// <exception cref="System.UnauthorizedAccessException">You are not allowed to query for a different user.</exception>
-    public async Task<List<dynamic>> GetInfoOfPeopleDelegatedToMe(string loggedInUserAlias, string alias, string clientDevice, string sessionId, string xcv, string tcv)
+    public async Task<List<dynamic>> GetInfoOfPeopleDelegatedToMe(User signedInUser, User onBehalfUser, string clientDevice, string sessionId, string xcv, string tcv)
     {
         #region Logging
 
@@ -166,10 +145,10 @@ public class DelegationHelper : IDelegationHelper
             { LogDataKey.Xcv, xcv },
             { LogDataKey.Tcv, tcv },
             { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, loggedInUserAlias },
+            { LogDataKey.UserRoleName, signedInUser.UserPrincipalName },
             { LogDataKey.ClientDevice, clientDevice },
             { LogDataKey.EventType, Constants.FeatureUsageEvent },
-            { LogDataKey.UserAlias, alias },
+            { LogDataKey.UserAlias, onBehalfUser.UserPrincipalName },
             { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() }
         };
 
@@ -182,7 +161,7 @@ public class DelegationHelper : IDelegationHelper
                 var results = new List<dynamic>();
                 var delegations = new List<dynamic>();
 
-                List<UserDelegationSetting> userDelegationRows = GetPeopleDelegatedToMe(loggedInUserAlias);
+                List<UserDelegationSetting> userDelegationRows = GetPeopleDelegatedToMe(signedInUser);
                 if (userDelegationRows == null || !userDelegationRows.Any())
                 {
                     return null;
@@ -194,6 +173,8 @@ public class DelegationHelper : IDelegationHelper
                     {
                         Name = await GetUserFullName(delegation.ManagerAlias),
                         Alias = delegation.ManagerAlias,
+                        DelegatorUpn = delegation.DelegatorUpn,
+                        DelegatorId = delegation.DelegatorId,
                         AccessPermission = new { Level = delegation.AccessType }
                     });
                 }
@@ -219,62 +200,35 @@ public class DelegationHelper : IDelegationHelper
     /// <summary>
     /// Gets the people delegated to me.
     /// </summary>
-    /// <param name="loggedInUserAlias">The logged in user alias.</param>
+    /// <param name="signedInUser">The logged in user entity.</param>
     /// <returns></returns>
-    public List<UserDelegationSetting> GetPeopleDelegatedToMe(string loggedInUserAlias)
+    public List<UserDelegationSetting> GetPeopleDelegatedToMe(User signedInUser)
     {
-        if (loggedInUserAlias.Contains("@"))
-        {
-            loggedInUserAlias = new MailAddress(loggedInUserAlias).User;
-        }
-
-        return _userDelegationProvider.GetPeopleDelegatedToMe(loggedInUserAlias);
-    }
-
-    /// <summary>
-    /// Gets the user delegation settings by identifier.
-    /// </summary>
-    /// <param name="rowKey">The row key.</param>
-    /// <returns></returns>
-    public UserDelegationSetting GetUserDelegationSettingsById(string rowKey)
-    {
-        return _userDelegationProvider.GetUserDelegationSettingsById(rowKey);
-    }
-
-    /// <summary>
-    /// Gets the user delegation settings from.
-    /// </summary>
-    /// <param name="loggedInUserAlias">The logged in user alias.</param>
-    /// <param name="tenantId">The tenant identifier.</param>
-    /// <param name="delegatedTo">The delegated to.</param>
-    /// <returns></returns>
-    public List<UserDelegationSetting> GetUserDelegationSettingsFrom(string loggedInUserAlias, int tenantId, string delegatedTo)
-    {
-        return _userDelegationProvider.GetUserDelegationSettingsFrom(loggedInUserAlias, tenantId, delegatedTo);
+        return _userDelegationProvider.GetPeopleDelegatedToMe(signedInUser);
     }
 
     /// <summary>
     /// Gets the user delegations for current user.
     /// </summary>
-    /// <param name="loggedInUserAlias">The logged in user alias.</param>
+    /// <param name="signedInUser">The logged in user entity.</param>
     /// <returns></returns>
-    public List<UserDelegationSetting> GetUserDelegationsForCurrentUser(string loggedInUserAlias)
+    public List<UserDelegationSetting> GetUserDelegationsForCurrentUser(User signedInUser)
     {
-        return _userDelegationProvider.GetUserDelegationsForCurrentUser(loggedInUserAlias);
+        return _userDelegationProvider.GetUserDelegationsForCurrentUser(signedInUser);
     }
 
     /// <summary>
     /// This method will fetch deleged users for loggedIn user
     /// </summary>
-    /// <param name="loggedInUserAlias">The logged in user alias.s</param>
-    /// <param name="alias">The alias</param>
+    /// <param name="signedInUser">The logged in user entity</param>
+    /// <param name="onBehalfUser">The on behalf user entity</param>
     /// <param name="tenantId">The TenanId</param>
     /// <param name="clientDevice">The ClientDevice</param>
     /// <param name="sessionId">The SessionId</param>
     /// <param name="xcv">The xcv</param>
     /// <param name="tcv">The tcv</param>
     /// <returns>Returns delegated users in forms of JsonObject</returns>
-    public async Task<JArray> GetUsersDelegatedToAsync(string loggedInUserAlias, string alias, int tenantId, string clientDevice, string sessionId, string xcv, string tcv)
+    public async Task<JArray> GetUsersDelegatedToAsync(User signedInUser, User onBehalfUser, int tenantId, string clientDevice, string sessionId, string xcv, string tcv)
     {
         #region Logging
 
@@ -289,8 +243,8 @@ public class DelegationHelper : IDelegationHelper
             { LogDataKey.Tcv, tcv },
             { LogDataKey.SessionId, sessionId },
             { LogDataKey.TenantId, tenantId },
-            { LogDataKey.UserRoleName, loggedInUserAlias },
-            { LogDataKey.UserAlias, alias },
+            { LogDataKey.UserRoleName, signedInUser.UserPrincipalName },
+            { LogDataKey.UserAlias, onBehalfUser.UserPrincipalName },
             { LogDataKey.EventType, Constants.FeatureUsageEvent },
             { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() },
             { LogDataKey.ClientDevice, clientDevice }
@@ -315,10 +269,10 @@ public class DelegationHelper : IDelegationHelper
 
                 var tenantAdapter = _tenantFactory.GetTenant(tenant);
 
-                Dictionary<string, object> parameters = new Dictionary<string, object> { { "alias", alias } };
+                Dictionary<string, object> parameters = new Dictionary<string, object> { { "alias", onBehalfUser.MailNickname } };
 
                 // Get the details of an approval request from tenant system.
-                var httpResponseMessage = await tenantAdapter.GetUsersDelegatedToAsync(alias, parameters, clientDevice, xcv, tcv, sessionId);
+                var httpResponseMessage = await tenantAdapter.GetUsersDelegatedToAsync(onBehalfUser, parameters, clientDevice, xcv, tcv, sessionId);
                 logData.Add(LogDataKey.EndDateTime, DateTime.UtcNow);
                 var responseString = await httpResponseMessage.Content.ReadAsStringAsync();
 
@@ -345,285 +299,239 @@ public class DelegationHelper : IDelegationHelper
     }
 
     /// <summary>
-    /// Inserts the delegation settings.
+    /// Get Delegation Platform API response
     /// </summary>
-    /// <param name="insertData">The insert data.</param>
-    /// <param name="loggedInUserAlias">The logged in user alias.</param>
-    /// <param name="clientDevice"> ClientDevice i.e. device/component through which the action will be taken</param>
-    public void InsertDelegationSettings(UserDelegationSetting insertData, string loggedInUserAlias, string clientDevice)
-    {
-        #region Logging
-
-        // Add common data items to LogData
-        var logData = new Dictionary<LogDataKey, object>
-        {
-            {LogDataKey.ManagerAlias, insertData.ManagerAlias},
-            {LogDataKey.DelegatedToAlias, insertData.DelegatedToAlias},
-            {LogDataKey.TenantId, insertData.TenantId.ToString()},
-            {LogDataKey.StartDateTime, insertData.DateFrom.ToString(CultureInfo.InvariantCulture)},
-            {LogDataKey.EndDateTime, insertData.DateTo.ToString(CultureInfo.InvariantCulture)},
-            {LogDataKey.DelegationAccessType, insertData.AccessType.ToString()},
-            {LogDataKey.DelegationIsHidden, insertData.IsHidden.ToString()},
-            {LogDataKey.ClientDevice, clientDevice},
-            {LogDataKey.UserRoleName, loggedInUserAlias}
-        };
-
-        #endregion Logging
-
-        try
-        {
-            _userDelegationProvider.InsertDelegationSettings(insertData);
-            _logProvider.LogInformation(TrackingEvent.DelegationInsert, logData);
-        }
-        catch (Exception ex)
-        {
-            _logProvider.LogError(TrackingEvent.DelegationInsertFailed, ex, logData);
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// Processes the and insert delegation.
-    /// </summary>
-    /// <param name="loggedInUserAlias">The logged in user alias.</param>
-    /// <param name="alias">The alias.</param>
-    /// <param name="clientDevice">The client device.</param>
-    /// <param name="sessionId">The session identifier.</param>
-    /// <param name="jsonData">The json data.</param>
-    /// <exception cref="Model.CustomException">
-    /// </exception>
-    public async Task ProcessAndInsertDelegation(string loggedInUserAlias, string alias, string clientDevice, string sessionId, string jsonData)
-    {
-        #region Logging
-
-        var Tcv = Guid.NewGuid().ToString();
-
-        // Add common data items to LogData
-        var logData = new Dictionary<LogDataKey, object>
-        {
-            { LogDataKey.Xcv, Tcv },
-            { LogDataKey.Tcv, Tcv },
-            { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, loggedInUserAlias },
-            { LogDataKey.ClientDevice, clientDevice },
-            { LogDataKey.EventType, Constants.FeatureUsageEvent },
-            { LogDataKey.UserAlias, alias },
-            { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() }
-        };
-
-        #endregion Logging
-
-        try
-        {
-            using (_logger.StartPerformanceLogger("PerfLog", "User Delegation Settings", string.Format(Constants.PerfLogCommon, "User Delegation Settings Post"), logData))
-            {
-                var allUserDelegationsData = GetUserDelegationsForCurrentUser(loggedInUserAlias);
-                int tenantId = 0, accessType = 0;
-
-                var receivedData = jsonData.FromJson<JObject>();
-
-                if (Convert.ToBoolean(receivedData["AccessType"]))
-                {
-                    accessType = 1;
-                }
-
-                if (DateTime.Parse(receivedData["DateFrom"].ToString()) > DateTime.Parse(receivedData["DateTo"].ToString()))
-                {
-                    throw new Model.CustomException(Constants.UserDelegationEndDateError);
-                }
-
-                if ((allUserDelegationsData.Where(u => !u.IsHidden).ToList().Count == 0 || allUserDelegationsData.Where(u => !u.IsHidden && u.AccessType == accessType).ToList().Count == 0)
-                    && loggedInUserAlias != receivedData["DelegatedTo"].ToString())
-                {
-                    var delegation = new UserDelegationSetting { ManagerAlias = loggedInUserAlias, TenantId = tenantId, DateFrom = DateTime.Parse(receivedData["DateFrom"].ToString()), DateTo = DateTime.Parse(receivedData["DateTo"].ToString()), IsHidden = false, DelegatedToAlias = receivedData["DelegatedTo"].ToString(), AccessType = accessType };
-
-                    if (await IsValidAlias(delegation.DelegatedToAlias))
-                    {
-                        try
-                        {
-                            InsertDelegationSettings(delegation, loggedInUserAlias, clientDevice);
-                        }
-                        catch
-                        {
-                            throw new Model.CustomException(Constants.UserDelegationPostError);
-                        }
-                    }
-                    else
-                    {
-                        throw new Model.CustomException(Constants.InvalidDelegateAlias);
-                    }
-                }
-                else
-                {
-                    throw new Model.CustomException(Constants.ExistingDelegateError);
-                }
-
-                // Log Success
-                _logProvider.LogInformation(TrackingEvent.WebApiImpersonationSettingsCreateSuccess, logData);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logProvider.LogError(TrackingEvent.WebApiImpersonationSettingsCreateFail, ex, logData);
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// Processes the and update delegation.
-    /// </summary>
-    /// <param name="loggedInUserAlias">The logged in user alias.</param>
-    /// <param name="alias">The alias.</param>
-    /// <param name="clientDevice">The client device.</param>
-    /// <param name="sessionId">The session identifier.</param>
-    /// <param name="jsonData">The json data.</param>
-    /// <exception cref="Model.CustomException">
-    /// </exception>
-    public async Task ProcessAndUpdateDelegation(string loggedInUserAlias, string alias, string clientDevice, string sessionId, string jsonData)
-    {
-        #region Logging
-
-        var Tcv = Guid.NewGuid().ToString();
-
-        // Add common data items to LogData
-        var logData = new Dictionary<LogDataKey, object>
-        {
-            { LogDataKey.Xcv, Tcv },
-            { LogDataKey.Tcv, Tcv },
-            { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, loggedInUserAlias },
-            { LogDataKey.ClientDevice, clientDevice },
-            { LogDataKey.EventType, Constants.FeatureUsageEvent },
-            { LogDataKey.UserAlias, alias },
-            { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() }
-        };
-
-        #endregion Logging
-
-        try
-        {
-            using (_logger.StartPerformanceLogger("PerfLog", "User Delegation Settings", string.Format(Constants.PerfLogCommon, "User Delegation Settings Delete"), new Dictionary<LogDataKey, object>()))
-            {
-                int tenantId = 0, accessType = 0;
-                var receivedData = jsonData.FromJson<JObject>();
-                if (Convert.ToBoolean(receivedData["AccessType"]))
-                {
-                    accessType = 1;
-                }
-                if (DateTime.Parse(receivedData["DateFrom"].ToString()) > DateTime.Parse(receivedData["DateTo"].ToString()))
-                {
-                    throw new Model.CustomException(Constants.UserDelegationEndDateError);
-                }
-
-                var delegation = new UserDelegationSetting { Id = Int32.Parse(receivedData["Id"].ToString()), ManagerAlias = loggedInUserAlias, TenantId = tenantId, DateFrom = DateTime.Parse(receivedData["DateFrom"].ToString()), DateTo = DateTime.Parse(receivedData["DateTo"].ToString()), IsHidden = false, DelegatedToAlias = receivedData["DelegatedTo"].ToString(), AccessType = accessType, PartitionKey = receivedData["PartitionKey"].ToString(), RowKey = receivedData["RowKey"].ToString() };
-                var oldDelegatedTo = receivedData["OldDelegatedTo"].ToString();
-                if (await IsValidAlias(delegation.DelegatedToAlias))
-                {
-                    try
-                    {
-                        UpdateDelegationSettings(delegation, tenantId, oldDelegatedTo, loggedInUserAlias, clientDevice, sessionId);
-                    }
-                    catch
-                    {
-                        throw new Model.CustomException(Constants.UserDelegationPostError);
-                    }
-                }
-                else
-                {
-                    throw new Model.CustomException(Constants.InvalidDelegateAlias);
-                }
-                _logProvider.LogInformation(TrackingEvent.WebApiImpersonationSettingsUpdateSuccess, logData);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logProvider.LogError(TrackingEvent.WebApiImpersonationSettingsUpdateFail, ex, logData);
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// Updates the delegation settings.
-    /// </summary>
-    /// <param name="delegationRow">The delegation row.</param>
-    /// <param name="oldTenantId">The old tenant identifier.</param>
-    /// <param name="oldDelegatedUser">The old delegated user.</param>
-    /// <param name="loggedInUserAlias">The logged in user alias.</param>
-    /// <param name="clientDevice"> ClientDevice i.e. device/component through which the action will be taken</param>
-    /// <param name="sessionId">The session identifier.</param>
-    public void UpdateDelegationSettings(UserDelegationSetting delegationRow, int oldTenantId, string oldDelegatedUser, string loggedInUserAlias, string clientDevice, string sessionId)
-    {
-        #region Logging
-
-        var Tcv = Guid.NewGuid().ToString();
-
-        // Add common data items to LogData
-        var logData = new Dictionary<LogDataKey, object>
-        {
-            { LogDataKey.Xcv, Tcv },
-            { LogDataKey.Tcv, Tcv },
-            { LogDataKey.SessionId, sessionId },
-            { LogDataKey.ManagerAlias, delegationRow.ManagerAlias },
-            { LogDataKey.DelegatedToAlias, delegationRow.DelegatedToAlias },
-            { LogDataKey.TenantId, delegationRow.TenantId.ToString() },
-            { LogDataKey.StartDateTime, delegationRow.DateFrom.ToString(CultureInfo.InvariantCulture) },
-            { LogDataKey.EndDateTime, delegationRow.DateTo.ToString(CultureInfo.InvariantCulture) },
-            { LogDataKey.DelegationAccessType, delegationRow.AccessType.ToString() },
-            { LogDataKey.DelegationIsHidden, delegationRow.IsHidden.ToString() },
-            { LogDataKey.ClientDevice, clientDevice },
-            { LogDataKey.UserRoleName, loggedInUserAlias }
-        };
-
-        #endregion Logging
-
-        try
-        {
-            _userDelegationProvider.UpdateDelegationSettings(delegationRow, oldTenantId, oldDelegatedUser);
-
-            _logProvider.LogInformation(TrackingEvent.DelegationUpdate, logData);
-        }
-        catch (Exception ex)
-        {
-            _logProvider.LogError(TrackingEvent.DelegationUpdateFailed, ex, logData);
-            throw;
-        }
-    }
-
-    #region Helper Methods
-
-    /// <summary>
-    /// Gets the name of the tenant.
-    /// </summary>
-    /// <param name="tenantId">The tenant identifier.</param>
+    /// <param name="signedInUser"></param>
+    /// <param name="onBehalfUser"></param>
+    /// <param name="oauth2UserToken"></param>
+    /// <param name="clientDevice"></param>
+    /// <param name="sessionId"></param>
+    /// <param name="xcv"></param>
+    /// <param name="tcv"></param>
     /// <returns></returns>
-    private string GetTenantName(int tenantId)
+    public async Task<List<DelegationPlatformResponse>> GetUserDelegation(User signedInUser, User onBehalfUser, string oauth2UserToken, string clientDevice, string sessionId, string xcv, string tcv)
     {
-        if (tenantId > 0)
-        {
-            Model.ApprovalTenantInfo tenantInfo = _approvalTenantInfoHelper.GetTenantInfo(tenantId);
-            var tenant = tenantInfo.AppName;
-            return tenant;
-        }
+        #region Logging
 
-        return " ";
+        xcv = !string.IsNullOrWhiteSpace(xcv) ? xcv : Guid.NewGuid().ToString();
+        tcv = !string.IsNullOrWhiteSpace(tcv) ? tcv : xcv;
+        sessionId = !string.IsNullOrWhiteSpace(sessionId) ? sessionId : xcv;
+
+        // Add common data items to LogData
+        var logData = new Dictionary<LogDataKey, object>
+        {
+            { LogDataKey.StartDateTime, DateTime.UtcNow },
+            { LogDataKey.Xcv, xcv },
+            { LogDataKey.Tcv, tcv },
+            { LogDataKey.SessionId, sessionId },
+            { LogDataKey.UserRoleName, signedInUser.UserPrincipalName },
+            { LogDataKey.ClientDevice, clientDevice },
+            { LogDataKey.EventType, Constants.FeatureUsageEvent },
+            { LogDataKey.UserAlias, onBehalfUser.UserPrincipalName },
+            { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() }
+        };
+
+        #endregion Logging
+
+        try
+        {
+            var delegationUri = string.Format(_config[ConfigurationKey.DelegationPlatformApi.ToString()],
+                                _config[ConfigurationKey.DelegationPlatformAppId.ToString()], signedInUser.Id);
+            logData.Add(LogDataKey.Uri, delegationUri);
+
+            HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Get, delegationUri);
+
+            var accessToken = await _authenticationHelper.GetOnBehalfUserToken(oauth2UserToken.Replace("Bearer ", string.Empty).Replace("bearer ", string.Empty),
+                                JObject.FromObject(new
+                                {
+                                    ClientID = _config[ConfigurationKey.MSAInternalClientId.ToString()],
+                                    ResourceURL = _config[ConfigurationKey.DelegationPlatformResourceUrl.ToString()],
+                                    Authority = _config[ConfigurationKey.Authority.ToString()]
+                                }),
+                                _config[ConfigurationKey.ManagedIdentityClientId.ToString()],
+                                _config[ConfigurationKey.ManagedIdentityFederatedAudience.ToString()]);
+            logData.Add(LogDataKey.IdentityProviderTokenType, "OnBehalfUserToken");
+
+            requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Constants.AuthorizationHeaderScheme, accessToken);
+
+            var response = await _httpHelper.SendRequestAsync(requestMessage);
+            var responseData = await response.Content.ReadAsStringAsync();
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                logData.Add(LogDataKey.ResponseContent, responseData);
+                throw new WebException("Status Code: " + response.StatusCode.ToString() + " " + responseData, WebExceptionStatus.ReceiveFailure);
+            }
+
+            var delegationDataList = JsonConvert.DeserializeObject<List<DelegationPlatformResponse>>(responseData);
+            Parallel.ForEach(delegationDataList, delegationData =>
+            {
+                delegationData.IsDelegationPlatform = true;
+            });
+
+            _logProvider.LogInformation(TrackingEvent.WebApiDelegationPlatformSuccess, logData);
+            return delegationDataList;
+        }
+        catch (Exception ex)
+        {
+            // Log failure event.
+            logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
+            _logProvider.LogError(TrackingEvent.WebApiDelegationPlatformFail, ex, logData);
+            return null;
+        }
     }
 
     /// <summary>
-    /// Determines whether [is valid alias] [the specified alias].
+    /// Gets delegation data from Delegation Platform API and UserDelegationSettings table
     /// </summary>
-    /// <param name="alias">The alias.</param>
-    /// <returns>
-    ///   <c>true</c> if [is valid alias] [the specified alias]; otherwise, <c>false</c>.
-    /// </returns>
-    private async Task<bool> IsValidAlias(string alias)
+    /// <param name="signedInUser"></param>
+    /// <param name="onBehalfUser"></param>
+    /// <param name="oauth2UserToken"></param>
+    /// <param name="clientDevice"></param>
+    /// <param name="sessionId"></param>
+    /// <param name="xcv"></param>
+    /// <param name="tcv"></param>
+    /// <returns></returns>
+    public async Task<JArray> GetMergedDelegationData(User signedInUser, User onBehalfUser, string oauth2UserToken, string clientDevice, string sessionId, string xcv, string tcv)
     {
-        string userName = await GetUserFullName(alias);
-        if (userName.Equals(alias))
+        #region Logging
+
+        xcv = !string.IsNullOrWhiteSpace(xcv) ? xcv : Guid.NewGuid().ToString();
+        tcv = !string.IsNullOrWhiteSpace(tcv) ? tcv : xcv;
+        sessionId = !string.IsNullOrWhiteSpace(sessionId) ? sessionId : xcv;
+
+        // Add common data items to LogData
+        var logData = new Dictionary<LogDataKey, object>
         {
-            return false;
+            { LogDataKey.StartDateTime, DateTime.UtcNow },
+            { LogDataKey.Xcv, xcv },
+            { LogDataKey.Tcv, tcv },
+            { LogDataKey.SessionId, sessionId },
+            { LogDataKey.UserRoleName, signedInUser.UserPrincipalName },
+            { LogDataKey.ClientDevice, clientDevice },
+            { LogDataKey.EventType, Constants.FeatureUsageEvent },
+            { LogDataKey.UserAlias, onBehalfUser.UserPrincipalName },
+            { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() }
+        };
+
+        #endregion Logging
+        var delegationApiResponse = await GetUserDelegation(signedInUser, onBehalfUser, oauth2UserToken, clientDevice, sessionId, xcv, tcv);
+        var userDelegationSettingsResponse = await GetInfoOfPeopleDelegatedToMe(signedInUser, onBehalfUser, clientDevice, sessionId, xcv, tcv);
+
+        if (delegationApiResponse == null && userDelegationSettingsResponse == null)
+        {
+            return new JArray(); // Return empty if data is unavailable
+        }
+        var mergedResponse = new JArray();
+
+        //Processing and merging delegation API response
+        var groupedDelegationData = delegationApiResponse != null ? delegationApiResponse.GroupBy(delegation => delegation.Delegator.UserPrincipalName).ToList() : new List<IGrouping<string, DelegationPlatformResponse>>();
+        foreach (var delegationGroup in groupedDelegationData)
+        {
+            var appList = new JArray();
+            foreach (var delegationEntry in delegationGroup)
+            {
+                var app = JObject.FromObject(new
+                {
+                    appId = delegationEntry.AppId,
+                    appName = delegationEntry.AppName,
+                    isDelegationPlatform = true
+                });
+                appList.Add(app);
+            }
+
+            var delegatorObject = JObject.FromObject(new
+            {
+                upn = delegationGroup.Key,
+                apps = appList,
+                delegator = delegationGroup.First().Delegator
+            });
+
+            mergedResponse.Add(delegatorObject);
+        }
+
+        // Processing and merging delegation table response
+        var delegationTableResponse = userDelegationSettingsResponse != null ? userDelegationSettingsResponse.ToJson().FromJson<JArray>() : new JArray();
+        foreach (var delegationItem in delegationTableResponse)
+        {
+            foreach (var delegationDetail in delegationItem["Delegations"])
+            {
+                var matchedDelegator = mergedResponse
+                    .Where(response => response["upn"].ToString().Equals(delegationDetail["DelegatorUpn"].ToString()))
+                    .FirstOrDefault();
+
+                if (matchedDelegator != null)
+                {
+                    var existingApps = JArray.Parse(matchedDelegator["apps"].ToString());
+                    existingApps.Add(JObject.FromObject(new
+                    {
+                        appId = delegationItem["AppId"],
+                        appName = delegationItem["AppName"],
+                        isDelegationPlatform = false
+                    }));
+                    matchedDelegator["apps"] = existingApps;
+                }
+                else
+                {
+                    var newApp = JObject.FromObject(new
+                    {
+                        appId = delegationItem["AppId"],
+                        appName = delegationItem["AppName"],
+                        isDelegationPlatform = false
+                    });
+
+                    var newAppList = new JArray { newApp };
+
+                    var newDelegationObject = JObject.FromObject(new
+                    {
+                        upn = delegationDetail["DelegatorUpn"],
+                        apps = newAppList,
+                        delegator = JObject.FromObject(new
+                        {
+                            Id = delegationDetail["DelegatorId"],
+                            DisplayName = delegationDetail["Name"],
+                            UserPrincipalName = delegationDetail["DelegatorUpn"]
+                        })
+                    });
+
+                    mergedResponse.Add(newDelegationObject);
+                }
+            }
+        }
+
+        return mergedResponse;
+    }
+
+    /// <summary>
+    /// Check if the user is authorized to view the report based on delegation settings
+    /// </summary>
+    /// <param name="signedInUser"></param>
+    /// <param name="onBehalfUser"></param>
+    /// <param name="oauth2UserToken"></param>
+    /// <param name="clientDevice"></param>
+    /// <param name="sessionId"></param>
+    /// <param name="xcv"></param>
+    /// <param name="tcv"></param>
+    /// <returns></returns>
+    /// <exception cref="UnauthorizedAccessException"></exception>
+    public async Task<bool> CheckUserAuthorization(User signedInUser, User onBehalfUser, string oauth2UserToken, string clientDevice, string sessionId, string xcv, string tcv)
+    {
+        //if loggedInAlias != current alias (Alias), that mean current user is in delegate mode. So enable the UserDelegation flag checking when creating the Summary list.
+        if (!signedInUser.UserPrincipalName.Equals(onBehalfUser.UserPrincipalName, StringComparison.OrdinalIgnoreCase))
+        {
+            // check if entry made from support portal
+            if (GetUserDelegationsForCurrentUser(onBehalfUser)
+                    ?.FirstOrDefault(d => d.DelegateUpn == signedInUser.UserPrincipalName && d.IsHidden == true) == null &&
+                (await GetUserDelegation(signedInUser, onBehalfUser, oauth2UserToken, clientDevice, sessionId, xcv, tcv))
+                    ?.FirstOrDefault(t => t.Delegator.UserPrincipalName.Equals(onBehalfUser.UserPrincipalName)) == null)
+            {
+                throw new UnauthorizedAccessException("User doesn't have permission to see the report.");
+            }
         }
         return true;
     }
+
+    #region Helper Methods
 
     /// <summary>
     /// Get user full name

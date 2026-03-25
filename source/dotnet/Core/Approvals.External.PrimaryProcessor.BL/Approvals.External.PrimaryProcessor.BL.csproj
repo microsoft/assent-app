@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Common\Approvals.Extensions\Approvals.Extensions.csproj" />
+    <ProjectReference Include="..\Approvals.Common.BL\Approvals.Common.BL.csproj" />
+    <ProjectReference Include="..\Approvals.Core.BL\Approvals.Core.BL.csproj" />
+    <ProjectReference Include="..\Approvals.PayloadReceiver.BL\Approvals.PayloadReceiver.BL.csproj" />
+  </ItemGroup>
+
+</Project>

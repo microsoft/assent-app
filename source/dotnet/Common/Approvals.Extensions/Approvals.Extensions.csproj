@@ -1,15 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>Microsoft.CFS.Approvals.Extensions</RootNamespace>
     <AssemblyName>Microsoft.CFS.Approvals.Extensions</AssemblyName>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.9.0" />
-    <PackageReference Include="Microsoft.Azure.ServiceBus" Version="5.2.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
+    <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
-
 </Project>
