@@ -25,7 +25,6 @@ using Microsoft.CFS.Approvals.Utilities.Helpers;
 using Microsoft.CFS.Approvals.Utilities.Interface;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Internal.AntiSSRF;
 using Polly;
 using Polly.Extensions.Http;
 
@@ -121,18 +120,9 @@ builder.Services.AddScoped<Func<string, IARConverterFactory>>((provider) =>
             provider.GetService<INameResolutionHelper>()));
 });
 
-var policy = new AntiSSRFPolicy();
-policy.SetDefaults();
-
-builder.Services.AddSingleton<HttpClientHandler>();
-
 builder.Services
     .AddHttpClient<IHttpHelper, HttpHelper>()
-    .ConfigurePrimaryHttpMessageHandler(_ =>
-    {
-        var handler = policy.GetHandler();
-        return handler;
-    })
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
     .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
     .AddPolicyHandler(HttpPolicyExtensions
                 .HandleTransientHttpError()

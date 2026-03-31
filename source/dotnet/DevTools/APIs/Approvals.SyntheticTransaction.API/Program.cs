@@ -26,7 +26,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Internal.AntiSSRF;
 using Polly;
 using Polly.Extensions.Http;
 
@@ -80,21 +79,9 @@ builder.Services.AddTransient<Func<string, IBlobStorageHelper>>((provider) =>
 builder.Services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
 builder.Services.AddSingleton<ISchemaGenerator, SchemaGenerator>();
 
-var policy = new AntiSSRFPolicy();
-policy.SetDefaults();
-
-var handler = policy.GetHandler();
-builder.Services.AddSingleton(handler);
-
-builder.Services.AddSingleton<HttpClientHandler>();
-
 builder.Services
     .AddHttpClient<IHttpHelper, HttpHelper>()
-    .ConfigurePrimaryHttpMessageHandler(_ =>
-    {
-        var handler = policy.GetHandler();
-        return handler;
-    })
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
     .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
     .AddPolicyHandler(HttpPolicyExtensions
                 .HandleTransientHttpError()

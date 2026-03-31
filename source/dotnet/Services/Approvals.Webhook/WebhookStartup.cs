@@ -29,7 +29,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Internal.AntiSSRF;
 using Polly;
 using Polly.Extensions.Http;
 using WebhookAzFunction;
@@ -89,16 +88,9 @@ public class WebhookStartup : FunctionsStartup
         builder.Services.AddSingleton<ILogProvider, LogProvider>();
         builder.Services.AddScoped<IWebhookHelper, AdobeWebhookHelper>();
         builder.Services.AddSingleton<IBlobStorageHelper, BlobStorageHelper>(x => new BlobStorageHelper(client));
-        var policy = new AntiSSRFPolicy();
-        policy.SetDefaults();
-        builder.Services.AddSingleton<HttpClientHandler>();
         builder.Services
             .AddHttpClient<IHttpHelper, HttpHelper>()
-            .ConfigurePrimaryHttpMessageHandler(_ =>
-            {
-                var handler = policy.GetHandler();
-                return handler;
-            })
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
             .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
             .AddPolicyHandler(GetRetryPolicy());
 

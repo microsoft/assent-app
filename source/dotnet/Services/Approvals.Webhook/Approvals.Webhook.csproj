@@ -10,7 +10,6 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" />
     <PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" />
-    <PackageReference Include="Microsoft.Internal.AntiSSRF" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" />
   </ItemGroup>
   <ItemGroup>

@@ -34,7 +34,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Hosting.Internal;
 using Microsoft.Extensions.Logging;
-using Microsoft.Internal.AntiSSRF;
 using NotificationAzFunction;
 using Polly;
 using Polly.Extensions.Http;
@@ -125,16 +124,9 @@ public class NotificationStartup : FunctionsStartup
         builder.Services.AddScoped<IHostingEnvironment, HostingEnvironment>();
         builder.Services.AddScoped<IAuthenticationHelper, AuthenticationHelper>();
 
-        var policy = new AntiSSRFPolicy();
-        policy.SetDefaults();
-        builder.Services.AddSingleton<HttpClientHandler>();
         builder.Services
             .AddHttpClient<IHttpHelper, HttpHelper>()
-            .ConfigurePrimaryHttpMessageHandler(_ =>
-            {
-                var handler = policy.GetHandler();
-                return handler;
-            })
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
             .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
             .AddPolicyHandler(GetRetryPolicy());
     }

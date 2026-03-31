@@ -38,7 +38,6 @@ using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Internal.AntiSSRF;
 using Microsoft.OpenApi.Models;
 using Polly;
 using Polly.Extensions.Http;
@@ -134,17 +133,9 @@ builder.Services.AddScoped<IDelegationHelper, DelegationHelper>();
 builder.Services.AddScoped<ISummaryHelper, SummaryHelper>();
 builder.Services.AddScoped<AuthorizationMiddleware, AuthorizationMiddleware>();
 
-var policy = new AntiSSRFPolicy();
-policy.SetDefaults();
-builder.Services.AddSingleton<HttpClientHandler>();
-
 builder.Services
     .AddHttpClient<IHttpHelper, HttpHelper>()
-    .ConfigurePrimaryHttpMessageHandler(_ =>
-    {
-        var handler = policy.GetHandler();
-        return handler;
-    })
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
     .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
     .AddPolicyHandler(HttpPolicyExtensions
                 .HandleTransientHttpError()

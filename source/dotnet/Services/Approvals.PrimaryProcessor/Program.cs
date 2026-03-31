@@ -35,7 +35,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Internal.AntiSSRF;
 using Polly;
 using Polly.Extensions.Http;
 
@@ -131,16 +130,9 @@ var host = new HostBuilder()
         services.AddSingleton<ITableHelper, TableHelper>(sp => new TableHelper(config[Constants.StorageAccountName], azureCredential));
         services.AddSingleton<IServiceBusHelper, ServiceBusHelper>(sp => new ServiceBusHelper(sp.GetRequiredService<Dictionary<string, ServiceBusSender>>()));
 
-        // Configure HttpClient with AntiSSRF policy
-        var policy = new AntiSSRFPolicy();
-        policy.SetDefaults();
         services
             .AddHttpClient<IHttpHelper, HttpHelper>()
-            .ConfigurePrimaryHttpMessageHandler(_ =>
-            {
-                var handler = policy.GetHandler();
-                return handler;
-            })
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
             .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
             .AddPolicyHandler(GetRetryPolicy());
 

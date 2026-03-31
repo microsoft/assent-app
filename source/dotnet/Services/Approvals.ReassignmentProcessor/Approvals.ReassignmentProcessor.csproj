@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <AzureFunctionsVersion>v4</AzureFunctionsVersion>
@@ -9,7 +9,6 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" />
     <PackageReference Include="Microsoft.Extensions.Configuration.AzureAppConfiguration" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" />
-    <PackageReference Include="Microsoft.Internal.AntiSSRF" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" />
   </ItemGroup>
   <ItemGroup>
