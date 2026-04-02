@@ -521,11 +521,11 @@ public class DetailsHelper : IDetailsHelper
                     // Add transactional details to the response object from ApprovalDetails table
                     // Get TransactionalDetails for given user/ approver
                     ApprovalDetailsEntity transDetails = null;
-                    transDetails = approvalDetails.FirstOrDefault(t => t.RowKey == string.Format(Constants.TransactionDetailsOperationTypeNew + "|" + objectId, tenantInfo.DocTypeId) 
+                    transDetails = approvalDetails.FirstOrDefault(t => t.RowKey == string.Format(Constants.TransactionDetailsOperationTypeNew, tenantInfo.DocTypeId) + "|" + objectId
                                                                                     || t.RowKey == Constants.TransactionDetailsOperationType + "|" + objectId);
                     //Backward compatibility
                     if (transDetails == null)
-                        transDetails = approvalDetails.FirstOrDefault(t => t.RowKey == string.Format(Constants.TransactionDetailsOperationTypeNew + "|" + alias, tenantInfo.DocTypeId)
+                        transDetails = approvalDetails.FirstOrDefault(t => t.RowKey == string.Format(Constants.TransactionDetailsOperationTypeNew, tenantInfo.DocTypeId) + "|" + alias
                                                                                     || t.RowKey == Constants.TransactionDetailsOperationType + "|" + alias);
 
                     if (transDetails != null)
