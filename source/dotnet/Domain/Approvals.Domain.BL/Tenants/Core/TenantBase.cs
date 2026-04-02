@@ -3933,13 +3933,18 @@ public abstract class TenantBase : ITenant
                 content.Add(new StringContent(attachmentInfo.Category), $"{file.Name}.Category");
                 content.Add(new StringContent(attachmentInfo.Description), $"{file.Name}.Description");
                 content.Add(new StringContent(file.FileName.Split(".")[0]), $"{file.Name}.Title");
-                content.Add(new StringContent(signedInUser), $"{file.Name}.UploadedByAlias");
+
+                // Sanitize and encode the signed-in user alias to prevent injection/XSS issues downstream.
+                var sanitizedSignedInUser = string.IsNullOrEmpty(signedInUser)
+                    ? string.Empty
+                    : WebUtility.HtmlEncode(Regex.Replace(signedInUser, @"[^a-zA-Z0-9\.\-_]", string.Empty));
+                content.Add(new StringContent(sanitizedSignedInUser), $"{file.Name}.UploadedByAlias");
             }
         });
-        content.Add(new StringContent(approvalIdentifier.DisplayDocumentNumber), "displayDocumentNumber");
-        content.Add(new StringContent(approvalIdentifier.DocumentNumber), "documentNumber");
-        content.Add(new StringContent(approvalIdentifier.FiscalYear), "fiscalYear");
-        content.Add(new StringContent(docTypeId), "documentTypeId");
+        content.Add(new StringContent(WebUtility.HtmlEncode(approvalIdentifier.DisplayDocumentNumber)), "displayDocumentNumber");
+        content.Add(new StringContent(WebUtility.HtmlEncode(approvalIdentifier.DocumentNumber)), "documentNumber");
+        content.Add(new StringContent(WebUtility.HtmlEncode(approvalIdentifier.FiscalYear)), "fiscalYear");
+        content.Add(new StringContent(WebUtility.HtmlEncode(docTypeId)), "documentTypeId");
         reqMessage.Headers.Add("CorrelationId", Guid.NewGuid().ToString());
         reqMessage.Content = content;
     }
