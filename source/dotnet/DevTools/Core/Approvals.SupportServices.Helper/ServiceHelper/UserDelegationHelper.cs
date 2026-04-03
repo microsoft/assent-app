@@ -6,10 +6,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Azure;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
-using Microsoft.CFS.Approvals.DevTools.Model.Models;
+using Microsoft.CFS.Approvals.Model;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.SupportServices.Helper.ExtensionMethods;
 using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
 
@@ -25,6 +25,8 @@ public class UserDelegationHelper : IUserDelegationHelper
 
     private readonly string _environment;
 
+    private readonly string _tableName;
+
     /// <summary>
     /// Constructor of UserDelegationHelper
     /// </summary>
@@ -32,14 +34,14 @@ public class UserDelegationHelper : IUserDelegationHelper
     /// <param name="configurationHelper"></param>
     /// <param name="actionContextAccessor"></param>
     public UserDelegationHelper(
-        Func<string, string, ITableHelper> azureTableStorageHelper,
+        Func<string, ITableHelper> azureTableStorageHelper,
         ConfigurationHelper configurationHelper,
         IActionContextAccessor actionContextAccessor)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _azureTableStorageHelper = azureTableStorageHelper(
-            configurationHelper.appSettings[_environment]["StorageAccountName"],
-            configurationHelper.appSettings[_environment]["StorageAccountKey"]);
+            configurationHelper.appSettings[_environment]["StorageAccountName"]);
+        _tableName = configurationHelper.appSettings[_environment]["UserDelegationSettingsAzureTableName"];
     }
 
     /// <summary>
@@ -47,9 +49,9 @@ public class UserDelegationHelper : IUserDelegationHelper
     /// </summary>
     /// <param name="id"></param>
     /// <returns></returns>
-    public UserDelegationEntity GetDelegation(string id)
+    public UserDelegationSetting GetDelegation(string id)
     {
-        return _azureTableStorageHelper.GetTableEntityByRowKey<UserDelegationEntity>("UserDelegationSetting", id);
+        return _azureTableStorageHelper.GetTableEntityByRowKey<UserDelegationSetting>(_tableName, id);
     }
 
     /// <summary>
@@ -59,7 +61,7 @@ public class UserDelegationHelper : IUserDelegationHelper
     public async Task<List<dynamic>> GetUserDelegations()
     {
         var results = new List<dynamic>();
-        var userDelegation = _azureTableStorageHelper.GetTableEntity<UserDelegationEntity>("UserDelegationSetting");
+        var userDelegation = _azureTableStorageHelper.GetTableEntity<UserDelegationSetting>(_tableName);
         var activeDelegation = userDelegation.Where(d => d.DateTo >= DateTime.UtcNow.Date).ToList();
         var expiredDelegation = userDelegation.Where(d => d.DateTo < DateTime.UtcNow.Date).ToList();
         foreach (var delegation in activeDelegation)
@@ -75,7 +77,11 @@ public class UserDelegationHelper : IUserDelegationHelper
                 PartitionKey = delegation.PartitionKey,
                 RowKey = delegation.RowKey,
                 StartDate = delegation.DateFrom.ToString("yyyy/MM/dd"),
-                EndDate = delegation.DateTo.ToString("yyyy/MM/dd")
+                EndDate = delegation.DateTo.ToString("yyyy/MM/dd"),
+                DelegateId = delegation.DelegateId,
+                DelegateUpn = delegation.DelegateUpn,
+                DelegatorId = delegation.DelegatorId,
+                DelegatorUpn = delegation.DelegatorUpn,
             });
         }
         if (expiredDelegation.Count > 0)
@@ -93,10 +99,10 @@ public class UserDelegationHelper : IUserDelegationHelper
     /// Delete user delegations
     /// </summary>
     /// <param name="delegation"></param>
-    public async Task DeleteUserDelegations(UserDelegationEntity delegation)
+    public async Task DeleteUserDelegations(UserDelegationSetting delegation)
     {
         delegation.ETag = global::Azure.ETag.All;
-        await _azureTableStorageHelper.DeleteRow<UserDelegationEntity>("UserDelegationSetting", delegation);
+        await _azureTableStorageHelper.DeleteRow<UserDelegationSetting>(_tableName, delegation);
         await InsertUserDelegationHistory(PrepareDelegationHistory(delegation));
     }
 
@@ -105,7 +111,7 @@ public class UserDelegationHelper : IUserDelegationHelper
     /// </summary>
     /// <param name="delegationRow"></param>
     /// <returns></returns>
-    private UserDelegationSettingsHistory PrepareDelegationHistory(UserDelegationEntity delegationRow)
+    private UserDelegationSettingsHistory PrepareDelegationHistory(UserDelegationSetting delegationRow)
     {
         var history = (delegationRow.ToJson()).FromJson<UserDelegationSettingsHistory>();
         history.RowKey = delegationRow.RowKey;
@@ -121,6 +127,11 @@ public class UserDelegationHelper : IUserDelegationHelper
         history.DateTo = delegationRow.DateTo;
         history.AccessType = delegationRow.AccessType;
         history.IsHidden = delegationRow.IsHidden;
+        history.DelegateId = delegationRow.DelegateId;
+        history.DelegatorId = delegationRow.DelegatorId;
+        history.DelegateUpn = delegationRow.DelegateUpn;
+        history.DelegatorUpn = delegationRow.DelegatorUpn;
+
         return history;
     }
 
@@ -143,7 +154,7 @@ public class UserDelegationHelper : IUserDelegationHelper
     /// <returns></returns>
     public bool IsDelegationExist(string DelegationFor, string DelegationTo, int tenantID)
     {
-        var userDelegation = _azureTableStorageHelper.GetTableEntity<UserDelegationEntity>("UserDelegationSetting").Where(s => s.ManagerAlias == DelegationFor && s.DelegatedToAlias == DelegationTo && s.TenantId == tenantID);
+        var userDelegation = _azureTableStorageHelper.GetTableEntity<UserDelegationSetting>(_tableName).Where(s => s.DelegatorUpn == DelegationFor && s.DelegateUpn == DelegationTo && s.TenantId == tenantID);
         return userDelegation.Count() > 0;
     }
 
@@ -152,8 +163,8 @@ public class UserDelegationHelper : IUserDelegationHelper
     /// </summary>
     /// <param name="userDelegationEntity"></param>
     /// <returns></returns>
-    public async Task<bool> InsertUserDelegation(UserDelegationEntity userDelegationEntity)
+    public async Task<bool> InsertUserDelegation(UserDelegationSetting userDelegationEntity)
     {
-        return await _azureTableStorageHelper.InsertOrReplace<UserDelegationEntity>("UserDelegationSetting", userDelegationEntity);
+        return await _azureTableStorageHelper.InsertOrReplace<UserDelegationSetting>(_tableName, userDelegationEntity);
     }
 }

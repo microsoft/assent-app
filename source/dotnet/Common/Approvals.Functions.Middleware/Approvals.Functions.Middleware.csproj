@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<RootNamespace>Microsoft.CFS.Approvals.Functions.Middleware</RootNamespace>
+		<AssemblyName>Microsoft.CFS.Approvals.Functions.Middleware</AssemblyName>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="Azure.Core" />
+		<PackageReference Include="Microsoft.Azure.Functions.Worker" />
+		<PackageReference Include="Newtonsoft.Json" />
+		<PackageReference Include="System.ClientModel" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\Common\Approvals.LogManager\Approvals.LogManager.csproj" />
+	</ItemGroup>
+</Project>

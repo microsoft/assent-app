@@ -8,8 +8,8 @@ using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Models;
-using Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper;
 using Microsoft.Extensions.Configuration;
 
 /// <summary>
@@ -43,15 +43,14 @@ public class CommonController : ControllerBase
     /// <param name="configurationHelper"></param>
     /// <param name="actionContextAccessor"></param>
     /// <param name="configuration"></param>
-    public CommonController(Func<string, string, ITableHelper> azureTableStorageHelper,
+    public CommonController(Func<string, ITableHelper> azureTableStorageHelper,
         ConfigurationHelper configurationHelper,
         IActionContextAccessor actionContextAccessor,
         IConfiguration configuration)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString() ?? string.Empty;
         _azureTableStorageHelper = azureTableStorageHelper(
-             (configurationHelper.appSettings.ContainsKey(_environment) ? configurationHelper.appSettings[_environment]["StorageAccountName"] : string.Empty),
-             (configurationHelper.appSettings.ContainsKey(_environment) ? configurationHelper.appSettings[_environment]["StorageAccountKey"] : string.Empty));
+             (configurationHelper.appSettings.ContainsKey(_environment) ? configurationHelper.appSettings[_environment]["StorageAccountName"] : string.Empty));
         _configuration = configuration;
         _configurationHelper = configurationHelper;
     }

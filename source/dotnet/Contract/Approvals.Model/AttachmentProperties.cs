@@ -43,4 +43,14 @@ public class FileAttachmentOptions
     /// Gets or sets the max file size that is allowed to be uploaded.
     /// </summary>
     public long MaxFileSizeInBytes { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether descriprion required or not 
+    /// </summary>
+    public bool IsDescriptionRequired { get; set; }
+
+    /// <summary>
+    /// Gets or sets max charactor of description. 
+    /// </summary>
+    public int DescriptionLength { get; set; }
 }

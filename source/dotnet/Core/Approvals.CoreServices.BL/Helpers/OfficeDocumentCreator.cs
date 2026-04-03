@@ -44,7 +44,7 @@ public class OfficeDocumentCreator : IOfficeDocumentCreator
             dirInfo.Create();
         }
         string filename = displayDocumentNumber + "_" + loggedInAlias + "_" + attachmentName;
-        
+
         // CodeQL [SM00395] False Positive: Path is not controlled by user inputs
         if (!File.Exists(filePath + @"\" + filename))
         {

@@ -7,6 +7,8 @@ using System;
 public class ApproverChainEntity
 {
     public string Alias { get; set; }
+    public string Id { get; set; }
+    public string UserPrincipalName { get; set; }
     public string Name { get; set; }
     public DateTimeOffset? ActionDate { get; set; }
     public string Action { get; set; }

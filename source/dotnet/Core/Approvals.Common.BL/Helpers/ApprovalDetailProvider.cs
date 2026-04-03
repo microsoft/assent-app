@@ -13,6 +13,7 @@ using global::Azure.Data.Tables;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
+using Microsoft.CFS.Approvals.Data.Azure.Storage.Helpers;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
 using Microsoft.CFS.Approvals.Extensions;
 using Microsoft.CFS.Approvals.LogManager.Model;
@@ -44,6 +45,12 @@ public class ApprovalDetailProvider : IApprovalDetailProvider
     /// </summary>
     private readonly ITableHelper _tableHelper;
 
+
+    /// <summary>
+    /// The blob storage helper
+    /// </summary>
+    private readonly IBlobStorageHelper _blobStorageHelper;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="ApprovalDetailProvider"/> class.
     /// </summary>
@@ -51,12 +58,13 @@ public class ApprovalDetailProvider : IApprovalDetailProvider
     /// <param name="approvalBlobDataProvider">The approval BLOB data provider.</param>
     /// <param name="logProvider">The log provider.</param>
     /// <param name="performanceLogger">The performance logger.</param>
-    public ApprovalDetailProvider(ITableHelper tableHelper, IApprovalBlobDataProvider approvalBlobDataProvider, ILogProvider logProvider, IPerformanceLogger performanceLogger)
+    public ApprovalDetailProvider(ITableHelper tableHelper, IApprovalBlobDataProvider approvalBlobDataProvider, ILogProvider logProvider, IPerformanceLogger performanceLogger, IBlobStorageHelper blobStorageHelper)
     {
         _logProvider = logProvider;
         _performanceLogger = performanceLogger;
         _approvalBlobDataProvider = approvalBlobDataProvider;
         _tableHelper = tableHelper;
+        _blobStorageHelper = blobStorageHelper;
     }
 
     /// <summary>
@@ -75,8 +83,6 @@ public class ApprovalDetailProvider : IApprovalDetailProvider
         using (var perfTracer = _performanceLogger.StartPerformanceLogger("PerfLog", Constants.WorkerRole, string.Format(Constants.PerfLogActionWithInfo, "Approval Detail Provider", tenantInfo.AppName, "Adds the request details to the Azure Table Storage and in blob if data is large")
             , new Dictionary<LogDataKey, object> { { LogDataKey.DocumentNumber, detailsRows.FirstOrDefault().PartitionKey } }))
         {
-            bool blobCheck = false;
-
             #region Add data in table storage
 
             foreach (ApprovalDetailsEntity row in detailsRows)
@@ -95,57 +101,18 @@ public class ApprovalDetailProvider : IApprovalDetailProvider
                 };
                 try
                 {
-                    #region Insertion in Approval details table
-
-                    try
-                    {
-                        await _tableHelper.InsertOrReplace<ApprovalDetailsEntity>(Constants.ApprovalDetailsAzureTableName, row, false);
-                    }
-                    catch (global::Azure.RequestFailedException ex)
-                    {
-                        // Checks whether exception caused was due to large data.
-                        if (ex.ErrorCode == "PropertyValueTooLarge" || ex.ErrorCode == "EntityTooLarge" ||
-                            ex.ErrorCode == "RequestBodyTooLarge")
-                        {
-                            blobCheck = true;
-                        }
-                        else
-                        {
-                            throw;
-                        }
-                    }
-
-                    #endregion Insertion in Approval details table
-
-                    #region Insertion in approvalblobdata
-
-                    if (blobCheck == true)
-                    {
-                        ApprovalDetailsEntity existingRow = null;
-                        existingRow = GetApprovalsDetails(row.TenantID, row.PartitionKey, row.RowKey);
-                        if (existingRow == null)
-                        {
-                            var blobPointer = row.PartitionKey.ToString() + "|" + row.TenantID.ToString() + "|" + row.RowKey.ToString();
-                            await _approvalBlobDataProvider.AddApprovalDetails(row, blobPointer);
-                            row.BlobPointer = blobPointer;
-                            row.JSONData = string.Empty;
-                            await _tableHelper.InsertOrReplace<ApprovalDetailsEntity>(Constants.ApprovalDetailsAzureTableName, row, false);
-                        }
-                    }
-                    _logProvider.LogInformation(TrackingEvent.AzureStorageAddRequestDetailsSuccess, logData);
-
-                        #endregion Insertion in approvalblobdata
-                    }
-                    catch (Exception ex)
-                    {
-                        if (ex is global::Azure.RequestFailedException storageException && storageException.Status == (int)HttpStatusCode.Conflict)
-                        {
-                            continue;
-                        }
-                        _logProvider.LogError(TrackingEvent.AzureStorageAddRequestDetailsFail, ex, logData);
-                        bReturn = false;
-                    }
+                    await InsertDetailIntoTableAndBlob(row, logData);
                 }
+                catch (Exception ex)
+                {
+                    if (ex is global::Azure.RequestFailedException storageException && storageException.Status == (int)HttpStatusCode.Conflict)
+                    {
+                        continue;
+                    }
+                    _logProvider.LogError(TrackingEvent.AzureStorageAddRequestDetailsFail, ex, logData);
+                    bReturn = false;
+                }
+            }
 
             #endregion Add data in table storage
         }
@@ -159,14 +126,12 @@ public class ApprovalDetailProvider : IApprovalDetailProvider
     /// <param name="tenantInfo"></param>
     /// <param name="telemetry"></param>
     /// <returns></returns>
-    public bool AddTransactionalAndHistoricalDataInApprovalsDetails(ApprovalDetailsEntity detailsRow, ApprovalTenantInfo tenantInfo, ApprovalsTelemetry telemetry)
+    public async Task<bool> AddTransactionalAndHistoricalDataInApprovalsDetails(ApprovalDetailsEntity detailsRow, ApprovalTenantInfo tenantInfo, ApprovalsTelemetry telemetry)
     {
         bool bReturn = true;
         using (var perfTracer = _performanceLogger.StartPerformanceLogger("PerfLog", Constants.WorkerRole, string.Format(Constants.PerfLogActionWithInfo, "Approval Detail Provider", tenantInfo.AppName, "Saves a copy of Summary data to the Azure Table Storage (ApprovalDetails)")
             , new Dictionary<LogDataKey, object> { { LogDataKey.DocumentNumber, detailsRow.PartitionKey } }))
         {
-            #region Add data in table storage
-
             #region Logging
 
             var logData = new Dictionary<LogDataKey, object>()
@@ -186,15 +151,18 @@ public class ApprovalDetailProvider : IApprovalDetailProvider
 
             try
             {
-                _tableHelper.InsertOrReplace<ApprovalDetailsEntity>(Constants.ApprovalDetailsAzureTableName, detailsRow, false);
+                await InsertDetailIntoTableAndBlob(detailsRow, logData);
             }
             catch (Exception ex)
             {
-                _logProvider.LogError(TrackingEvent.AzureStorageAddRequestDetailsFail, ex, logData);
-                bReturn = false;
+                if (!(ex is global::Azure.RequestFailedException storageException && storageException.Status == (int)HttpStatusCode.Conflict))
+                {
+                    _logProvider.LogError(TrackingEvent.AzureStorageAddRequestDetailsFail, ex, logData);
+                    bReturn = false;
+                }
             }
 
-            #endregion Add data in table storage
+
         }
         return bReturn;
     }
@@ -261,15 +229,29 @@ public class ApprovalDetailProvider : IApprovalDetailProvider
     /// <param name="tenantId">The int32 tenant id</param>
     /// <param name="documentNumber">Document number of the request</param>
     /// <param name="operationName">Operation Name (DT1 or LINE etc.)</param>
+    /// <param name="docTypeId">Document Type Id</param>
     /// <returns>ApprovalsDetailsEntity object</returns>
-    public async Task<ApprovalDetailsEntity> GetApprovalDetailsByOperation(int tenantId, string documentNumber, string operationName)
+    public async Task<ApprovalDetailsEntity> GetApprovalDetailsByOperation(int tenantId, string documentNumber, string operationName, string docTypeId)
     {
+        string operationNameNew = string.Empty;
+        if (operationName.Contains(docTypeId, StringComparison.InvariantCultureIgnoreCase))
+            operationNameNew = operationName;
+        else
+            operationNameNew = operationName + "|" + docTypeId;
         var jsonDetails = _tableHelper.GetTableEntityListByPartitionKeyAndRowKey<ApprovalDetailsEntity>(
                 Constants.ApprovalDetailsAzureTableName,
                 documentNumber,
-                operationName);
-        var filteredDetailsRow = jsonDetails?.FirstOrDefault(y => y.TenantID == tenantId);
+                operationNameNew);
 
+        //Backward compatibility for old operation names without docTypeId suffix
+        if (jsonDetails == null || jsonDetails.Count == 0)
+        {
+            jsonDetails = _tableHelper.GetTableEntityListByPartitionKeyAndRowKey<ApprovalDetailsEntity>(
+                    Constants.ApprovalDetailsAzureTableName,
+                    documentNumber,
+                    operationName);
+        }
+        var filteredDetailsRow = jsonDetails?.FirstOrDefault(y => y.TenantID == tenantId);
         if (filteredDetailsRow != null && !string.IsNullOrEmpty(filteredDetailsRow.BlobPointer))
         {
             return await _approvalBlobDataProvider.GetApprovalDetailsFromBlob(filteredDetailsRow);
@@ -286,16 +268,29 @@ public class ApprovalDetailProvider : IApprovalDetailProvider
     /// <param name="tenantId">The int32 tenant id</param>
     /// <param name="documentNumber">Document number of the request</param>
     /// <param name="operationName">Operation Name (DT1 or LINE etc.)</param>
+    /// <param name="docTypeId">Document Type Id</param>
     /// <returns>ApprovalsDetailsEntity object</returns>
-    public ApprovalDetailsEntity GetApprovalsDetails(int tenantId, string documentNumber, string operationName)
+    public ApprovalDetailsEntity GetApprovalsDetails(int tenantId, string documentNumber, string operationName, string docTypeId)
     {
+        string operationNameNew = string.Empty;
+        if (operationName.Contains(docTypeId, StringComparison.InvariantCultureIgnoreCase))
+            operationNameNew = operationName;
+        else
+            operationNameNew = operationName + "|" + docTypeId;
         using (var perfTracer = _performanceLogger.StartPerformanceLogger("PerfLog", Constants.WorkerRole, string.Format(Constants.PerfLogActionWithInfo, "Approval Detail Provider", tenantId.ToString(), "Gets all the request Details from the Azure Storage by tenant id, document number and operation name")
             , new Dictionary<LogDataKey, object> { { LogDataKey.DocumentNumber, documentNumber } }))
         {
             var jsonDetails = _tableHelper.GetTableEntityListByPartitionKey<ApprovalDetailsEntity>(
                 Constants.ApprovalDetailsAzureTableName,
                 documentNumber);
-            var filteredDetailsRows = jsonDetails?.FirstOrDefault(y => y.RowKey == operationName && y.TenantID == tenantId);
+            var filteredDetailsRows = jsonDetails?.FirstOrDefault(y => y.RowKey == operationNameNew && y.TenantID == tenantId);
+
+            if (filteredDetailsRows == null)
+            {
+                //Backward compatibility for old operation names without docTypeId suffix
+                filteredDetailsRows = jsonDetails?.FirstOrDefault(y => y.RowKey == operationName && y.TenantID == tenantId);
+            }
+
             return filteredDetailsRows;
         }
     }
@@ -360,16 +355,24 @@ public class ApprovalDetailProvider : IApprovalDetailProvider
                 if (attachment.IsPreAttached == true)
                 {
                     // IsPreattached is a flag to understand if the attachment is uploaded through the ms approvals ui.
-                    //Form the blob pointer
+                    // Form the blob pointer
                     string blobNameFormat = "{0}|{1}|{2}"; //2(tenantId)|572015453(DocumentNumber)|45124525(attachmentId)
                     string blobName = string.Format(blobNameFormat, tenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber, attachment.ID?.ToString() ?? string.Empty);
                     await _approvalBlobDataProvider.DeleteBlobData(blobName, Constants.NotificationAttachmentsBlobName);
+
+                    // Check if this attachment has a converted version
+                    blobNameFormat = "{0}|{1}|{2}-converted"; //2(tenantId)|572015453(DocumentNumber)|45124525(attachmentId)-converted
+                    blobName = string.Format(blobNameFormat, tenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber, attachment.ID?.ToString() ?? string.Empty);
+                    var convertedBlobExists = await _blobStorageHelper.DoesExist(Constants.NotificationAttachmentsBlobName, blobName);
+
+                    if (convertedBlobExists)
+                    {
+                        await _approvalBlobDataProvider.DeleteBlobData(blobName, Constants.NotificationAttachmentsBlobName);
+                    }
                 }
-                else
-                {
-                    // If the attachment is uploaded from the MS approvals ui.
-                    await _approvalBlobDataProvider.DeleteBlobData($"{approvalIdentifier.DisplayDocumentNumber}/{attachment.Name}", attachmentProperties?.AttachmentContainerName);
-                }
+                // If the attachment is uploaded from the MS approvals ui.
+                await _approvalBlobDataProvider.DeleteBlobData($"{approvalIdentifier.DisplayDocumentNumber}/{attachment.Name}", attachmentProperties?.AttachmentContainerName);
+
             }
         }
         catch (Exception ex)
@@ -385,12 +388,9 @@ public class ApprovalDetailProvider : IApprovalDetailProvider
     /// <param name="detailsRow"></param>
     /// <param name="telemetry"></param>
     /// <returns></returns>
-    public bool SaveEditedDataInApprovalDetails(ApprovalDetailsEntity detailsRow, ApprovalsTelemetry telemetry)
+    public async Task<bool> SaveEditedDataInApprovalDetails(ApprovalDetailsEntity detailsRow, ApprovalsTelemetry telemetry)
     {
         bool bReturn = true;
-
-        #region Add data in table storage
-
         #region Logging
 
         var logData = new Dictionary<LogDataKey, object>()
@@ -410,15 +410,16 @@ public class ApprovalDetailProvider : IApprovalDetailProvider
 
         try
         {
-            _tableHelper.InsertOrReplace<ApprovalDetailsEntity>(Constants.ApprovalDetailsAzureTableName, detailsRow, false);
+            await InsertDetailIntoTableAndBlob(detailsRow, logData);
         }
         catch (Exception ex)
         {
-            _logProvider.LogError(TrackingEvent.AzureStorageAddRequestDetailsFail, ex, logData);
-            bReturn = false;
+            if (!(ex is global::Azure.RequestFailedException storageException && storageException.Status == (int)HttpStatusCode.Conflict))
+            {
+                _logProvider.LogError(TrackingEvent.AzureStorageAddRequestDetailsFail, ex, logData);
+                bReturn = false;
+            }
         }
-
-        #endregion Add data in table storage
 
         return bReturn;
     }
@@ -479,5 +480,56 @@ public class ApprovalDetailProvider : IApprovalDetailProvider
                 _logProvider.LogError(TrackingEvent.BatchUpdateDetailsFailed, exception, logData);
             }
         }
+    }
+
+    /// <summary>
+    /// Insert data into table or if size exceeds insert into blob
+    /// </summary>
+    /// <param name="detailsRow">ApprovalDetails row</param>
+    /// <param name="logData">log information data</param>
+    /// <returns></returns>
+    private async Task InsertDetailIntoTableAndBlob(ApprovalDetailsEntity detailsRow, Dictionary<LogDataKey, object> logData)
+    {
+        bool blobCheck = false;
+        #region Add data in table storage
+
+        try
+        {
+            await _tableHelper.InsertOrReplace<ApprovalDetailsEntity>(Constants.ApprovalDetailsAzureTableName, detailsRow, false);
+        }
+        catch (global::Azure.RequestFailedException ex)
+        {
+            // Checks whether exception caused was due to large data.
+            if (ex.ErrorCode == "PropertyValueTooLarge" || ex.ErrorCode == "EntityTooLarge" ||
+                ex.ErrorCode == "RequestBodyTooLarge")
+            {
+                blobCheck = true;
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        #endregion Add data in table storage
+
+        #region Insertion in approvalblobdata
+
+        if (blobCheck == true)
+        {
+            ApprovalDetailsEntity existingRow = null;
+            existingRow = GetApprovalsDetails(detailsRow.TenantID, detailsRow.PartitionKey, detailsRow.RowKey, string.Empty);
+            if (existingRow == null)
+            {
+                var blobPointer = detailsRow.PartitionKey.ToString() + "|" + detailsRow.TenantID.ToString() + "|" + detailsRow.RowKey.ToString();
+                await _approvalBlobDataProvider.AddApprovalDetails(detailsRow, blobPointer);
+                detailsRow.BlobPointer = blobPointer;
+                detailsRow.JSONData = string.Empty;
+                await _tableHelper.InsertOrReplace<ApprovalDetailsEntity>(Constants.ApprovalDetailsAzureTableName, detailsRow, false);
+            }
+        }
+        _logProvider.LogInformation(TrackingEvent.AzureStorageAddRequestDetailsSuccess, logData);
+
+        #endregion Insertion in approvalblobdata
     }
 }

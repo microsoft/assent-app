@@ -31,6 +31,8 @@ public interface ITableHelper
 
     T GetTableEntityByPartitionKeyAndRowKey<T>(string TableName, string PartitionKey, string RowKey) where T :class, ITableEntity, new();
 
+    Task<T> GetTableEntityByPartitionKeyAndRowKeyAsync<T>(string TableName, string PartitionKey, string RowKey) where T :class, ITableEntity, new();
+
     List<T> GetTableEntityListByPartitionKeyAndRowKey<T>(string TableName, string PartitionKey, string RowKey) where T :class, ITableEntity, new();
 
     List<T> GetTableEntityByPartitionKeyAndField<T>(string TableName, string PartitionKey, string fieldName, string fieldValue) where T :class, ITableEntity, new();

@@ -13,6 +13,16 @@ public interface IAuthenticationHelper
     /// Get the OAuth 2.0 Access Token
     /// </summary>
     /// <param name="clientId">Client Id</param>
+    /// <param name="clientSecret">Client Secret</param>
+    /// <param name="authority">Authority</param>
+    /// <param name="scope">Scope</param>
+    /// <returns>Access token</returns>
+    Task<string> AcquireOAuth2TokenByScopeAsync(string clientId, string clientSecret, string authority, string scope);
+
+    /// <summary>
+    /// Get the OAuth 2.0 Access Token
+    /// </summary>
+    /// <param name="clientId">Client Id</param>
     /// <param name="appKey">Client Secret</param>
     /// <param name="authority">Authority</param>
     /// <param name="resource">Resource Uri</param>
@@ -43,20 +53,16 @@ public interface IAuthenticationHelper
     /// </summary>
     /// <param name="userAccessToken">current OAuth 2.0 user token</param>
     /// <param name="parameterObject">OAuth 2.0 token generation parameters</param>
+    /// <param name="miClientId">Managed Identity Client Id</param>
+    /// <param name="miAudience">Managed Identity Audience</param>
     /// <returns>OAuth 2.0 User token with changed resource URL</returns>
-    public Task<string> GetOnBehalfUserToken(string userAccessToken, JObject parameterObject);
-
-    /// <summary>
-    /// Get Acs simple web token from shared secret.
-    /// </summary>
-    /// <param name="Hmac"></param>
-    /// <returns></returns>
-    public string GetAcsSimpleWebTokenFromSharedSecret(bool Hmac);
+    public Task<string> GetOnBehalfUserToken(string userAccessToken, JObject parameterObject, string miClientId, string miAudience);
 
     /// <summary>
     /// Get OAuth 2.0 token generated using Managed Identity
     /// </summary>
-    /// <param name="scope"></param>
+    /// <param name="clientId"></param>
+    /// <param name="resourceUri"></param>
     /// <returns>Managed Identity Token</returns>
-    public Task<string> GetManagedIdentityToken(string scope);
+    public Task<string> GetManagedIdentityToken(string clientId, string resourceUri);
 }

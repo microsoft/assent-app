@@ -84,6 +84,16 @@ public class TransactionHistoryExtended : TransactionHistory
                 ? string.Empty
                 : approvalRequestExpression.ActionDetail.ActionBy?.Alias;
 
+            var actionByDomain = (IsActionExempt(approvalRequestExpression.ActionDetail.Name)
+                                 || string.IsNullOrEmpty(approvalRequestExpression.ActionDetail.ActionBy?.UserPrincipalName))
+                ? string.Empty
+                : approvalRequestExpression.ActionDetail.ActionBy?.UserPrincipalName.GetDomainFromUPN();
+
+            var actionById = (IsActionExempt(approvalRequestExpression.ActionDetail.Name)
+                                 || string.IsNullOrEmpty(approvalRequestExpression.ActionDetail.ActionBy?.Id))
+                ? string.Empty
+                : approvalRequestExpression.ActionDetail.ActionBy?.Id;
+
             string actionByDelegateInMSA = string.Empty;
             if (approvalRequestExpression.ActionDetail != null && approvalRequestExpression.ActionDetail.AdditionalData != null)
             {
@@ -109,6 +119,8 @@ public class TransactionHistoryExtended : TransactionHistory
                     RowKey = Guid.NewGuid().ToString(),
                     Title = GetValueFromSummaryDictionary(placeHolderDict, "Title"),
                     Approver = actionByAlias,
+                    ApproverDomain = actionByDomain,
+                    ApproverId = actionById,
                     UnitValue = placeHolderDict.TryGetValue("UnitValue", out string value) ? value : "0",
                     AmountUnits = GetValueFromSummaryDictionary(placeHolderDict, "UnitOfMeasure"),
                     SubmittedDate = placeHolderDict.TryGetValue("SubmittedDate", out value)
@@ -122,7 +134,7 @@ public class TransactionHistoryExtended : TransactionHistory
                     ActionTaken = !string.IsNullOrWhiteSpace(approvalRequestExpression.ActionDetail.Name)
                         ? approvalRequestExpression.ActionDetail.Name : "None",
                     DocumentNumber = GetValueFromSummaryDictionary(placeHolderDict, documentNumber),
-                    JsonData = summary.ToJson(),
+                    JsonData = summary.ToJson(new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }),
                     TenantId = tenantInfo.TenantId.ToString(CultureInfo.InvariantCulture),
                     DocumentTypeID = requestDocTypeId,
                     ApproversNote = approvalsNote,

@@ -114,7 +114,7 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
         /// This hence, should be a not-null value.
         /// </summary>
         [DataMember]
-        public NameAliasEntity Submitter { get; set; }
+        public User Submitter { get; set; }
 
         /// <summary>
         /// Custom attribute is key value pair that can be sent by the tenant as a completely different entity that needs to be shown in Approvals.

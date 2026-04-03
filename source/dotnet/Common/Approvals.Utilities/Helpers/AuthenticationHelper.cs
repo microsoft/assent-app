@@ -3,34 +3,35 @@
 
 namespace Microsoft.CFS.Approvals.Utilities.Helpers;
 
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Net.Mail;
-using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Web;
 using global::Azure.Core;
 using global::Azure.Identity;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
-using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.Utilities.Interface;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Identity.Client;
 using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Net.Http;
+using System.Net.Mail;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Web;
+using Constants = Contracts.Constants;
+using ManagedIdentityId = Identity.Client.AppConfig.ManagedIdentityId;
 
 public class AuthenticationHelper : IAuthenticationHelper
 {
     private static readonly string _serviceUnavailable = "temporarily_unavailable";
     private static readonly string _assertionType = "urn:ietf:params:oauth:grant-type:jwt-bearer";
-    private static string _hmacToken = string.Empty;
-    private static string _nonHmacToken = string.Empty;
 
     /// <summary>
     /// The log provider
@@ -47,6 +48,9 @@ public class AuthenticationHelper : IAuthenticationHelper
     /// </summary>
     private readonly IPerformanceLogger _performanceLogger;
 
+    // In-memory cache for tokens, keyed by a composite of clientId, scopes, and authority.
+    private static readonly ConcurrentDictionary<string, (string AccessToken, DateTimeOffset ExpiresOn)> _tokenCache = new();
+
     /// <summary>
     /// Constructor of AuthenticationHelper
     /// </summary>
@@ -62,6 +66,76 @@ public class AuthenticationHelper : IAuthenticationHelper
         _config = config;
         _performanceLogger = performanceLogger;
     }
+
+    /// <summary>
+    /// Get the OAuth 2.0 Access Token
+    /// </summary>
+    /// <param name="clientId">Client Id</param>
+    /// <param name="clientSecret">Client Secret</param>
+    /// <param name="authority">Authority</param>
+    /// <param name="scope">Scope</param>
+    /// <returns>Access token</returns>
+    public async Task<string> AcquireOAuth2TokenByScopeAsync(string clientId, string clientSecret, string authority, string scope)
+    {
+        string accessToken = string.Empty;
+        var retryCount = 0;
+        bool retry;
+        do
+        {
+            retry = false;
+            try
+            {
+                // Compose a cache key based on clientId, authority, and scopes
+                string cacheKey = $"{clientId}|{authority}|{scope}";
+
+                // Check if a valid token exists in the cache
+                if (_tokenCache.TryGetValue(cacheKey, out var cachedToken))
+                {
+                    // Add a 1-minute buffer to avoid using a token that's about to expire
+                    if (cachedToken.ExpiresOn > DateTimeOffset.UtcNow.AddMinutes(1))
+                    {
+                        return cachedToken.AccessToken;
+                    }
+                }
+
+                using var client = new HttpClient();
+                var request = new HttpRequestMessage(HttpMethod.Post, authority);
+                request.Content = new FormUrlEncodedContent(
+                [
+                    new KeyValuePair<string, string>("grant_type", "client_credentials"),
+                    new KeyValuePair<string, string>("client_id", clientId),
+                    new KeyValuePair<string, string>("client_secret", clientSecret),
+                    new KeyValuePair<string, string>("scope", scope)
+                ]);
+
+                var response = await client.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+                var tokenJson = await response.Content.ReadAsStringAsync();
+
+                // Parse the access_token and expires_in from the response JSON
+                var tokenObj = JsonDocument.Parse(tokenJson);
+                accessToken = tokenObj.RootElement.GetProperty("access_token").GetString();
+                int expiresInSeconds = tokenObj.RootElement.TryGetProperty("expires_in", out var expiresInProp) ? expiresInProp.GetInt32() : 3600;
+                var expiresOn = DateTimeOffset.UtcNow.AddSeconds(expiresInSeconds);
+
+                // Cache the token and its expiry
+                _tokenCache[cacheKey] = (accessToken, expiresOn);
+
+            }
+            catch (MsalException ex)
+            {
+                if (ex.ErrorCode == _serviceUnavailable)
+                {
+                    retry = true;
+                    retryCount++;
+                    Thread.Sleep(3000);
+                }
+            }
+        } while (retry && (retryCount < 3));
+
+        return accessToken;
+    }
+
 
     /// <summary>
     /// Get the OAuth 2.0 Access Token
@@ -187,18 +261,20 @@ public class AuthenticationHelper : IAuthenticationHelper
     /// </summary>
     /// <param name="userAccessToken">current OAuth 2.0 user token</param>
     /// <param name="parameterObject">OAuth 2.0 token generation parameters</param>
+    /// <param name="miClientId">Managed Identity Client Id</param>
+    /// <param name="miAudience">Managed Identity Audience</param>
     /// <returns>OAuth 2.0 User token with changed resource URL</returns>
-    public async Task<string> GetOnBehalfUserToken(string userAccessToken, JObject parameterObject)
+    public async Task<string> GetOnBehalfUserToken(string userAccessToken, JObject parameterObject, string miClientId, string miAudience)
     {
         var logData = new Dictionary<LogDataKey, object>
         {
-            { LogDataKey.EventType, Constants.FeatureUsageEvent }
+            { LogDataKey.EventType, Constants.FeatureUsageEvent },
+            { LogDataKey.IdentityProviderTokenType, Constants.OnBehalfUserToken }
         };
 
         try
         {
             string clientId = parameterObject["ClientID"].ToString();
-            string appKey = parameterObject["AuthKey"].ToString();
             string resourceUrl = parameterObject["ResourceURL"].ToString();
             string authority = parameterObject["Authority"].ToString();
 
@@ -208,11 +284,27 @@ public class AuthenticationHelper : IAuthenticationHelper
             string bearerAccessToken = string.Empty;
             UserAssertion userAssertion = new UserAssertion(userAccessToken, _assertionType);
 
+            // Gets a token for the user-assigned Managed Identity.
+            async Task<string> miAssertionProvider(AssertionRequestOptions _)
+            {
+                // MI tokens are always cached in memory
+                var miApplication = ManagedIdentityApplicationBuilder
+                    .Create(ManagedIdentityId.WithUserAssignedClientId(miClientId))
+                    .Build();
+
+                var miResult = await miApplication.AcquireTokenForManagedIdentity(miAudience)
+                    .ExecuteAsync()
+                    .ConfigureAwait(false);
+
+                return miResult.AccessToken;
+            }
+
             IConfidentialClientApplication app = ConfidentialClientApplicationBuilder.
                     Create(clientId).
-                    WithClientSecret(appKey).
+                    WithClientAssertion(miAssertionProvider).
                     WithAuthority(new Uri(authority)).
                     Build();
+
             var scopes = new[] { resourceUrl + "/.default" };
 
             bool retry;
@@ -228,6 +320,7 @@ public class AuthenticationHelper : IAuthenticationHelper
                 }
                 catch (MsalException ex)
                 {
+                    _logger?.LogError(TrackingEvent.OAuth2TokenGenerationError, ex, logData);
                     if (ex.ErrorCode == _serviceUnavailable)
                     {
                         // Transient error, OK to retry.
@@ -237,6 +330,8 @@ public class AuthenticationHelper : IAuthenticationHelper
                     }
                 }
             } while (retry && retryCount < 2);
+
+            _logger.LogInformation(TrackingEvent.OAuth2TokenGenerationSuccessful, logData);
 
             return bearerAccessToken;
         }
@@ -287,95 +382,19 @@ public class AuthenticationHelper : IAuthenticationHelper
     }
 
     /// <summary>
-    /// Get Acs simple web token from shared secret.
-    /// </summary>
-    /// <param name="Hmac"></param>
-    public string GetAcsSimpleWebTokenFromSharedSecret(bool Hmac)
-    {
-        #region Logging
-
-        var logData = new Dictionary<LogDataKey, object>
-        {
-            { LogDataKey.EventType, Constants.FeatureUsageEvent }
-        };
-
-        #endregion Logging
-
-        try
-        {
-            var serviceBusNamespace = _config[ConfigurationKey.ServiceBusNamespace.ToString()];
-            var baseaddress = "http://" + serviceBusNamespace + ".servicebus.windows.net";
-            string AcsUri = @"https://" + serviceBusNamespace + "-sb.accesscontrol.windows.net/WRAPv0.9/";
-            string HmacUri = @"https://" + serviceBusNamespace + ".accesscontrol.windows.net/WRAPv0.9/";
-
-            logData.Add(LogDataKey.BaseAddress, baseaddress);
-
-            using (var wc = new System.Net.WebClient())
-            {
-                var data = String.Format(CultureInfo.InvariantCulture, Constants.DataString,
-                                         HttpUtility.UrlEncode(_config[ConfigurationKey.ServiceBusIssuerName.ToString()]),
-                                         HttpUtility.UrlEncode(_config[ConfigurationKey.ServiceBusIssuerSecret.ToString()]),
-                                         HttpUtility.UrlEncode(baseaddress));
-
-                wc.Headers[Constants.ContentTypeKeyName] = Constants.ContentTypeKeyValue;
-                String result = String.Empty;
-
-                if (Hmac)
-                {
-                    if (string.IsNullOrEmpty(_hmacToken) || GetExpiryTime(_hmacToken).AddMinutes(-5) < DateTime.UtcNow)
-                    {
-                        logData.Add(LogDataKey.Uri, HmacUri);
-                        logData.Add(LogDataKey.UriType, Constants.HmacUri);
-                        using (_performanceLogger.StartPerformanceLogger("PerfLog", "SecurityHelper", string.Format(Constants.PerfLogAction, "Security Helper", "Get ACS WebToken"), logData))
-                        {
-                            _hmacToken = wc.UploadString(new Uri(HmacUri), Constants.PostString, data);
-                        }
-                    }
-                    result = _hmacToken;
-                }
-                else
-                {
-                    if (string.IsNullOrEmpty(_nonHmacToken) || GetExpiryTime(_nonHmacToken).AddMinutes(-5) < DateTime.UtcNow)
-                    {
-                        logData.Add(LogDataKey.Uri, AcsUri);
-                        logData.Add(LogDataKey.UriType, Constants.AcsUri);
-                        using (_performanceLogger.StartPerformanceLogger("PerfLog", "SecurityHelper", string.Format(Constants.PerfLogAction, "Security Helper", "Get ACS WebToken"), logData))
-                        {
-                            _nonHmacToken = wc.UploadString(new Uri(AcsUri), Constants.PostString, data);
-                        }
-                    }
-                    result = _nonHmacToken;
-                }
-
-                var token = result.Split(Constants.SplitToken).Single(x => x.StartsWith(Constants.Wrap_Access_TokenKeyName,
-                                     StringComparison.OrdinalIgnoreCase)).Split(Constants.SplitToken2)[1];
-                var decodedToken = HttpUtility.UrlDecode(token);
-
-                var authorizationKeyValue = String.Format(CultureInfo.InvariantCulture, Constants.AuthorizationKeyString, decodedToken);
-                return authorizationKeyValue;
-            }
-        }
-        catch (Exception ex)
-        {
-            if (_logger != null)
-            {
-                _logger.LogError(TrackingEvent.AcsSimpleWebToken, ex, logData);
-            }
-            throw;
-        }
-    }
-
-    /// <summary>
     /// Get OAuth 2.0 token generated using Managed Identity
     /// </summary>
-    /// <param name="scope"></param>
+    /// <param name="clientId"></param>
+    /// <param name="resourceUri"></param>
     /// <returns>Managed Identity OAuth 2.0 Token</returns>
-    public async Task<string> GetManagedIdentityToken(string scope)
+    public async Task<string> GetManagedIdentityToken(string clientId, string resourceUri)
     {
         var logData = new Dictionary<LogDataKey, object>
         {
             { LogDataKey.EventType, Constants.FeatureUsageEvent },
-            { LogDataKey.Scope, scope }
+            { LogDataKey.IdentityProviderTokenType, Constants.ManagedIdentityToken },
+            { LogDataKey.Scope, resourceUri },
+            { LogDataKey.IdentityProviderClientID, clientId}
         };
         try
         {
@@ -387,13 +406,13 @@ public class AuthenticationHelper : IAuthenticationHelper
                 retry = false;
                 try
                 {
-                    // ADAL includes an in memory cache, so this call will only send a message to the server if the cached token is expired.
 #if DEBUG
-                    var tokenCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
-#else               
-                    var tokenCredential = new ManagedIdentityCredential();
+                    var tokenCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions { ManagedIdentityClientId = clientId }); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+                    var tokenCredential = new ManagedIdentityCredential(clientId);
 #endif
-                    var tokenResponse = await tokenCredential.GetTokenAsync(new TokenRequestContext(new[] { string.Format(scope, ".default") }));
+                    // Always pass CancellationToken explicitly when calling GetTokenAsync.
+                    var tokenResponse = await tokenCredential.GetTokenAsync(new TokenRequestContext(new[] { resourceUri + "/.default" }), CancellationToken.None);
                     accessToken = tokenResponse.Token;
                 }
                 catch (MsalException ex)
@@ -408,6 +427,7 @@ public class AuthenticationHelper : IAuthenticationHelper
                     Console.WriteLine($"An error occurred while acquiring a token\nTime: {DateTime.UtcNow.ToString(CultureInfo.InvariantCulture)}\nError: {ex}\nRetry: {retry}\n");
                 }
             } while (retry && (retryCount < 3));
+            _logger.LogInformation(TrackingEvent.ManagedIdentityTokenGenerationSuccess, logData);
             return accessToken;
         }
         catch (Exception ex)
@@ -428,25 +448,5 @@ public class AuthenticationHelper : IAuthenticationHelper
         // TODO:: Do we need the expiry time to be configurable ?
         // Setting the expiry time as 10 mins
         return Convert.ToString((int)sinceEpoch.TotalSeconds + 600);
-    }
-
-    /// <summary>
-    /// Get expiry time
-    /// </summary>
-    /// <param name="token"></param>
-    /// <returns></returns>
-    private DateTime GetExpiryTime(string token)
-    {
-        var swt = token.Substring("wrap_access_token=\"".Length, token.Length - ("wrap_access_token=\"".Length + 1));
-        var tokenValue = Uri.UnescapeDataString(swt);
-        var properties = (from prop in tokenValue.Split('&')
-                          let pair = prop.Split(new[] { '=' }, 2)
-                          select new { Name = pair[0], Value = pair[1] })
-                         .ToDictionary(p => p.Name, p => p.Value);
-
-        var expiresOnUnixTicks = int.Parse(properties["ExpiresOn"]);
-        var epochStart = new DateTime(1970, 01, 01, 0, 0, 0, 0, DateTimeKind.Utc);
-
-        return epochStart.AddSeconds(expiresOnUnixTicks);
     }
 }

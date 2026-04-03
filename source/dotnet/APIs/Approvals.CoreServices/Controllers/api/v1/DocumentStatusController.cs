@@ -7,6 +7,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Utilities.Helpers;
 using Swashbuckle.AspNetCore.Annotations;
@@ -63,7 +64,7 @@ public class DocumentStatusController : BaseApiController
             {
                 requestContent = await reader.ReadToEndAsync();
             }
-            return Ok(await _documentApprovalStatusHelper.DocumentStatus(tenantId, requestContent, Host, Alias, LoggedInAlias, tcv, sessionId, xcv));
+            return Ok(await _documentApprovalStatusHelper.DocumentStatus(SignedInUser, OnBehalfUser, GetTokenOrCookie(), tenantId, requestContent, ClientDevice, tcv, sessionId, xcv));
         }
         catch (Exception exception)
         {

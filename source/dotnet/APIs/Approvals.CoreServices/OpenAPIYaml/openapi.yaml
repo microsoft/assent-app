@@ -1,0 +1,101 @@
+openapi: 3.0.3
+info:
+  title: Approvals Plugin
+  description: Microsoft's Approvals experience
+  version: 1.0.0
+externalDocs:
+  description: Find out more about Swagger
+  url: http://swagger.io
+servers:
+  - url: https://api-dev.msapprovals.microsoft.com
+paths:
+  /chatrequest:
+    post:
+      summary: 
+        Microsoft's Approvals experience
+      description: 
+        Approvals AI assistant that helps users understand how to use the Approvals platform and find information related to the user's data within Approvals. This AI assistant assumes any questions related to a request, summarization, details, or questions about specific fields are referring to the user's current Approvals context.
+        Approvals includes requests from various applications, including Expense, Invoice, Purchase Order, Labor Management, and more. An approval request consists of standard fields, attachments, approval history, and details including line items.
+        This AI assistant helps users understand and summarize requests, summarize attachments, find specific data within a request, identify linked requests based on similar data, prioritize requests based on criteria such as total amount, submitter, or other standard request data.
+      operationId: chatrequest
+      requestBody:
+        description: Answers questions related to Microsoft's Approvals experience
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AskRequest'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/AskRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AskRequest'
+        required: true
+      responses:
+        default:
+          description: Default error sample response
+components:
+  schemas:
+    AskRequest:
+      required:
+      - UserId
+      - UserName
+      - Input
+      type: object
+      properties:
+        UserId:
+          type: string
+          example: guid
+        UserName:
+          type: string
+          example: janedoe
+        UserEmail:
+          type: string
+          example: emailid
+        Input:
+          type: string
+          example: question
+        ChatId:
+          type: string
+          example: guid
+        History:
+          $ref: '#/components/schemas/History'
+        AdditionalDetails:
+          $ref: '#/components/schemas/AdditionalDetails'
+      xml:
+        name: AskRequest
+                
+    History:
+      type: object
+      properties:
+        User:
+          type: string
+          example: user message
+        Bot:
+          type: string
+          example: bot message
+      xml:
+        name: History
+        
+    AdditionalDetails:
+      type: object
+      properties:
+        Key:
+          type: string
+          example: key
+        Value:
+          type: string
+          example: value
+      xml:
+        name: AdditionalDetails
+    
+  requestBodies:
+    AskRequest:
+      description: Response from the Approvals copilot
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AskRequest'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/AskRequest'

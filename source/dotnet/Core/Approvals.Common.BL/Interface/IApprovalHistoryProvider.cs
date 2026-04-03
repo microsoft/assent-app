@@ -5,6 +5,7 @@ namespace Microsoft.CFS.Approvals.Common.DL.Interface;
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Model;
 using Newtonsoft.Json.Linq;
 
@@ -19,12 +20,15 @@ public interface IApprovalHistoryProvider
     /// <param name="alias">The alias.</param>
     /// <param name="timePeriod">The timePeriod.</param>
     /// <param name="searchCriteria">The search criteria.</param>
+    /// <param name="approverDomain">Approver Domain</param>
+    /// <param name="approverId">Approver Object Id</param>
     /// <param name="page">The page.</param>
     /// <param name="sortColumn">The sort column.</param>
     /// <param name="sortDirection">The sort direction.</param>
+    /// <param name="tenantId">TenantId. Unique for each Tenant</param>
     /// <returns>Returns TransactionHistoryExtended.</returns>
     Task<PagedData<TransactionHistoryExtended>> GetHistoryDataAsync(string alias, int timePeriod, string searchCriteria,
-        int? page = null, string sortColumn = null, string sortDirection = "DESC");
+        string approverDomain, string approverId, int? page = null, string sortColumn = null, string sortDirection = "DESC", string tenantId = "");
 
     /// <summary>
     /// This method will check whether history is inserted or not
@@ -34,8 +38,10 @@ public interface IApprovalHistoryProvider
     /// <param name="actionDate">The actionDate.</param>
     /// <param name="documentNumber">The documentNumber.</param>
     /// <param name="actionTaken">The actionTaken.</param>
+    /// <param name="domain">Approver Domain</param>
+    /// <param name="approverId">Approver Object Id</param>
     /// <returns>Returns boolean to indicate whether history is inserted or not</returns>
-    Task<bool> CheckIfHistoryInsertedAsync(ApprovalTenantInfo tenantInfo, string alias, string actionDate, string documentNumber, string actionTaken);
+    Task<bool> CheckIfHistoryInsertedAsync(ApprovalTenantInfo tenantInfo, string alias, string actionDate, string documentNumber, string actionTaken, string domain, string approverId);
 
     /// <summary>
     /// This method will insert Approval History
@@ -56,10 +62,21 @@ public interface IApprovalHistoryProvider
     /// <param name="alias">The alias.</param>
     /// <param name="timePeriod">The timePeriod.</param>
     /// <param name="searchCriteria">The searchCriteria.</param>
-    /// <param name="loggedInAlias">The loggedInAlias.</param>
+    /// <param name="signedInUser">The signed-in user entity.</param>
     /// <param name="Xcv">The Xcv.</param>
     /// <returns>Returns JArray which includes count information.</returns>
-    Task<JArray> GetHistoryCountforAliasAsync(string alias, int timePeriod, string searchCriteria, string loggedInAlias, string Xcv);
+    Task<JArray> GetHistoryCountforAliasAsync(string alias, int timePeriod, string searchCriteria, User signedInUser, string Xcv);
+
+    /// <summary>
+    /// Get history counts for each month in a specified time period
+    /// </summary>
+    /// <param name="alias"></param>
+    /// <param name="timePeriod"></param>
+    /// <param name="tcv"></param>
+    /// <param name="approverDomain"></param>
+    /// <param name="approverId"></param>
+    /// <returns></returns>
+    Task<JArray> GetHistoryIntervalCountsforAliasAsync(string alias, int timePeriod, string tcv, string approverDomain, string approverId);
 
     /// <summary>
     /// This method will Get Approver chain history data.

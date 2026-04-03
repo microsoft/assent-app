@@ -61,7 +61,6 @@ public class GenericNotificationProvider : INotificationProvider
     {
         await _notificationProvider.SendEmail(to, subject, body);
     }
-
     /// <summary>
     /// This is overloaded method to send email based on template and template data
     /// </summary>

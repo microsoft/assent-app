@@ -14,6 +14,7 @@ public class PagedData<T>
     public PagedData()
     {
         Result = new List<T>();
+        TenantList = new List<T>();
     }
 
     public List<T> Result { get; set; }
@@ -21,4 +22,6 @@ public class PagedData<T>
     public double TotalCount { get; set; }
 
     public string ContinuationToken { get; set; }
+
+    public List<T> TenantList { get; set; }
 }

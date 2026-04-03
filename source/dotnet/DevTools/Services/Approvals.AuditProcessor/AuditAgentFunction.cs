@@ -4,7 +4,7 @@
 namespace Microsoft.CFS.Approvals.AuditAgentAzFunction
 {
     using System.Threading.Tasks;
-    using Microsoft.Azure.ServiceBus;
+    using global::Azure.Messaging.ServiceBus;
     using Microsoft.Azure.WebJobs;
     using Microsoft.CFS.Approvals.AuditProcessor.BL.Interface;
     using Microsoft.Extensions.Logging;
@@ -19,7 +19,7 @@ namespace Microsoft.CFS.Approvals.AuditAgentAzFunction
         }
 
         [FunctionName("AuditAgentFunction")]
-        public async Task Run([ServiceBusTrigger("%TopicNameMain%", "%SubscriptionNameAuditAgent%", Connection = "ServiceBusConnectionString")] Message message, ILogger log)
+        public async Task Run([ServiceBusTrigger("%TopicNameMain%", "%SubscriptionNameAuditAgent%", Connection = "ServiceBusNamespace")] ServiceBusReceivedMessage message, ILogger log)
         {
             string blobId = System.Text.Encoding.UTF8.GetString(message.Body);
             await _auditAgentHelper.ProcessMessage(blobId, message);

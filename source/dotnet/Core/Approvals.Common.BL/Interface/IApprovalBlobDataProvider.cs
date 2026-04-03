@@ -3,6 +3,7 @@
 
 namespace Microsoft.CFS.Approvals.Common.DL.Interface;
 
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -24,6 +25,28 @@ public interface IApprovalBlobDataProvider
     /// <param name="row">The row.</param>
     /// <param name="blobPointer">The BLOB pointer.</param>
     Task AddApprovalDetails(ApprovalDetailsEntity row, string blobPointer);
+
+    /// <summary>
+    /// Get summary json data from blob.
+    /// </summary>
+    /// <param name="approvalSummaryRow"></param>
+    /// <returns></returns>
+    Task<ApprovalSummaryRow> GetApprovalSummaryJsonFromBlob(ApprovalSummaryRow approvalSummaryRow);
+
+    /// <summary>
+    /// Get List of summary json data from blob by approver.
+    /// </summary>
+    /// <param name="approver"></param>
+    /// <returns></returns>
+    Task<Dictionary<string, string>> GetListOfSummaryJsonFromBlobByApprover(string approver);
+
+    /// <summary>
+    /// Add Blob entry for summary json
+    /// </summary>
+    /// <param name="row"></param>
+    /// <param name="blobPointer"></param>
+    /// <returns></returns>
+    Task AddApprovalSummaryJson(ApprovalSummaryRow row, string blobPointer);
 
     /// <summary>
     /// Deletes the BLOB data.

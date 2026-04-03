@@ -66,7 +66,7 @@ public class ReadDetailsController : BaseApiController
             {
                 requestContent = await reader.ReadToEndAsync();
             }
-            return Ok(_readDetailsHelper.UpdateIsReadDetails(requestContent, tenantId, LoggedInAlias, Alias, Host, sessionId, tcv, xcv));
+            return Ok(await _readDetailsHelper.UpdateIsReadDetails(SignedInUser, OnBehalfUser, GetTokenOrCookie(), requestContent, tenantId, ClientDevice, sessionId, tcv, xcv, DomainName));
         }
         catch (Exception ex)
         {

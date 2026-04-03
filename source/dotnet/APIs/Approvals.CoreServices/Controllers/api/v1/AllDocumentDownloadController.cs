@@ -72,12 +72,14 @@ public class AllDocumentDownloadController : BaseApiController
                    null,
                    attachments,
                    sessionId,
-                   Tcv,
+                   MessageId,
                    Xcv,
-                   Alias,
-                   LoggedInAlias,
-                   Host,
-                   GetTokenOrCookie());
+                   OnBehalfUser.MailNickname,
+                   SignedInUser,
+                   ClientDevice,
+                   GetTokenOrCookie(),
+                   OnBehalfUser.Id,
+                   DomainName);
 
             return File(httpResponseMessage, "application/zip");
         }

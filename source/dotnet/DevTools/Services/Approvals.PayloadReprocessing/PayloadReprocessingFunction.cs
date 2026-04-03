@@ -75,7 +75,12 @@ namespace Microsoft.CFS.Approvals.PayloadReprocessing
                     return new BadRequestObjectResult("Please enter valid parameter ");
                 }
                 var collectionName = jtokenData["collection"]?.ToString();
-                var DocTypeId = _approvalTenantInfoProvider.GetTenantInfo(Convert.ToInt32(jtokenData?["tenantID"])).DocTypeId;
+                var tenantInfo = _approvalTenantInfoProvider.GetTenantInfo(Convert.ToInt32(jtokenData?["tenantID"]));
+                if (tenantInfo == null || string.IsNullOrEmpty(tenantInfo.DocTypeId))
+                {
+                    return new BadRequestObjectResult("Invalid tenantID or DocTypeId not found.");
+                }
+                var DocTypeId = tenantInfo.DocTypeId;
                 switch (req.Method)
                 {
                     case "GET":

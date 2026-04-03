@@ -62,7 +62,7 @@ public class HistoryController : BaseApiController
     {
         try
         {
-            var historyData = await _approvalHistoryHelper.GetHistory(page, sortColumn, sortDirection, searchCriteria, timePeriod, sessionId, LoggedInAlias, Alias, Host, Xcv, Tcv, tenantId);
+            var historyData = await _approvalHistoryHelper.GetHistory(page, sortColumn, sortDirection, searchCriteria, timePeriod, sessionId, SignedInUser, OnBehalfUser.MailNickname, ClientDevice, Xcv, MessageId, tenantId);
             return Ok(historyData);
         }
         catch (Exception ex)
@@ -104,7 +104,7 @@ public class HistoryController : BaseApiController
             ArgumentGuard.NotNull(monthsOfData, nameof(monthsOfData));
             ArgumentGuard.NotNullAndEmpty(sortField, nameof(sortField));
             ArgumentGuard.NotNullAndEmpty(sortDirection, nameof(sortDirection));
-            return File(await _approvalHistoryHelper.DownloadHistoryDataInExcel(sortField, sortDirection, searchCriteria, monthsOfData, sessionId, LoggedInAlias, Alias, Host, Xcv, Tcv, tenantId), "application/octet-stream");
+            return File(await _approvalHistoryHelper.DownloadHistoryDataInExcel(sortField, sortDirection, searchCriteria, monthsOfData, sessionId, SignedInUser, OnBehalfUser.MailNickname, ClientDevice, Xcv, MessageId, tenantId), "application/octet-stream");
         }
         catch (Exception ex)
         {

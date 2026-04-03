@@ -50,6 +50,8 @@ public class BulkDeleteController : ControllerBase
         var tcv = Guid.NewGuid().ToString();
         logData.Add(LogDataKey.Xcv, tcv);
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.Environment, _environment);
 
         try
@@ -60,7 +62,6 @@ public class BulkDeleteController : ControllerBase
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "BulkDeleteFailure");
             logData.Add(LogDataKey.Operation, "Failed to Delete the Bulk Requests");
             _logProvider.LogError(TrackingEvent.BulkDeleteFailure, ex, logData);
             return BadRequest(ex.Message);

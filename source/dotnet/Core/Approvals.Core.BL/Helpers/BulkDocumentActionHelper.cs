@@ -5,6 +5,7 @@ namespace Microsoft.CFS.Approvals.Core.BL.Helpers;
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -18,6 +19,7 @@ using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
 using Microsoft.CFS.Approvals.Domain.BL.Interface;
 using Microsoft.CFS.Approvals.Extensions;
+using Microsoft.CFS.Approvals.LogManager.Interface;
 using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.Model;
@@ -46,9 +48,9 @@ public class BulkDocumentActionHelper : DocumentActionHelper
     /// <param name="tableHelper">The storage helper.</param>
     /// <param name="approvalTenantInfoHelper">The approval tenant helper.</param>
     /// <param name="tenantFactory">The tenant factory.</param>
-    /// <param name="attachmentHelper"> The attachment helper.</param>
+    /// <param name="auditLogger"></param>
     public BulkDocumentActionHelper(
-        IApprovalSummaryProvider approvalSummaryProvider,
+        ISummaryHelper summaryHelper,
         IConfiguration config,
         ILogProvider logProvider,
         INameResolutionHelper nameResolutionHelper,
@@ -59,9 +61,10 @@ public class BulkDocumentActionHelper : DocumentActionHelper
         ITableHelper tableHelper,
         IApprovalTenantInfoHelper approvalTenantInfoHelper,
         ITenantFactory tenantFactory,
-        IAttachmentHelper attachmentHelper)
+        IAuditLogger auditLogger,
+        IDelegationHelper delegationHelper)
         : base(
-              approvalSummaryProvider,
+              summaryHelper,
               config,
               logProvider,
               nameResolutionHelper,
@@ -72,7 +75,8 @@ public class BulkDocumentActionHelper : DocumentActionHelper
               tableHelper,
               approvalTenantInfoHelper,
               tenantFactory,
-              attachmentHelper)
+              auditLogger,
+              delegationHelper)
     {
     }
 
@@ -81,31 +85,30 @@ public class BulkDocumentActionHelper : DocumentActionHelper
     /// <summary>
     /// Process user actions as an asynchronous operation.
     /// </summary>
-    /// <param name="configurationHelper">The configuration helper.</param>
-    /// <param name="actionAuditLogHelper">The action audit log helper.</param>
-    /// <param name="logger">The logger.</param>
     /// <param name="tenantAdapter">The tenant adapter.</param>
     /// <param name="tenantInfo">The tenant information.</param>
     /// <param name="tenantId">The tenant map identifier.</param>
-    /// <param name="alias">The alias.</param>
-    /// <param name="loggedInAlias">The logged in alias.</param>
+    /// <param name="onBehalfUser">The on-behalf user entity.</param>
+    /// <param name="signedInUser">The signed in user entity.</param>
     /// <param name="clientDevice">The client device.</param>
     /// <param name="approvalRequests">The approval requests.</param>
     /// <param name="xcv">The XCV.</param>
     /// <param name="tcv">The TCV.</param>
     /// <param name="sessionId">The session identifier.</param>
+    /// <param name="oauth2UserToken">User token</param>
     /// <returns>Task of JObject.</returns>
     protected override async Task<JObject> ProcessUserActionsAsync(
             ITenant tenantAdapter,
             ApprovalTenantInfo tenantInfo,
             int tenantId,
-            string alias,
-            string loggedInAlias,
+            User onBehalfUser,
+            User signedInUser,
             string clientDevice,
             List<ApprovalRequest> approvalRequests,
             string xcv,
             string tcv,
-            string sessionId)
+            string sessionId,
+            string oauth2UserToken)
     {
         var userActionsResponseArray = new JArray();
         var userActionsResponseObject = new JObject();
@@ -117,24 +120,31 @@ public class BulkDocumentActionHelper : DocumentActionHelper
         {
             { LogDataKey.ClientDevice, clientDevice },
             { LogDataKey.IsCriticalEvent, CriticalityLevel.Yes.ToString() },
-            { LogDataKey.EventId, TrackingEvent.DocumentActionFailure },
-            { LogDataKey.EventName, TrackingEvent.DocumentActionFailure.ToString() },
             { LogDataKey.Tcv, tcv },
             { LogDataKey.Xcv, xcv },
             { LogDataKey.ReceivedTcv, tcv },
             { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, loggedInAlias },
-            { LogDataKey.Approver, loggedInAlias },
+            { LogDataKey.UserRoleName, signedInUser.MailNickname },
+            { LogDataKey.Approver, signedInUser.MailNickname },
             { LogDataKey.BusinessProcessName, string.Format(tenantInfo?.BusinessProcessName, Constants.BusinessProcessNameApprovalAction, approvalReq?.Action) },
             { LogDataKey.TenantId, tenantId },
             { LogDataKey.TenantName, tenantInfo?.AppName },
-            { LogDataKey.UserAlias, alias },
+            { LogDataKey.UserAlias, onBehalfUser.MailNickname },
             { LogDataKey.AppAction, approvalReq?.Action },
             { LogDataKey.Operation, approvalReq?.Action },
             { LogDataKey.DocumentTypeId, tenantInfo?.DocTypeId }
         };
 
         #endregion Prepare Log Data
+
+        #region Fetch Object Id and Domain for alias
+
+        string approverDomain = string.IsNullOrWhiteSpace(onBehalfUser.UserPrincipalName) ? (await _nameResolutionHelper.GetUserPrincipalName(onBehalfUser.MailNickname)).GetDomainFromUPN() : onBehalfUser.UserPrincipalName.GetDomainFromUPN();
+        string approverId = onBehalfUser.Id;
+        if (string.IsNullOrWhiteSpace(onBehalfUser.Id) && !string.IsNullOrWhiteSpace(onBehalfUser.UserPrincipalName))
+            approverId = (await _nameResolutionHelper.GetUser(onBehalfUser.UserPrincipalName))?.Id;
+
+        #endregion Fetch Object Id and Domain for alias
 
         // SummaryJson list to be passed for ActionAuditLogs in CosmosDB
         var summaryJsonList = new List<SummaryJson>();
@@ -161,42 +171,6 @@ public class BulkDocumentActionHelper : DocumentActionHelper
             {
                 LogMessageProgress(TrackingEvent.ApprovalActionInitiated, null, CriticalityLevel.Yes, logData);
 
-                #region Marking soft delete the pending summary records and update Details entities in Batch
-
-                List<ApprovalSummaryRow> summaryRowsToUpdateInBatch = new List<ApprovalSummaryRow>();
-                List<ApprovalDetailsEntity> detailsRowsToUpdateInBatch = new List<ApprovalDetailsEntity>();
-                foreach (var approvalRequest in approvalRequests)
-                {
-                    Tuple<ApprovalSummaryRow, List<ApprovalDetailsEntity>> returnTuple = tenantAdapter.UpdateTransactionalDetails(approvalRequest, true, string.Empty, loggedInAlias, sessionId, null);
-
-                    if (returnTuple != null)
-                    {
-                        if (returnTuple.Item1 != null)
-                        {
-                            summaryRowsToUpdateInBatch.Add(returnTuple.Item1);
-                        }
-
-                        if (returnTuple.Item2 != null)
-                        {
-                            detailsRowsToUpdateInBatch.AddRange(returnTuple.Item2);
-                        }
-                    }
-                }
-
-                if (summaryRowsToUpdateInBatch.Count > 0)
-                {
-                    await _approvalSummaryProvider.UpdateSummaryInBatchAsync(summaryRowsToUpdateInBatch, xcv, sessionId,
-                        approvalReq.Telemetry.Tcv, tenantInfo, approvalReq.Action);
-                }
-
-                if (detailsRowsToUpdateInBatch.Count > 0)
-                {
-                    await _approvalDetailProvider.UpdateDetailsInBatchAsync(detailsRowsToUpdateInBatch,
-                        xcv, sessionId, tcv, tenantInfo, approvalReq.Action);
-                }
-
-                #endregion Marking soft delete the pending summary records and update Details entities in Batch
-
                 #region Pre-processing Approval Requests
 
                 List<ApprovalRequest>
@@ -218,23 +192,27 @@ public class BulkDocumentActionHelper : DocumentActionHelper
                         logData.Modify(LogDataKey.Operation, approvalRequest?.Action);
 
                         ApprovalSummaryRow approvalSummaryRow =
-                            _approvalSummaryProvider.GetApprovalSummaryByDocumentNumberAndApprover(
+                            _summaryHelper.GetApprovalSummaryByDocumentNumberAndApprover(
                                 tenantInfo.DocTypeId, approvalRequest.ApprovalIdentifier.DisplayDocumentNumber,
-                                alias);
+                                onBehalfUser.MailNickname, approverId, approverDomain);
 
                         // Authorization check
                         // If this fails, user gets a 401 status code (Unauthorized)
-                        await CheckAuthorization(alias, approvalRequest, approvalSummaryRow, tenantInfo);
+                        await CheckAuthorization(onBehalfUser, signedInUser, approvalRequest, approvalSummaryRow, tenantInfo, xcv, tcv, clientDevice, sessionId, oauth2UserToken);
 
                         // Version check
                         // If this fails, user gets a 400 status code (Invalid data - Stale request)
                         RequestVersionCheck(clientDevice, approvalRequest, approvalSummaryRow, tenantInfo);
 
                         // Add metadata like Edited information and delegation information to the approval request object
-                        AddMetadataToApprovalRequest(tenantAdapter, tenantInfo, tenantId, alias, loggedInAlias, sessionId, tcv, logData, approvalRequest, approvalSummaryRow);
+                        AddMetadataToApprovalRequest(tenantAdapter, tenantInfo, tenantId, onBehalfUser, signedInUser, sessionId, tcv, logData, approvalRequest, approvalSummaryRow);
 
                         // Adding this for logging in ActionAuditLogs in CosmosDB
                         summaryJsonList.Add(approvalSummaryRow.SummaryJson.FromJson<SummaryJson>());
+
+                        // Add the blob urls for the user document as an additional data for tenants to consume.
+                        if (tenantInfo.IsUploadAttachmentsEnabled)
+                            AddUserDocumentsInfo(approvalSummaryRow, tenantId, approvalRequest, logData);
 
                         approvalRequestsToTenant.Add(approvalRequest);
                     }
@@ -258,6 +236,30 @@ public class BulkDocumentActionHelper : DocumentActionHelper
                                     unauthorizedException.InnerException != null
                                         ? unauthorizedException.InnerException.Message
                                         : unauthorizedException.Message
+                                }
+                            }
+                        });
+                    }
+                    catch (InvalidOperationException invalidOperationException)
+                    {
+                        bIsHandledException = true;
+                        bTenantCallSuccess = false;
+                        _logger.LogError(TrackingEvent.DocumentActionFailure, invalidOperationException, logData);
+                        LogMessageProgress(TrackingEvent.ApprovalActionFailed, new FailureData()
+                        { Message = invalidOperationException.Message }, CriticalityLevel.Yes, logData);
+                        approvalResponses.Add(new ApprovalResponse
+                        {
+                            ActionResult = false,
+                            DisplayMessage = invalidOperationException.Message,
+                            ApprovalIdentifier = approvalRequest.ApprovalIdentifier,
+                            DocumentTypeID = approvalRequest.DocumentTypeID,
+                            E2EErrorInformation = new ApprovalResponseErrorInfo
+                            {
+                                ErrorMessages = new List<string>()
+                                {
+                                    invalidOperationException.InnerException != null
+                                        ? invalidOperationException.InnerException.Message
+                                        : invalidOperationException.Message
                                 }
                             }
                         });
@@ -315,9 +317,45 @@ public class BulkDocumentActionHelper : DocumentActionHelper
 
                 if (approvalRequestsToTenant.Count > 0)
                 {
+                    #region Marking soft delete the pending summary records and update Details entities in Batch
+
+                    List<ApprovalSummaryRow> summaryRowsToUpdateInBatch = new List<ApprovalSummaryRow>();
+                    List<ApprovalDetailsEntity> detailsRowsToUpdateInBatch = new List<ApprovalDetailsEntity>();
+                    foreach (var approvalRequest in approvalRequestsToTenant)
+                    {
+                        Tuple<ApprovalSummaryRow, List<ApprovalDetailsEntity>> returnTuple = tenantAdapter.UpdateTransactionalDetails(approvalRequest, true, string.Empty, signedInUser.MailNickname, sessionId, null);
+
+                        if (returnTuple != null)
+                        {
+                            if (returnTuple.Item1 != null)
+                            {
+                                summaryRowsToUpdateInBatch.Add(returnTuple.Item1);
+                            }
+
+                            if (returnTuple.Item2 != null)
+                            {
+                                detailsRowsToUpdateInBatch.AddRange(returnTuple.Item2);
+                            }
+                        }
+                    }
+
+                    if (summaryRowsToUpdateInBatch.Count > 0)
+                    {
+                        await _summaryHelper.UpdateSummaryInBatchAsync(summaryRowsToUpdateInBatch, xcv, sessionId,
+                            approvalReq.Telemetry.Tcv, tenantInfo, approvalReq.Action);
+                    }
+
+                    if (detailsRowsToUpdateInBatch.Count > 0)
+                    {
+                        await _approvalDetailProvider.UpdateDetailsInBatchAsync(detailsRowsToUpdateInBatch,
+                            xcv, sessionId, tcv, tenantInfo, approvalReq.Action);
+                    }
+
+                    #endregion Marking soft delete the pending summary records and update Details entities in Batch
+
                     #region Executing Bulk Action Call
 
-                    actionResponse = await tenantAdapter.ExecuteActionAsync(approvalRequestsToTenant, loggedInAlias,
+                    actionResponse = await tenantAdapter.ExecuteActionAsync(approvalRequestsToTenant, signedInUser.MailNickname,
                         sessionId, clientDevice, xcv, tcv, null);
 
                     #endregion Executing Bulk Action Call
@@ -408,8 +446,8 @@ public class BulkDocumentActionHelper : DocumentActionHelper
                 await PostProcessActionResponses(
                     tenantInfo,
                     tenantId,
-                    alias,
-                    loggedInAlias,
+                    onBehalfUser.MailNickname,
+                    signedInUser.MailNickname,
                     clientDevice,
                     approvalRequests,
                     tcv,
@@ -515,20 +553,20 @@ public class BulkDocumentActionHelper : DocumentActionHelper
             {
                 var summaryData = summaryJsonList.FirstOrDefault(d => d.ApprovalIdentifier.DisplayDocumentNumber.Equals(approvalResponse.ApprovalIdentifier.DisplayDocumentNumber));
 
-                    var actionAuditLogInfo = new ActionAuditLogInfo
-                    {
-                        DisplayDocumentNumber = approvalResponse?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
-                        ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
-                        ActionStatus = Constants.SuccessStatus,
-                        ActionTaken = approvalReq?.Action,
-                        Approver = alias,
-                        ImpersonatedUser = loggedInAlias,
-                        ClientType = clientDevice,
-                        TenantId = tenantInfo?.TenantId.ToString(),
-                        UnitValue = summaryData?.UnitValue ?? string.Empty,
-                        UnitOfMeasure = summaryData?.UnitOfMeasure ?? string.Empty,
-                        Id = Guid.NewGuid()
-                    };
+                var actionAuditLogInfo = new ActionAuditLogInfo
+                {
+                    DisplayDocumentNumber = approvalResponse?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
+                    ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
+                    ActionStatus = Constants.SuccessStatus,
+                    ActionTaken = approvalReq?.Action,
+                    Approver = alias,
+                    ImpersonatedUser = loggedInAlias,
+                    ClientType = clientDevice,
+                    TenantId = tenantInfo?.TenantId.ToString(),
+                    UnitValue = summaryData?.UnitValue ?? string.Empty,
+                    UnitOfMeasure = summaryData?.UnitOfMeasure ?? string.Empty,
+                    Id = Guid.NewGuid()
+                };
 
                 actionAuditLogs.Add(actionAuditLogInfo);
 
@@ -577,35 +615,36 @@ public class BulkDocumentActionHelper : DocumentActionHelper
                     var actionDateTime = Convert.ToDateTime(approvalRequests[j].ActionDetails[approvalRequests[j].ActionDetails.Keys.FirstOrDefault(x => x.ToLowerInvariant() == Constants.ActionDateKey.ToLowerInvariant())]);
                     var summaryData = summaryJsonList.FirstOrDefault(d => d.ApprovalIdentifier.DisplayDocumentNumber.Equals(approvalResponses[i].ApprovalIdentifier.DisplayDocumentNumber));
 
-                        if (!approvalResponses[i].ActionResult)
+                    if (!approvalResponses[i].ActionResult)
+                    {
+                        if (actionObj.Property("ErrorMessage") == null)
                         {
-                            if (actionObj.Property("ErrorMessage") == null)
-                            {
-                                // DisplayMessage will always contain value
-                                actionObj.Add("ErrorMessage", "Tracking ID:" + tcv + " :: " + approvalResponses[i].DisplayMessage + ".");
-                            }
-                            var actionAuditLogInfo = new ActionAuditLogInfo
-                            {
-                                DisplayDocumentNumber = approvalResponses[i]?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
-                                ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
-                                ActionStatus = Constants.FailedStatus,
-                                ActionTaken = approvalRequests[j].Action,
-                                Approver = alias,
-                                ImpersonatedUser = loggedInAlias,
-                                ClientType = clientDevice,
-                                TenantId = tenantInfo?.TenantId.ToString(),
-                                UnitValue = summaryData?.UnitValue ?? string.Empty,
-                                UnitOfMeasure = summaryData?.UnitOfMeasure ?? string.Empty,
-                                ErrorMessage = approvalResponses[i]?.E2EErrorInformation?.ErrorMessages?.ToJson(),
-                                Id = Guid.NewGuid()
-                            };
-                            actionAuditLogs.Add(actionAuditLogInfo);
+                            // DisplayMessage will always contain value
+                            actionObj.Add("ErrorMessage", "Tracking ID:" + tcv + " :: " + approvalResponses[i].DisplayMessage + ".");
+                        }
+                        var actionAuditLogInfo = new ActionAuditLogInfo
+                        {
+                            DisplayDocumentNumber = approvalResponses[i]?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
+                            ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
+                            ActionStatus = Constants.FailedStatus,
+                            ActionTaken = approvalRequests[j].Action,
+                            Approver = alias,
+                            ImpersonatedUser = loggedInAlias,
+                            ClientType = clientDevice,
+                            TenantId = tenantInfo?.TenantId.ToString(),
+                            UnitValue = summaryData?.UnitValue ?? string.Empty,
+                            UnitOfMeasure = summaryData?.UnitOfMeasure ?? string.Empty,
+                            ErrorMessage = approvalResponses[i]?.E2EErrorInformation?.ErrorMessages?.ToJson(),
+                            Id = Guid.NewGuid()
+                        };
+                        actionAuditLogs.Add(actionAuditLogInfo);
 
                         _logger.LogError(TrackingEvent.DocumentActionFailure, new Exception(approvalResponses[i]?.E2EErrorInformation?.ErrorMessages?.ToJson()), logData);
 
                         // bTenantCallSuccess is false whenever there is an exception either from the tenant (legacy wcf) or Approvals code
                         // The below code updates the all the transactional details (which includes error messages) in the Approval Summary/ApprovalDetails table
-                        if (!bTenantCallSuccess)
+                        List<string> duplicateNameErrorMsgs = new List<string>() { Constants.LobPendingMessage, Constants.SubmittedForBackgroundMessage, Constants.OutOfSyncMessage };
+                        if (!bTenantCallSuccess && !duplicateNameErrorMsgs.Contains(approvalResponses[i].DisplayMessage))
                         {
                             Tuple<ApprovalSummaryRow, List<ApprovalDetailsEntity>> returnTuple = tenantAdapter.UpdateTransactionalDetails(approvalRequests[j], false, actionObj["ErrorMessage"]?.ToString(), loggedInAlias, clientDevice, null);
 
@@ -616,40 +655,40 @@ public class BulkDocumentActionHelper : DocumentActionHelper
                                     summaryRowsToUpdateInBatch.Add(returnTuple.Item1);
                                 }
 
-                                    if (returnTuple.Item2 != null)
-                                    {
-                                        detailsRowsToUpdateInBatch.AddRange(returnTuple.Item2);
-                                    }
+                                if (returnTuple.Item2 != null)
+                                {
+                                    detailsRowsToUpdateInBatch.AddRange(returnTuple.Item2);
                                 }
                             }
                         }
-                        else
-                        {
-                            var actionAuditLogInfo = new ActionAuditLogInfo
-                            {
-                                DisplayDocumentNumber = approvalResponses[i]?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
-                                ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
-                                ActionStatus = Constants.SuccessStatus,
-                                ActionTaken = approvalRequests[j]?.Action,
-                                Approver = alias,
-                                ImpersonatedUser = loggedInAlias,
-                                ClientType = clientDevice,
-                                TenantId = tenantInfo?.TenantId.ToString(),
-                                UnitValue = summaryData?.UnitValue ?? string.Empty,
-                                UnitOfMeasure = summaryData?.UnitOfMeasure ?? string.Empty,
-                                Id = Guid.NewGuid()
-                            };
-                            actionAuditLogs.Add(actionAuditLogInfo);
-                            _logger.LogInformation(TrackingEvent.DocumentActionSuccess, logData);
-                        }
                     }
-                    userActionsResponseArray[i] = actionObj;
+                    else
+                    {
+                        var actionAuditLogInfo = new ActionAuditLogInfo
+                        {
+                            DisplayDocumentNumber = approvalResponses[i]?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
+                            ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
+                            ActionStatus = Constants.SuccessStatus,
+                            ActionTaken = approvalRequests[j]?.Action,
+                            Approver = alias,
+                            ImpersonatedUser = loggedInAlias,
+                            ClientType = clientDevice,
+                            TenantId = tenantInfo?.TenantId.ToString(),
+                            UnitValue = summaryData?.UnitValue ?? string.Empty,
+                            UnitOfMeasure = summaryData?.UnitOfMeasure ?? string.Empty,
+                            Id = Guid.NewGuid()
+                        };
+                        actionAuditLogs.Add(actionAuditLogInfo);
+                        _logger.LogInformation(TrackingEvent.DocumentActionSuccess, logData);
+                    }
                 }
-                if (summaryRowsToUpdateInBatch.Count > 0)
-                {
-                    await _approvalSummaryProvider.UpdateSummaryInBatchAsync(summaryRowsToUpdateInBatch, tcv, sessionId,
-                        tcv, tenantInfo, approvalRequests[0].Action);
-                }
+                userActionsResponseArray[i] = actionObj;
+            }
+            if (summaryRowsToUpdateInBatch.Count > 0)
+            {
+                await _summaryHelper.UpdateSummaryInBatchAsync(summaryRowsToUpdateInBatch, tcv, sessionId,
+                    tcv, tenantInfo, approvalRequests[0].Action);
+            }
 
             if (detailsRowsToUpdateInBatch.Count > 0)
             {

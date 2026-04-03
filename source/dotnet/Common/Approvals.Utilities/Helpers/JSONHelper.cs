@@ -303,4 +303,60 @@ public static class JSONHelper
         }
         return format;
     }
+
+    /// <summary>
+    /// Cleans a JSON string by removing null/whitespace properties and trimming strings.
+    /// </summary>
+    /// <param name="jsonString">The JSON string to clean.</param>
+    /// <returns>Cleaned JSON string</returns>
+    public static string CleanJsonString(string jsonString)
+    {
+        if (string.IsNullOrWhiteSpace(jsonString))
+            return jsonString;
+
+        var token = JToken.Parse(jsonString);
+
+        void CleanToken(JToken t)
+        {
+            if (t.Type == JTokenType.Object)
+            {
+                var propsToRemove = new List<JProperty>();
+                foreach (var prop in t.Children<JProperty>())
+                {
+                    if (prop.Value.Type == JTokenType.Null ||
+                        (prop.Value.Type == JTokenType.String && string.IsNullOrWhiteSpace(prop.Value.ToString())))
+                    {
+                        propsToRemove.Add(prop);
+                    }
+                    else
+                    {
+                        CleanToken(prop.Value);
+                    }
+                }
+                foreach (var prop in propsToRemove)
+                {
+                    prop.Remove();
+                }
+            }
+            else if (t.Type == JTokenType.Array)
+            {
+                foreach (var item in t.Children())
+                {
+                    CleanToken(item);
+                }
+            }
+            else if (t.Type == JTokenType.String)
+            {
+                var str = t.ToString();
+                var trimmed = str.Trim();
+                if (str != trimmed)
+                {
+                    ((JValue)t).Value = trimmed;
+                }
+            }
+        }
+
+        CleanToken(token);
+        return token.ToString(Newtonsoft.Json.Formatting.None);
+    }
 }

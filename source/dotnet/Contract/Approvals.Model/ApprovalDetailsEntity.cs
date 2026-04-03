@@ -7,10 +7,12 @@ public class ApprovalDetailsEntity : BaseTableEntity
 {
     public int TenantID { get; set; }
 
-//[EncryptProperty]
-public string JSONData { get; set; }
+    //[EncryptProperty]
+    public string JSONData { get; set; }
 
-public string BlobPointer { get; set; }
+    public string BlobPointer { get; set; }
 
-public string Version { get; set; }
+    public string Version { get; set; }
+
+    public string ApproverDomain { get; set; }
 }

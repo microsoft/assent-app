@@ -15,7 +15,7 @@ using Microsoft.Extensions.Configuration;
 /// <summary>
 /// The Payload Delivery class
 /// </summary>
-public class PayloadDelivery : IPayloadDelivery
+public class PayloadDelivery<T> : IPayloadDelivery<T> where T : class
 {
     /// <summary>
     /// The blob storage helper
@@ -46,35 +46,71 @@ public class PayloadDelivery : IPayloadDelivery
     }
 
     /// <summary>
-    /// Sends the Approval Request Expression to Service Bus
+    /// Sends the payload to Service Bus
     /// </summary>
-    /// <param name="approvalRequestExpression"></param>
-    /// <param name="payloadId"></param>
+    /// <param name="payload"></param>
+    /// <param name="applicationId"></param>
+    /// <param name="messageId"></param>
+    /// <param name="correlationId"></param>
     /// <returns></returns>
-    public async Task<bool> SendPayload(ApprovalRequestExpression approvalRequestExpression, Guid payloadId)
+    public async Task<bool> SendPayload(T payload, string applicationId, string messageId, string correlationId)
     {
-        var approvalRequestVersion = _config[ConfigurationKey.ApprovalRequestVersion.ToString()].ToString();
-        await UploadMessageToBlob(approvalRequestExpression, payloadId.ToString());
-        return await _serviceBusHelper.SendMessage(approvalRequestExpression, payloadId.ToString(), approvalRequestVersion);
+        await UploadMessageToBlob(payload, messageId, correlationId);
+        // Use generic method if available, otherwise cast to ApprovalRequestExpression
+        if (payload is ApprovalRequestExpression arx)
+        {
+            var approvalRequestVersion = _config["ApprovalRequestVersion"];
+            return await _serviceBusHelper.SendMessage(arx, messageId, approvalRequestVersion);
+        }
+        else
+        {
+            return await _serviceBusHelper.AddFilterAndSendMessage(payload, applicationId, messageId, correlationId, null, null);
+        }
     }
 
     /// <summary>
-    /// Uploads the Approval Request Expression to Blob, so the background process can pick it up for further processing
+    /// Uploads the payload to Blob, so the background process can pick it up for further processing
     /// </summary>
-    /// <param name="approvalRequestExpression"></param>
+    /// <param name="payload"></param>
     /// <param name="messageId"></param>
+    /// <param name="correlationId"></param>
     /// <returns></returns>
-    public async Task UploadMessageToBlob(ApprovalRequestExpression approvalRequestExpression, string messageId)
+    public async Task UploadMessageToBlob(T payload, string messageId, string correlationId)
     {
-        if (approvalRequestExpression == null)
-            throw new ArgumentNullException("approvalRequestExpression", "Approval Request Expression cannot be null");
+        if (payload == null)
+            throw new ArgumentNullException(nameof(payload), "Payload cannot be null");
 
-        string messageBody = string.Format("{0}|{1}|{2}", approvalRequestExpression.DocumentTypeId, approvalRequestExpression.ApprovalIdentifier.DisplayDocumentNumber, approvalRequestExpression.Operation.ToString());
+        string messageBody = messageId;
+        // If T is ApprovalRequestExpression, use its properties for messageBody
+        if (payload is ApprovalRequestExpression arx)
+        {
+            messageBody = string.Format("{0}|{1}|{2}|{3}",
+                arx.DocumentTypeId,
+                arx.ApprovalIdentifier?.DisplayDocumentNumber,
+                messageId,
+                arx.Operation.ToString());
+        }
 
-        byte[] messageToUpload = ConvertToByteArray(approvalRequestExpression);
+        byte[] messageToUpload = ConvertToByteArray(payload);
 
         await _blobStorageHelper.UploadByteArray(messageToUpload, Constants.PrimaryMessageContainer, messageBody);
         await _blobStorageHelper.UploadByteArray(messageToUpload, Constants.AuditAgentMessageContainer, messageBody);
+    }
+
+    /// <summary>
+    /// Uploads the metadata to Blob
+    /// </summary>
+    /// <param name="payload"></param>
+    /// <param name="blobName"></param>
+    /// <param name="containerName"></param>
+    /// <returns></returns>
+    /// <exception cref="ArgumentNullException"></exception>
+    public async Task UploadMetaDataToBlob(string payload, string blobName, string containerName)
+    {
+        if (payload == null)
+            throw new ArgumentNullException(nameof(payload), "Payload cannot be null");
+
+        await _blobStorageHelper.UploadText(payload, containerName, blobName);
     }
 
     /// <summary>

@@ -38,8 +38,8 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
         QueryDefinition query;
         List<string[]> parametersToPass = new List<string[]>();
 
-        string documentNumber = parameters.ContainsKey("@docNumber") ? parameters["@docNumber"] : null;
-        string fiscalYear = parameters.ContainsKey("@fiscalYear") ? parameters["@fiscalYear"] : null;
+        string documentNumber = parameters.ContainsKey("@docNumber") ? parameters["@docNumber"]:null;
+        string fiscalYear = parameters.ContainsKey("@fiscalYear")?parameters["@fiscalYear"]:null;
         string payloadId = parameters.ContainsKey("@activityId") ? parameters["@activityId"] : null;
         string docTypeId = parameters.ContainsKey("@docTypeId") ? parameters["@docTypeId"] : null;
         string alias = parameters.ContainsKey("@alias") ? parameters["@alias"] : null;
@@ -81,7 +81,7 @@ public class DocumentRetrieverAudit : IDocumentRetrieverAudit
         }
         if (!string.IsNullOrEmpty(alias))
         {
-            queryText += " AND f.ApprovalRequest.Approvers[x].Alias = @alias";
+            queryText += " AND ARRAY_CONTAINS(f.ApprovalRequest.Approvers, { Alias: @alias }, true)";
             parametersToPass.Add(new string[] { "@alias", alias });
         }
 

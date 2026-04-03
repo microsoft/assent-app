@@ -39,6 +39,12 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
         /// For Complete operation.
         /// </summary>
         [EnumMember]
-        Complete = 5
+        Complete = 5,
+
+        /// <summary>
+        /// For skip operation
+        /// </summary>
+        [EnumMember]
+        Skip = 6
     }
 }

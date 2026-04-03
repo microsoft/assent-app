@@ -6,12 +6,12 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
-using Microsoft.CFS.Approvals.DevTools.Model.Models;
+using Microsoft.CFS.Approvals.Model;
 using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
 using Microsoft.CFS.Approvals.SupportService.API.Filters;
-using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
 using Microsoft.CFS.Approvals.Utilities.Interface;
 using Newtonsoft.Json.Linq;
+using System.Net.Mail;
 
 /// <summary>
 /// The User Delegation Controller
@@ -106,20 +106,27 @@ public class UserDelegationController : ControllerBase
             {
                 if (!_userDelegationHelper.IsDelegationExist(data["managerAlias"]?.ToString(), data["delegatedTo"]?.ToString(), 0))
                 {
-                    var delegation = new UserDelegationEntity
+                    var manager = await _nameResolutionHelper.GetUser(data["managerAlias"]?.ToString().ToLower());
+                    var delegated = await _nameResolutionHelper.GetUser(data["delegatedTo"]?.ToString().ToLower());
+
+                    var delegation = new UserDelegationSetting
                     {
-                        ManagerAlias = data["managerAlias"]?.ToString().ToLower(),
-                        DelegatedToAlias = data["delegatedTo"]?.ToString().ToLower(),
+                        ManagerAlias = new MailAddress(data["managerAlias"]?.ToString().ToLower()).User,
+                        DelegatedToAlias = new MailAddress(data["delegatedTo"]?.ToString().ToLower()).User,
                         DateFrom = DateTime.Parse(data["startDate"]?.ToString()).ToUniversalTime(),
                         DateTo = DateTime.Parse(data["endDate"]?.ToString()).ToUniversalTime(),
                         AccessType = data["delegationAccess"].ToString() == "ReadOnly" ? 1 : 0,
                         IsHidden = true,
                         TenantId = 0,
                         PartitionKey = data["managerAlias"]?.ToString().ToLower(),
-                        RowKey = Guid.NewGuid().ToString()
+                        RowKey = Guid.NewGuid().ToString(),
+                        DelegateId = delegated.Id,
+                        DelegateUpn = delegated.UserPrincipalName,
+                        DelegatorId = manager.Id,
+                        DelegatorUpn = manager.UserPrincipalName
                     };
 
-                    if (await _nameResolutionHelper.IsValidUser(delegation.ManagerAlias) && await _nameResolutionHelper.IsValidUser(delegation.DelegatedToAlias))
+                    if ((await _nameResolutionHelper.IsValidUser(manager.Id)).Item1 && (await _nameResolutionHelper.IsValidUser(delegated.Id)).Item1)
                     {
                         try
                         {

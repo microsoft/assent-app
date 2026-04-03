@@ -17,8 +17,9 @@ public interface IApprovalDetailProvider
     /// <param name="tenantId"></param>
     /// <param name="documentNumber"></param>
     /// <param name="operationName"></param>
+    /// <param name="docTypeId"></param>
     /// <returns></returns>
-    Task<ApprovalDetailsEntity> GetApprovalDetailsByOperation(int tenantId, string documentNumber, string operationName);
+    Task<ApprovalDetailsEntity> GetApprovalDetailsByOperation(int tenantId, string documentNumber, string operationName, string docTypeId);
 
     /// <summary>
     /// Get Approvals Details
@@ -26,8 +27,9 @@ public interface IApprovalDetailProvider
     /// <param name="tenantId"></param>
     /// <param name="documentNumber"></param>
     /// <param name="operationName"></param>
+    /// <param name="docTypeId"></param>
     /// <returns></returns>
-    ApprovalDetailsEntity GetApprovalsDetails(int tenantId, string documentNumber, string operationName);
+    ApprovalDetailsEntity GetApprovalsDetails(int tenantId, string documentNumber, string operationName, string docTypeId);
 
     /// <summary>
     /// Get all approvals details
@@ -64,7 +66,7 @@ public interface IApprovalDetailProvider
     /// <param name="tenantInfo"></param>
     /// <param name="telemetry"></param>
     /// <returns></returns>
-    bool AddTransactionalAndHistoricalDataInApprovalsDetails(ApprovalDetailsEntity detailsRow, ApprovalTenantInfo tenantInfo, ApprovalsTelemetry telemetry);
+    Task<bool> AddTransactionalAndHistoricalDataInApprovalsDetails(ApprovalDetailsEntity detailsRow, ApprovalTenantInfo tenantInfo, ApprovalsTelemetry telemetry);
 
     /// <summary>
     /// Save edited data in approval details
@@ -72,7 +74,7 @@ public interface IApprovalDetailProvider
     /// <param name="detailsRow"></param>
     /// <param name="telemetry"></param>
     /// <returns></returns>
-    bool SaveEditedDataInApprovalDetails(ApprovalDetailsEntity detailsRow, ApprovalsTelemetry telemetry);
+    Task<bool> SaveEditedDataInApprovalDetails(ApprovalDetailsEntity detailsRow, ApprovalsTelemetry telemetry);
 
     /// <summary>
     /// Remove approvals details

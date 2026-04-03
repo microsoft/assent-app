@@ -16,13 +16,14 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
 using Microsoft.CFS.Approvals.Extensions;
+using Microsoft.CFS.Approvals.LogManager.Interface;
 using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.Model;
-using Microsoft.CFS.Approvals.Utilities;
 using Microsoft.CFS.Approvals.Utilities.Helpers;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
@@ -69,6 +70,21 @@ public class ClientActionHelper : IClientActionHelper
     /// </summary>
     protected readonly IBlobStorageHelper _blobStorageHelper = null;
 
+    /// <summary>
+    /// OpenTelemetry audit logger
+    /// </summary>
+    private readonly IAuditLogger _auditLogger;
+
+    /// <summary>
+    /// The adaptive card response helper
+    /// </summary>
+    private readonly IAdaptiveCardResponseHelper _adaptiveCardResponseHelper;
+
+    /// <summary>
+    /// The read details helper
+    /// </summary>
+    private readonly IReadDetailsHelper _readDetailsHelper;
+
     #endregion Variables
 
     #region Constructor
@@ -83,6 +99,8 @@ public class ClientActionHelper : IClientActionHelper
     /// <param name="documentApprovalStatusHelper"></param>
     /// <param name="detailsHelper"></param>
     /// <param name="blobStorageHelper"></param>
+    /// <param name="auditLogger"></param>
+    /// <param name="adaptiveCardResponseHelper"></param>
     public ClientActionHelper(
         IConfiguration config,
         ILogProvider logger,
@@ -90,7 +108,10 @@ public class ClientActionHelper : IClientActionHelper
         Func<string, IDocumentActionHelper> documentActionHelperDel,
         IDocumentApprovalStatusHelper documentApprovalStatusHelper,
         IDetailsHelper detailsHelper,
-        IBlobStorageHelper blobStorageHelper)
+        IBlobStorageHelper blobStorageHelper,
+        IAuditLogger auditLogger,
+        IAdaptiveCardResponseHelper adaptiveCardResponseHelper,
+        IReadDetailsHelper readDetailsHelper)
     {
         _config = config;
         _logger = logger;
@@ -99,6 +120,9 @@ public class ClientActionHelper : IClientActionHelper
         _documentApprovalStatusHelper = documentApprovalStatusHelper;
         _detailsHelper = detailsHelper;
         _blobStorageHelper = blobStorageHelper;
+        _auditLogger = auditLogger;
+        _adaptiveCardResponseHelper = adaptiveCardResponseHelper;
+        _readDetailsHelper = readDetailsHelper;
     }
 
     #endregion Constructor
@@ -111,20 +135,21 @@ public class ClientActionHelper : IClientActionHelper
     /// <param name="tenantId">Tenant ID</param>
     /// <param name="request">Http request</param>
     /// <param name="clientDevice">Client Device</param>
-    /// <param name="userAlias">User Alias</param>
-    /// <param name="loggedInUser">Logged-in user Alias</param>
+    /// <param name="onBehalfUser">on-behalf user entity</param>
+    /// <param name="signedInUser">signed-in user entity</param>
     /// <param name="oauth2UserToken">OAuth 2.0 Token</param>
     /// <param name="submissionType">Action submission type</param>
     /// <param name="xcv">X-Correlation ID</param>
     /// <param name="tcv">T-Correlation ID</param>
     /// <param name="sessionId">Session ID</param>
+    /// <param name="auditLogger"></param>
     /// <returns>Http Response</returns>
     public async Task<IActionResult> TakeActionFromNonWebClient(
             int tenantId,
             HttpRequest request,
             string clientDevice,
-            string userAlias,
-            string loggedInUser,
+            User onBehalfUser,
+            User signedInUser,
             string oauth2UserToken,
             ActionSubmissionType submissionType,
             string xcv = "",
@@ -138,9 +163,9 @@ public class ClientActionHelper : IClientActionHelper
             { LogDataKey.StartDateTime, DateTime.UtcNow },
             { LogDataKey.ReceivedTcv, tcv },
             { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, loggedInUser },
+            { LogDataKey.UserRoleName, signedInUser.UserPrincipalName },
             { LogDataKey.TenantId, tenantId },
-            { LogDataKey.UserAlias, userAlias },
+            { LogDataKey.UserAlias, onBehalfUser.MailNickname },
             { LogDataKey.ClientDevice, clientDevice },
             { LogDataKey.DisplayDocumentNumber, string.Empty},
             { LogDataKey.DocumentNumber, string.Empty},
@@ -157,8 +182,11 @@ public class ClientActionHelper : IClientActionHelper
 
             Dictionary<string, string> templateList = new Dictionary<string, string>();
             Task<Dictionary<string, string>> task = GetBlobTemplates();
+            _auditLogger.LogAudit("TakeActionFromNonWebClient", AuditOperationType.Read, signedInUser.MailNickname, "CoreServices", "BlobStorage", "NA", AuditOperationResult.Success, $"ClientActionHelper.cs - TakeActionFromNonWebClient - GetBlobTemplates, tenantId:{tenantId}, sessionId:{sessionId}, tcv:{tcv}, xcv:{xcv}");
 
             #endregion Get templates from Blob
+
+            bool isFinanceAssistant = false;
 
             try
             {
@@ -181,11 +209,12 @@ public class ClientActionHelper : IClientActionHelper
                 logData.Add(LogDataKey.Xcv, xcv);
                 logData.Add(LogDataKey.Tcv, tcv);
 
-                if (string.IsNullOrEmpty(loggedInUser))
+                if (string.IsNullOrEmpty(signedInUser.MailNickname))
                 {
                     _logger.LogError(TrackingEvent.WebApiOutlookIdentityActionFail, new UnauthorizedAccessException(Constants.InValidSenderClaim), logData);
                     response.StatusCode = HttpStatusCode.Unauthorized;
                     response.Headers.Add(Constants.CardActionStatus, _config[ConfigurationKey.UnAuthorizedException.ToString()]);
+                    _auditLogger.LogAudit("TakeActionFromNonWebClient", AuditOperationType.Read, signedInUser.MailNickname, "CoreServices", "NA", "NA", AuditOperationResult.Failure, $"ClientActionHelper.cs - TakeActionFromNonWebClient, tenantId:{tenantId}, sessionId:{sessionId}, tcv:{tcv}, xcv:{xcv}, errorMessage: {Constants.InValidSenderClaim}, logData: {logData}");
                     return new HttpResponseMessageResult(response);
                 }
 
@@ -199,14 +228,39 @@ public class ClientActionHelper : IClientActionHelper
                 {
                     _logger.LogError(TrackingEvent.WebApiOutlookIdentityActionFail, new InvalidDataException(Constants.UserActionsStringIsNull), logData);
                     response.Headers.Add(Constants.CardActionStatus, Constants.OutlookGenericErrorMessage);
+                    _auditLogger.LogAudit("TakeActionFromNonWebClient", AuditOperationType.Read, signedInUser.MailNickname, "CoreServices", "NA", "NA", AuditOperationResult.Failure, $"ClientActionHelper.cs - TakeActionFromNonWebClient, tenantId:{tenantId}, sessionId:{sessionId}, tcv:{tcv}, xcv:{xcv}, errorMessage: {Constants.UserActionsStringIsNull}, logData: {logData}");
                     return new HttpResponseMessageResult(response);
                 }
 
                 // For time being the logic can use the content being posted by the user instead of querying the data from Tenant Info Table in Approvals
                 JObject userActionObj = JObject.Parse(userActionsString);
 
+                #region Unwrap Data Property (M365 Copilot/Finance Assistant Compatibility)
+
+                // M365 Copilot wraps Action.Submit data inside a "data" property, while Teams flattens it at root level.
+                // Unwrap the "data" property if ActionBody is not at root level but exists inside "data".
+                // Log client device as "Finance Assistant" for telemetry but use Teams logic for processing.
+                if (userActionObj[Constants.ActionBody] == null && userActionObj["data"] != null)
+                {
+                    JToken dataToken = userActionObj["data"];
+                    if (dataToken is JObject dataObject && dataObject[Constants.ActionBody] != null)
+                    {
+                        // Merge the contents of "data" into the root object
+                        foreach (JProperty property in dataObject.Properties().ToList())
+                        {
+                            userActionObj[property.Name] = property.Value;
+                        }
+                        isFinanceAssistant = true;
+                        logData[LogDataKey.ClientDevice] = Constants.FinanceAssistantClient;
+                        logData[LogDataKey.EventName] = "ActionPayloadUnwrapped";
+                        _logger.LogInformation(TrackingEvent.WebApiOutlookIdentityActionSuccess, logData);
+                    }
+                }
+
+                #endregion Unwrap Data Property (M365 Copilot/Finance Assistant Compatibility)
+
                 // Modify User Action String to add ActionByAlias
-                userActionObj = ModifyUserAction(userActionObj, loggedInUser, clientDevice);
+                userActionObj = ModifyUserAction(userActionObj, signedInUser.MailNickname, clientDevice);
 
                 // Extract the required details from ActionBody
                 var actionRequestObj = userActionObj[Constants.ActionBody];
@@ -223,6 +277,7 @@ public class ClientActionHelper : IClientActionHelper
                 string userImageTemp = string.Empty;
                 var submitterAlias = userActionObj["SubmitterAlias"].ToString();
                 string userImage = await _detailsHelper.GetUserImage(submitterAlias, sessionId, clientDevice, logData);
+                _auditLogger.LogAudit("TakeActionFromNonWebClient", AuditOperationType.Read, signedInUser.MailNickname, "CoreServices", "BlobStorage", "NA", AuditOperationResult.Success, $"ClientActionHelper.cs - TakeActionFromNonWebClient - GetUserImage, tenantId:{tenantId}, sessionId:{sessionId}, tcv:{tcv}, xcv:{xcv}");
 
                 userActionObj[Constants.UserImage] = userImage;
 
@@ -233,10 +288,23 @@ public class ClientActionHelper : IClientActionHelper
                 }
 
                 response.StatusCode = HttpStatusCode.OK;
+                string displayDocNumber = userActionObj[Constants.DisplayDocumentNumber]?.ToString() ?? string.Empty;
+
                 try
                 {
                     var DocumentActionHelper = _documentActionHelperDel(submissionType.ToString());
-                    var responseObject = await DocumentActionHelper.TakeAction(tenantId, actionRequestObj.ToString(), clientDevice, userAlias, loggedInUser, oauth2UserToken, xcv, tcv, sessionId);
+                    var responseObject = await DocumentActionHelper.TakeAction(tenantId, actionRequestObj.ToString(), clientDevice, onBehalfUser, signedInUser, oauth2UserToken, xcv, tcv, sessionId);
+
+                    #region Finance Assistant PluginResponse
+
+                    if (isFinanceAssistant)
+                    {
+                        return CreateFinanceAssistantResponse(
+                            $"Successfully completed '{actionName}' on request {displayDocNumber}.",
+                            isError: false, logData, null, signedInUser, tenantId, sessionId, tcv, xcv);
+                    }
+
+                    #endregion Finance Assistant PluginResponse
 
                     string responseContent = string.Empty;
                     response.Headers.Add(Constants.CardActionStatus, Constants.ActionSuccessfulMessage);
@@ -261,6 +329,18 @@ public class ClientActionHelper : IClientActionHelper
                         var messages = message.Split(str, StringSplitOptions.None);
                         message = JObject.Parse("{ \"ApprovalResponseDetails\"" + messages[1])["ApprovalResponseDetails"]["False"]?[0]?["Value"]?.ToString();
                     }
+
+                    #region Finance Assistant Error PluginResponse
+
+                    if (isFinanceAssistant)
+                    {
+                        return CreateFinanceAssistantResponse(
+                            $"We were unable to complete '{actionName}' on request {displayDocNumber}. Please try again or open the request in MSApprovals.",
+                            isError: true, logData, new Exception(message), signedInUser, tenantId, sessionId, tcv, xcv);
+                    }
+
+                    #endregion Finance Assistant Error PluginResponse
+
                     response.Headers.Add(Constants.CardUpdateInBody, "true");
 
                     JObject messageObject = new JObject(new JProperty(Constants.MessageTitle, message));
@@ -271,6 +351,7 @@ public class ClientActionHelper : IClientActionHelper
                     logData[LogDataKey.ResponseContent] = responseContent;
                     logData[LogDataKey.ResponseStatusCode] = response.StatusCode;
                     _logger.LogError(TrackingEvent.WebApiOutlookIdentityActionFail, new Exception(message), logData);
+                    _auditLogger.LogAudit("TakeActionFromNonWebClient", AuditOperationType.Read, signedInUser.MailNickname, "CoreServices", "NA", "NA", AuditOperationResult.Failure, $"ClientActionHelper.cs - TakeActionFromNonWebClient, tenantId:{tenantId}, sessionId:{sessionId}, tcv:{tcv}, xcv:{xcv}, errorMessage: {message}, logData: {logData}");
 
                     return new HttpResponseMessageResult(response);
                 }
@@ -279,6 +360,19 @@ public class ClientActionHelper : IClientActionHelper
             {
                 response.StatusCode = HttpStatusCode.BadRequest;
                 string errorMessage = JSONHelper.ExtractMessageFromJSON(exception.Message);
+
+                #region Finance Assistant Outer Error PluginResponse
+
+                if (isFinanceAssistant)
+                {
+                    errorMessage = string.IsNullOrEmpty(errorMessage) ? Constants.OutlookGenericErrorMessage : errorMessage;
+                    return CreateFinanceAssistantResponse(
+                        "An error occurred while processing your request. Please try again or open the request in MSApprovals.",
+                        isError: true, logData, exception, signedInUser, tenantId, sessionId, tcv, xcv);
+                }
+
+                #endregion Finance Assistant Outer Error PluginResponse
+
                 switch (clientDevice)
                 {
                     case Constants.OutlookClient:
@@ -297,11 +391,48 @@ public class ClientActionHelper : IClientActionHelper
                 }
                 logData[LogDataKey.ResponseStatusCode] = response.StatusCode;
                 _logger.LogError(TrackingEvent.WebApiOutlookIdentityActionFail, exception, logData);
+                _auditLogger.LogAudit("TakeActionFromNonWebClient", AuditOperationType.Read, signedInUser.MailNickname, "CoreServices", "NA", "NA", AuditOperationResult.Failure, $"ClientActionHelper.cs - TakeActionFromNonWebClient, tenantId:{tenantId}, sessionId:{sessionId}, tcv:{tcv}, xcv:{xcv}, errorMessage: {errorMessage}");
 
                 response.Headers.Add(Constants.CardActionStatus, string.IsNullOrEmpty(errorMessage) ? Constants.OutlookGenericErrorMessage : errorMessage);
                 return new HttpResponseMessageResult(response);
             }
         }
+    }
+
+    /// <summary>
+    /// Creates a Finance Assistant (M365 Copilot) response wrapped in a "data" property with logging and audit.
+    /// </summary>
+    private IActionResult CreateFinanceAssistantResponse(
+        string message,
+        bool isError,
+        Dictionary<LogDataKey, object> logData,
+        Exception exception,
+        User signedInUser,
+        int tenantId,
+        string sessionId,
+        string tcv,
+        string xcv)
+    {
+        var pluginResponse = new PluginResponse
+        {
+            // Note: FA currently can only render adaptive cards as a response to an adaptive card action
+            Message = _adaptiveCardResponseHelper.CreateTextCard(message),
+            MessageType = CopilotMessageType.AdaptiveCard
+        };
+
+        var wrappedResponse = new { data = pluginResponse };
+        logData[LogDataKey.ResponseContent] = wrappedResponse.ToJson();
+
+        if (isError)
+        {
+            logData[LogDataKey.ResponseStatusCode] = HttpStatusCode.BadRequest;
+            _logger.LogError(TrackingEvent.WebApiOutlookIdentityActionFail, exception, logData);
+            _auditLogger.LogAudit("TakeActionFromNonWebClient", AuditOperationType.Read, signedInUser.MailNickname, "CoreServices", "NA", "NA", AuditOperationResult.Failure, $"ClientActionHelper.cs - TakeActionFromNonWebClient, tenantId:{tenantId}, sessionId:{sessionId}, tcv:{tcv}, xcv:{xcv}, errorMessage: {message}");
+            return new BadRequestObjectResult(wrappedResponse);
+        }
+
+        _logger.LogInformation(TrackingEvent.WebApiOutlookIdentityActionSuccess, logData);
+        return new OkObjectResult(wrappedResponse);
     }
 
     private async Task<Dictionary<string, string>> GetBlobTemplates()
@@ -323,25 +454,27 @@ public class ClientActionHelper : IClientActionHelper
     /// <summary>
     /// Formulates a proper response card OR error response after checking the Status of a particular request
     /// </summary>
+    /// <param name="onBehalfUser">on-Behalf User</param>
+    /// <param name="signedInUser">Logged-in user </param>
+    /// <param name="oauth2UserToken"></param>
     /// <param name="tenantId">Tenant ID</param>
     /// <param name="request">Http request</param>
     /// <param name="clientDevice">Client Device</param>
-    /// <param name="userAlias">User Alias</param>
-    /// <param name="loggedInUser">Logged-in user Alias</param>
     /// <param name="tcv">T-correlation ID</param>
     /// <param name="sessionId">Session ID</param>
     /// <param name="xcv">X-Correlation ID</param>
+    /// <param name="domainName"></param>
     /// <returns>Https Response</returns>
-    public async Task<IActionResult> ClientAutoRefresh(int tenantId, HttpRequest request, string clientDevice, string userAlias, string loggedInUser, string tcv, string sessionId, string xcv)
+    public async Task<IActionResult> ClientAutoRefresh(User signedInUser, User onBehalfUser, string oauth2UserToken, int tenantId, HttpRequest request, string clientDevice, string tcv, string sessionId, string xcv, string domainName)
     {
         #region Logging Prep
 
         var logData = new Dictionary<LogDataKey, object>
         {
             { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, loggedInUser },
+            { LogDataKey.UserRoleName, signedInUser.MailNickname },
             { LogDataKey.TenantId, tenantId },
-            { LogDataKey.UserAlias, userAlias },
+            { LogDataKey.UserAlias, onBehalfUser.MailNickname },
             { LogDataKey.ClientDevice, clientDevice },
             { LogDataKey.ActionOrComponentUri, "CoreService/AutoRefresh"},
             { LogDataKey.DisplayDocumentNumber, string.Empty}
@@ -377,7 +510,7 @@ public class ClientActionHelper : IClientActionHelper
 
             using (var performanceTracer = _performanceLogger.StartPerformanceLogger("PerfLog", Constants.OutlookClient, "AutoRefresh-Submitter", logData))
             {
-                if (string.IsNullOrEmpty(loggedInUser))
+                if (string.IsNullOrEmpty(signedInUser.MailNickname))
                 {
                     _logger.LogError(TrackingEvent.WebApiOutlookIdentityAutoRefreshFail, new UnauthorizedAccessException(Constants.InValidSenderClaim), logData);
                     response.StatusCode = HttpStatusCode.Unauthorized;
@@ -425,7 +558,7 @@ public class ClientActionHelper : IClientActionHelper
             /* Call ApprovalRequest status api to identify whether request is approved or not
             and return updated card if request is approved */
 
-            var autoRefreshRequestObj = new { ApproverAlias = loggedInUser, DocumentNumber = documentNumber, RequestVersion = requestVersion };
+            var autoRefreshRequestObj = new { ApproverAlias = signedInUser.MailNickname, DocumentNumber = documentNumber, RequestVersion = requestVersion };
 
             logData[LogDataKey.DisplayDocumentNumber] = documentNumber;
             logData.Modify(LogDataKey.StartDateTime, DateTime.UtcNow);
@@ -436,7 +569,7 @@ public class ClientActionHelper : IClientActionHelper
             {
                 try
                 {
-                    DocumentStatusResponse documentStatusResponse = await _documentApprovalStatusHelper.DocumentStatus(tenantId, autoRefreshRequestObj.ToJson(), clientDevice, userAlias, loggedInUser, tcv, sessionId, xcv);
+                    DocumentStatusResponse documentStatusResponse = await _documentApprovalStatusHelper.DocumentStatus(signedInUser, onBehalfUser, oauth2UserToken, tenantId, autoRefreshRequestObj.ToJson(), clientDevice, tcv, sessionId, xcv);
 
                     if (documentStatusResponse != null)
                     {
@@ -457,6 +590,17 @@ public class ClientActionHelper : IClientActionHelper
                             switch (documentStatusResponse.CurrentStatus)
                             {
                                 case Constants.Pending:
+                                    if (!documentStatusResponse.IsRead)
+                                    {
+                                        JObject isReadInputObject = new JObject();
+                                        var actionDetails = new JObject
+                                        {
+                                            { "Action", "Read Details" }
+                                        };
+                                        isReadInputObject.Add("DocumentKeys", autoRefreshRequest.DocumentNumber);
+                                        isReadInputObject.Add("ActionDetails", actionDetails);
+                                        await _readDetailsHelper.UpdateIsReadDetails(signedInUser, onBehalfUser, oauth2UserToken, isReadInputObject.ToJson(), tenantId, clientDevice, sessionId, tcv, xcv, domainName);
+                                    }
                                     break;
 
                                 case Constants.OldRequest:

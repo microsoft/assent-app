@@ -23,7 +23,7 @@ namespace Microsoft.CFS.Approvals.Contracts.AttributeValidators
             System.ComponentModel.DataAnnotations.Validator.TryValidateObject(arxActionDetail, new ValidationContext(arxActionDetail), results);
 
             if (arxActionDetail.ActionBy != null)
-                results.AddRange(new NameAliasEntityValidator().Validator(arxActionDetail.ActionBy, "ApprovalRequestExpression.ActionDetail.ActionBy"));
+                results.AddRange(new UserValidator().Validator(arxActionDetail.ActionBy, "ApprovalRequestExpression.ActionDetail.ActionBy"));
             return results;
         }
     }

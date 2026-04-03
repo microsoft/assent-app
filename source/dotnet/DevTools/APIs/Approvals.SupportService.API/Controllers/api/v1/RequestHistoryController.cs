@@ -8,9 +8,9 @@ using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Models;
 using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
-using Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -27,9 +27,9 @@ public class RequestHistoryController : ControllerBase
     private readonly ITableHelper _azureTableStorageHelper;
 
     /// <summary>
-    /// The application insights helper
+    /// The telemetry helper
     /// </summary>
-    private readonly IAIHelper _aIHelper;
+    private readonly ITelemetryHelper _telemetryHelper;
 
     private readonly ConfigurationHelper _configurationHelper;
     private readonly string _environment;
@@ -38,11 +38,11 @@ public class RequestHistoryController : ControllerBase
     /// Constructor of RequestHistoryController
     /// </summary>
     /// <param name="azureTableStorageHelper"></param>
-    /// <param name="aIHelper"></param>
+    /// <param name="telemetryHelper"></param>
     /// <param name="configurationHelper"></param>
     /// <param name="actionContextAccessor"></param>
-    public RequestHistoryController(Func<string, string, ITableHelper> azureTableStorageHelper,
-        IAIHelper aIHelper,
+    public RequestHistoryController(Func<string, ITableHelper> azureTableStorageHelper,
+        ITelemetryHelper telemetryHelper,
         ConfigurationHelper configurationHelper,
         IActionContextAccessor actionContextAccessor)
     {
@@ -50,9 +50,8 @@ public class RequestHistoryController : ControllerBase
 
         _configurationHelper = configurationHelper;
         _azureTableStorageHelper = azureTableStorageHelper(
-            configurationHelper.appSettings[_environment]["StorageAccountName"],
-            configurationHelper.appSettings[_environment]["StorageAccountKey"]);
-        _aIHelper = aIHelper;
+            configurationHelper.appSettings[_environment]["StorageAccountName"]);
+        _telemetryHelper = telemetryHelper;
     }
 
     /// <summary>
@@ -85,7 +84,7 @@ public class RequestHistoryController : ControllerBase
             }
             foreach (AIQuery aIQuery in query)
             {
-                var aiResponse = _aIHelper.GetAIData(aIQuery.Query, aiScope);
+                var aiResponse = _telemetryHelper.GetAIData(aIQuery.Query, aiScope);
                 var appInsightsResponse = aiResponse?.SelectToken("tables");
                 if (appInsightsResponse != null)
                 {

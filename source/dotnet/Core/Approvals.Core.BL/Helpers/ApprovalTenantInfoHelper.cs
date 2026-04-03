@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Extensions;
 using Microsoft.CFS.Approvals.LogManager.Model;
@@ -152,8 +153,10 @@ public class ApprovalTenantInfoHelper : IApprovalTenantInfoHelper
     /// <param name="xcv">The xcv.</param>
     /// <param name="tcv">The tcv.</param>
     /// <param name="oauth2UserToken">OAuth 2.0 User Token</param>
+    /// <param name="objectId">Alias's ObjectId</param>
+    /// <param name="domain">Alias's Domain</param>
     /// <returns>Returns Approval tenant info with action details.</returns>
-    public async Task<ApprovalTenantInfo> GetTenantActionDetails(int tenantId, string loggedInAlias, string alias, string clientDevice, string sessionId, string xcv, string tcv, string oauth2UserToken)
+    public async Task<ApprovalTenantInfo> GetTenantActionDetails(int tenantId, string loggedInAlias, string alias, string clientDevice, string sessionId, string xcv, string tcv, string oauth2UserToken, string objectId, string domain)
     {
         #region Logging
 
@@ -214,7 +217,9 @@ public class ApprovalTenantInfoHelper : IApprovalTenantInfoHelper
                 var tenantAdapter = _tenantFactory.GetTenant(tenant,
                     alias,
                     clientDevice,
-                    oauth2UserToken);
+                    oauth2UserToken,
+                    objectId,
+                    domain);
 
                 // Get the TenantActionDetails for the user from tenant system.
                 var httpResponseMessage = await tenantAdapter.GetTenantActionDetails(alias, loggedInAlias, clientDevice, sessionId, xcv, tcv);

@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Models;
@@ -31,19 +32,18 @@ public class TestDetailsController : ControllerBase
     /// Constructor of TestDetailsController
     /// </summary>
     /// <param name="azureStorageHelper"></param>
-    /// <param name="configurationSetting"></param>
+    /// <param name="configurationHelper"></param>
     /// <param name="actionContextAccessor"></param>
     /// <param name="logProvider"></param>
     public TestDetailsController(
-        Func<string, string, ITableHelper> azureStorageHelper,
-        ConfigurationSetting configurationSetting,
+        Func<string, ITableHelper> azureStorageHelper,
+        ConfigurationHelper configurationHelper,
         IActionContextAccessor actionContextAccessor,
         ILogProvider logProvider)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _azureStorageHelper = azureStorageHelper(
-           configurationSetting.appSettings[_environment].StorageAccountName,
-           configurationSetting.appSettings[_environment].StorageAccountKey);
+           configurationHelper.appSettings[_environment]["StorageAccountName"]);
         _logProvider = logProvider;
     }
 
@@ -61,6 +61,8 @@ public class TestDetailsController : ControllerBase
         Dictionary<LogDataKey, object> logData = new Dictionary<LogDataKey, object>();
         logData.Add(LogDataKey.Xcv, documentNumber);
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.Environment, _environment);
         logData.Add(LogDataKey.DetailOperation, operation);
         logData.Add(LogDataKey.Operation, "Test Details - Controller");
@@ -74,7 +76,6 @@ public class TestDetailsController : ControllerBase
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "DetailFetchFailure");
             _logProvider.LogError(TrackingEvent.DetailFetchFailure, ex, logData);
             return BadRequest(ex.Message);
         }

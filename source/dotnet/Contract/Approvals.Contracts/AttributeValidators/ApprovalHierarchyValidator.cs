@@ -35,9 +35,9 @@ namespace Microsoft.CFS.Approvals.Contracts.AttributeValidators
                 }
                 if (apprHierarchy.Approvers != null && apprHierarchy.Approvers.Count > 0)
                 {
-                    foreach (NameAliasEntity approver in apprHierarchy.Approvers)
+                    foreach (User approver in apprHierarchy.Approvers)
                     {
-                        results.AddRange(new NameAliasEntityValidator().Validator(approver, "ApprovalRequestExpression.SummaryJson.ApprovalHierarchy.Approvers"));
+                        results.AddRange(new UserValidator().Validator(approver, "ApprovalRequestExpression.SummaryJson.ApprovalHierarchy.Approvers"));
                     }
                 }
             }

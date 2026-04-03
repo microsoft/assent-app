@@ -10,15 +10,16 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.Model;
-using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Helper;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Interface;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Models;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.ExtensionMethods;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Helpers;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Interface;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -52,6 +53,14 @@ public class SyntheticTransactionHelper : ISyntheticTransactionHelper
     /// </summary>
     private readonly ILogProvider _logProvider;
 
+    /// <summary>
+    /// Configuration
+    /// </summary>
+    private readonly IConfiguration _configuration = null;
+
+    /// <summary>
+    /// ConfigurationHelper
+    /// </summary>
     private readonly ConfigurationHelper _configurationHelper;
     private readonly string _environment;
 
@@ -64,27 +73,27 @@ public class SyntheticTransactionHelper : ISyntheticTransactionHelper
     /// <param name="azureStorageHelper"></param>
     /// <param name="actionContextAccessor"></param>
     /// <param name="schemaGenerator"></param>
-    /// <param name="configurationSetting"></param>
+    /// <param name="logProvider"></param>
+    /// <param name="configuration"></param>
     public SyntheticTransactionHelper(IRandomFormDetails randomFormDetails,
-        Func<string, string, IBlobStorageHelper> blobStorageHelper,
+        Func<string, IBlobStorageHelper> blobStorageHelper,
         ConfigurationHelper configurationHelper,
-        Func<string, string, ITableHelper> azureStorageHelper,
+        Func<string, ITableHelper> azureStorageHelper,
         IActionContextAccessor actionContextAccessor,
         ISchemaGenerator schemaGenerator,
-        ConfigurationSetting configurationSetting,
-        ILogProvider logProvider)
+        ILogProvider logProvider,
+        IConfiguration configuration)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _randomFormDetails = randomFormDetails;
         _azureBlobStorageHelper = blobStorageHelper(
-            configurationSetting.appSettings[_environment].StorageAccountName,
-            configurationSetting.appSettings[_environment].StorageAccountKey);
+            configurationHelper.appSettings[_environment]["StorageAccountName"]);
         _configurationHelper = configurationHelper;
         _azureStorageHelper = azureStorageHelper(
-            configurationSetting.appSettings[_environment].StorageAccountName,
-            configurationSetting.appSettings[_environment].StorageAccountKey);
+            configurationHelper.appSettings[_environment]["StorageAccountName"]);
         _schemaGenerator = schemaGenerator;
         _logProvider = logProvider;
+        _configuration = configuration;
     }
 
     /// <summary>
@@ -98,19 +107,20 @@ public class SyntheticTransactionHelper : ISyntheticTransactionHelper
         Dictionary<LogDataKey, object> logData = new Dictionary<LogDataKey, object>();
         logData.Add(LogDataKey.Xcv, tcv);
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.Environment, _environment);
         logData.Add(LogDataKey.BlobName, blobName);
         logData.Add(LogDataKey.Operation, "Get Schema File - Helper");
 
         try
         {
-            var container = _configurationHelper.GetConfigurationValue(ConfigurationKeyEnum.BlobContainerForSchema);
-            var name = string.IsNullOrEmpty(blobName) ? _configurationHelper.GetConfigurationValue(ConfigurationKeyEnum.BlobForSchema) : blobName;
+            var container = _configuration[ConfigurationKeyEnum.BlobContainerForSchema.ToString()];
+            var name = string.IsNullOrEmpty(blobName) ? _configuration[ConfigurationKeyEnum.BlobForSchema.ToString()] : blobName;
             return (await _azureBlobStorageHelper.DownloadText(container, name));
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "GetSchemaFileFailure");
             _logProvider.LogError(TrackingEvent.GetSchemaFileFailure, ex, logData);
             return null;
         }
@@ -124,7 +134,7 @@ public class SyntheticTransactionHelper : ISyntheticTransactionHelper
     /// <returns></returns>
     public async Task<string> GetUISchemaFile(string blobName, string tcv)
     {
-        var container = _configurationHelper.GetConfigurationValue(ConfigurationKeyEnum.BlobContainerForSchema);
+        var container = _configuration[ConfigurationKeyEnum.BlobContainerForSchema.ToString()];
         return !string.IsNullOrEmpty(blobName) ? await _azureBlobStorageHelper.DownloadText(container, blobName) : "";
     }
 
@@ -139,6 +149,8 @@ public class SyntheticTransactionHelper : ISyntheticTransactionHelper
         Dictionary<LogDataKey, object> logData = new Dictionary<LogDataKey, object>();
         logData.Add(LogDataKey.Xcv, tcv);
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.Environment, _environment);
         logData.Add(LogDataKey.Operation, "Get Placeholder details - Helper");
         try
@@ -163,18 +175,19 @@ public class SyntheticTransactionHelper : ISyntheticTransactionHelper
         Dictionary<LogDataKey, object> logData = new Dictionary<LogDataKey, object>();
         logData.Add(LogDataKey.Xcv, tcv);
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.Environment, _environment);
         logData.Add(LogDataKey.Operation, "Upload Data to Blob - Helper");
         try
         {
 
-            var container = _configurationHelper.GetConfigurationValue(ConfigurationKeyEnum.BlobContainerForDataUpload);
+            var container = _configuration[ConfigurationKeyEnum.BlobContainerForDataUpload.ToString()];
             var blobName = GenerateFileName();
             _azureBlobStorageHelper.UploadText(data, container, blobName);
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "UploadDataToBlobFailure");
             _logProvider.LogError(TrackingEvent.UploadDataToBlobFailure, ex, logData);
             throw;
         }
@@ -186,7 +199,7 @@ public class SyntheticTransactionHelper : ISyntheticTransactionHelper
     /// <returns>Returns string representing unique file name</returns>
     private string GenerateFileName()
     {
-        var prefix = _configurationHelper.GetConfigurationValue(ConfigurationKeyEnum.PrefixForBlobName);
+        var prefix = _configuration[ConfigurationKeyEnum.PrefixForBlobName.ToString()];
         return string.Format(@"{0}_{1}.json", prefix, DateTime.Now.Ticks);
     }
 
@@ -201,6 +214,8 @@ public class SyntheticTransactionHelper : ISyntheticTransactionHelper
         Dictionary<LogDataKey, object> logData = new Dictionary<LogDataKey, object>();
         logData.Add(LogDataKey.Xcv, tcv);
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.Environment, _environment);
         logData.Add(LogDataKey.Operation, "Generate Schema From Sample Payload - Helper");
 
@@ -321,7 +336,6 @@ public class SyntheticTransactionHelper : ISyntheticTransactionHelper
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "GetSchemaFromSamplePayloadFailure");
             _logProvider.LogError(TrackingEvent.GetSchemaFromSamplePayloadFailure, ex, logData);
             return null;
         }
@@ -340,6 +354,8 @@ public class SyntheticTransactionHelper : ISyntheticTransactionHelper
         Dictionary<LogDataKey, object> logData = new Dictionary<LogDataKey, object>();
         logData.Add(LogDataKey.Xcv, tcv);
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.UserAlias, approver);
         logData.Add(LogDataKey.Environment, _environment);
         logData.Add(LogDataKey.Operation, "Upload Payload Value - Helper");
@@ -408,7 +424,6 @@ public class SyntheticTransactionHelper : ISyntheticTransactionHelper
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "UploadPayloadValueFailure");
             _logProvider.LogError(TrackingEvent.UploadPayloadValueFailure, ex, logData);
             return null;
         }
@@ -420,7 +435,7 @@ public class SyntheticTransactionHelper : ISyntheticTransactionHelper
     /// <param name="envNames"></param>
     public void GetEnvironmentName(ref List<string> envNames)
     {
-        var environmentNames = _configurationHelper.GetConfigurationValue(ConfigurationKeyEnum.EnvironmentList);
+        var environmentNames = _configuration[ConfigurationKeyEnum.EnvironmentList.ToString()];
         envNames = environmentNames.Split(',').ToList();
     }
 
@@ -436,6 +451,8 @@ public class SyntheticTransactionHelper : ISyntheticTransactionHelper
     {
         Dictionary<LogDataKey, object> logData = new Dictionary<LogDataKey, object>();
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.UserAlias, approver);
         logData.Add(LogDataKey.Environment, _environment);
         logData.Add(LogDataKey.Operation, "Insert Synthetic Detail - Helper");
@@ -484,7 +501,6 @@ public class SyntheticTransactionHelper : ISyntheticTransactionHelper
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "InsertSyntheticDetailFailure");
             _logProvider.LogError(TrackingEvent.InsertSyntheticDetailFailure, ex, logData);
             return false;
         }

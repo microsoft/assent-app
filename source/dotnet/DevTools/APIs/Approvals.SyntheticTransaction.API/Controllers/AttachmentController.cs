@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Helpers;
@@ -29,19 +30,18 @@ public class AttachmentController : ControllerBase
     /// Constructor of AttachmentController
     /// </summary>
     /// <param name="blobStorageHelper"></param>
-    /// <param name="configurationSetting"></param>
+    /// <param name="configurationHelper"></param>
     /// <param name="actionContextAccessor"></param>
     /// <param name="logProvider"></param>
     public AttachmentController(
-        Func<string, string, IBlobStorageHelper> blobStorageHelper,
-        ConfigurationSetting configurationSetting,
+        Func<string, IBlobStorageHelper> blobStorageHelper,
+        ConfigurationHelper configurationHelper,
         IActionContextAccessor actionContextAccessor,
         ILogProvider logProvider)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _blobStorageHelper = blobStorageHelper(
-          configurationSetting.appSettings[_environment].StorageAccountName,
-          configurationSetting.appSettings[_environment].StorageAccountKey);
+          configurationHelper.appSettings[_environment]["StorageAccountName"]);
         _logProvider = logProvider;
     }
 
@@ -59,6 +59,8 @@ public class AttachmentController : ControllerBase
         var tcv = Guid.NewGuid().ToString();
         logData.Add(LogDataKey.Xcv, tcv);
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.Environment, _environment);
 
         if (string.IsNullOrWhiteSpace(attachmentName))
@@ -95,7 +97,6 @@ public class AttachmentController : ControllerBase
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "AttachmentFetchFailure");
             logData.Add(LogDataKey.Operation, "Failed to fetch Attachment");
             _logProvider.LogError(TrackingEvent.AttachmentFetchFailure, ex, logData);
             return BadRequest(ex.Message);

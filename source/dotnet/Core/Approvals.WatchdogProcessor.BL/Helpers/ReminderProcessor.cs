@@ -15,6 +15,7 @@ using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
+using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
 using Microsoft.CFS.Approvals.Domain.BL.Interface;
 using Microsoft.CFS.Approvals.Extensions;
 using Microsoft.CFS.Approvals.LogManager.Model;
@@ -88,6 +89,11 @@ public class ReminderProcessor : IReminderProcessor
     private readonly IEmailHelper _emailHelper;
 
     /// <summary>
+    /// Blob Storage Helper
+    /// </summary>
+    private readonly IBlobStorageHelper _blobStorageHelper;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="ReminderProcessor"/> class.
     /// </summary>
     /// <param name="dataInterface"></param>
@@ -101,6 +107,7 @@ public class ReminderProcessor : IReminderProcessor
     /// <param name="approvalHistoryProvider"></param>
     /// <param name="tenantFactory"></param>
     /// <param name="emailHelper"></param>
+    /// <param name="blobStorageHelper"></param>
     public ReminderProcessor(IReminderData dataInterface,
         INotificationProvider notificationProvider,
         ILogProvider logger,
@@ -111,7 +118,8 @@ public class ReminderProcessor : IReminderProcessor
         IApprovalDetailProvider approvalDetailProvider,
         IApprovalHistoryProvider approvalHistoryProvider,
         ITenantFactory tenantFactory,
-        IEmailHelper emailHelper)
+        IEmailHelper emailHelper,
+        IBlobStorageHelper blobStorageHelper)
     {
         _dataInterface = dataInterface;
         _notificationProvider = notificationProvider;
@@ -124,6 +132,7 @@ public class ReminderProcessor : IReminderProcessor
         _approvalHistoryProvider = approvalHistoryProvider;
         _tenantFactory = tenantFactory;
         _emailHelper = emailHelper;
+        _blobStorageHelper = blobStorageHelper;
     }
 
     #region Implemented Methods
@@ -237,17 +246,8 @@ public class ReminderProcessor : IReminderProcessor
 
                     // Check NotifyWatchDogEmailWithApprovalFunctionality flag for watchdog to send actionable email.
                     // Validate fligthing feature check for tenant and users
-                    if (tenantInfo.NotifyWatchDogEmailWithApprovalFunctionality && tenant.ValidateIfEmailShouldBeSentWithDetails(summaryRows))
-                    {
-                        emailType = EmailType.ActionableEmail;
-                        emailData = await CreateEmailBody(watchdogNotification, notificationDetails, tenantInfo, approvalsBaseUrl, emailType, logData, tenant);
-                    }
-                    else
-                    {
-                        emailType = EmailType.NormalEmail;
-                        // Send normal reminder mail to users
-                        emailData = await CreateEmailBody(watchdogNotification, notificationDetails, tenantInfo, approvalsBaseUrl, emailType, logData, tenant);
-                    }
+                    emailType = tenant.GetEmailType(summaryRows, tenant);
+                    emailData = await CreateEmailBody(watchdogNotification, notificationDetails, tenantInfo, approvalsBaseUrl, emailType, logData, tenant);
 
                     // In case of Watchdog Reminder email for multiple approvers at the same level, we were observing that the emails were sent multiple time (which is expected, as there are multiple summary rows)
                     // But in case of COSMIC, they are sending the 'To' list as well (which were the approvers ar the current level)
@@ -273,7 +273,7 @@ public class ReminderProcessor : IReminderProcessor
                     {
                         updateNextReminder.NextReminderTime = ReminderHelper.NextReminderTime(notificationDetails, currentTime).GetDateTimeWithUtcKind();
 
-                        _dataInterface.UpdateReminderInfo(tenantInfo, updateNextReminder);
+                        await _dataInterface.UpdateReminderInfo(tenantInfo, updateNextReminder);
                     }
                     if (count++ >= batchSize)
                     {
@@ -345,6 +345,19 @@ public class ReminderProcessor : IReminderProcessor
             throw new InvalidDataException("No reminder details are present");
         }
 
+        #region Checking if SummaryJson is stored in blob. If yes fetch and assign to summaryRow
+
+        string tempSummaryJson = string.Empty;
+        if (summaryRow != null)
+        {
+            tempSummaryJson = string.IsNullOrEmpty(summaryRow.BlobPointer) ?
+                                summaryRow.SummaryJson :
+                                _blobStorageHelper.DownloadText(Constants.ApprovalSummaryBlobContainerName, summaryRow.BlobPointer).Result;
+        }
+        summaryRow.SummaryJson = tempSummaryJson;
+
+        #endregion Checking if SummaryJson is stored in blob. If yes fetch and assign to summaryRow
+
         _emailHelper.PopulateDataInToDictionary<LogDataKey, object>(logData, LogDataKey.TenantName, summaryRow?.Application);
         _emailHelper.PopulateDataInToDictionary<LogDataKey, object>(logData, LogDataKey.Approver, summaryRow?.Approver);
         _emailHelper.PopulateDataInToDictionary<LogDataKey, object>(logData, LogDataKey.IsEmailSentWithDetail, emailType);
@@ -412,7 +425,8 @@ public class ReminderProcessor : IReminderProcessor
                 _logger.LogInformation(TrackingEvent.ActionableEmailGetAttachments, logData);
                 // Flag to determine if all downloadable attachments are downloaded successfully using ID
                 bool isAttachmentDownloadSuccess = false;
-                notificationDataAttachment = _emailHelper.GetAttachmentsToAttachInEmail(responseJObject, summaryJson.ApprovalIdentifier, tenantInfo, tenant, logData, ref isAttachmentDownloadSuccess);
+                string approverUpn = summaryRow?.Approver + summaryRow?.ApproverDomain;
+                notificationDataAttachment = _emailHelper.GetAttachmentsToAttachInEmail(responseJObject, summaryJson.ApprovalIdentifier, tenantInfo, tenant, logData, approverUpn, ref isAttachmentDownloadSuccess);
 
                 if (!isAttachmentDownloadSuccess)
                 {
@@ -576,12 +590,13 @@ public class ReminderProcessor : IReminderProcessor
         notificationFrameworkItem.TemplateId = templateId;
 
         // TODO:: Quick Fix for Approver details shown as placeholders in Watch-Dog Emails
-        JObject summaryWithApprover = (summaryRow.SummaryJson).ToJObject();
+        JObject summaryWithApprover = (summaryRow.SummaryJson.FromJson<SummaryJson>().ToJson(new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore }))
+                                                .ToJObject();
         await AddApprover(summaryRow.Approver, summaryWithApprover, _nameResolutionHelper);
         string summaryData = summaryWithApprover.ToString();
 
         //
-        var additionalDataObj = _approvalDetailProvider.GetApprovalsDetails(tenantInfo.TenantId, summaryRow.DocumentNumber, Constants.AdditionalDetails)?.JSONData?.ToJObject();
+        var additionalDataObj = (await _approvalDetailProvider.GetApprovalDetailsByOperation(tenantInfo.TenantId, summaryRow.DocumentNumber, Constants.AdditionalDetails, tenantInfo.DocTypeId))?.JSONData?.ToJObject();
         Dictionary<string, string> additionalData = !string.IsNullOrEmpty(additionalDataObj?[Constants.AdditionalData]?.ToJson()) ? (additionalDataObj?[Constants.AdditionalData]?.ToJson()).FromJson<Dictionary<string, string>>() : null;
 
         SummaryJson summaryJson = summaryRow.SummaryJson.ToJObject().ToObject<SummaryJson>();
@@ -818,7 +833,7 @@ public class ReminderProcessor : IReminderProcessor
             placeHolderDict.Add("ApproverName", summaryRow.Approver);
         placeHolderDict.Add("ApprovalIdentifierDisplayDocumentNumber", summaryJson.ApprovalIdentifier.DisplayDocumentNumber);
 
-        #endregion Adding MEO related Template keys
+        #endregion
 
         notificationFrameworkItem.Body = templateContent;
         notificationFrameworkItem.TemplateData = placeHolderDict.ToDictionary(pair => pair.Key, pair => (object)pair.Value);

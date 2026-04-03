@@ -26,16 +26,17 @@ public interface ITenantDownTimeMessagesHelper
     /// <summary>
     /// Returns all active notifications grouped by bannertype. Mainly consumed by Summary page
     /// </summary>
-    IEnumerable<NotificationGroup> GetAllDownTimeNotificationsGroupByBuckets(IEnumerable<TenantDownTimeMessages> tdMessages, string loggedInAlias, string clientDevice);
+    IEnumerable<NotificationGroup> GetAllDownTimeNotificationsGroupByBuckets(IEnumerable<TenantDownTimeMessages> tdMessages, string loggedInUpn, string clientDevice);
 
-    IEnumerable<NotificationGroup> GetAllAlerts(string SessionId, string LoggedInAlias, string Alias, string ClientDevice);
+    IEnumerable<NotificationGroup> GetAllAlerts(string sessionId, string loggedInUpn, string alias, string clientDevice);
 
     /// <summary>
     /// Inserts into or Updates the Tenant downtime message table
     /// </summary>
     /// <param name="tenantDowntimeMessage"></param>
+    /// <param name="loggedInUpn"></param>
     /// <returns>boolean value if insert or update completed successfully</returns>
-    bool InsertOrUpdateTenantDowntimeMessage(ApprovalTenantInfoRealTime realtimeTenantInfo, string loggedInAlias);
+    bool InsertOrUpdateTenantDowntimeMessage(ApprovalTenantInfoRealTime realtimeTenantInfo, string loggedInUpn);
 
     /// <summary>
     /// Delete TenantDownTimeMessages entry from storage table

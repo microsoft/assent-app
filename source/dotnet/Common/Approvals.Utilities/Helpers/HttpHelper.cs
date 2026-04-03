@@ -36,8 +36,9 @@ public class HttpHelper : IHttpHelper
     /// <param name="authority"></param>
     /// <param name="resourceUri"></param>
     /// <param name="targetUri"></param>
-    /// <param name="content"></param>
     /// <param name="headers"></param>
+    /// <param name="content"></param>
+    /// <param name="isMITokenEnabled"></param>
     /// <returns></returns>
     public async Task<HttpResponseMessage> SendRequestAsync(
         HttpMethod method,
@@ -47,10 +48,11 @@ public class HttpHelper : IHttpHelper
         string resourceUri,
         string targetUri,
         Dictionary<string, string> headers = null,
-        string content = "")
+        string content = "",
+        bool isMITokenEnabled = false)
     {
-        var accessToken = (await _authenticationHelper.AcquireOAuth2TokenByScopeAsync(
-                          clientId, clientKey, authority, resourceUri, "/.default")).AccessToken;
+        var accessToken = isMITokenEnabled == false ? (await _authenticationHelper.AcquireOAuth2TokenByScopeAsync(
+                          clientId, clientKey, authority, resourceUri, "/.default")).AccessToken : (await _authenticationHelper.GetManagedIdentityToken(clientId, resourceUri));
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(Constant.Bearer, accessToken);
 
         // Create HttpRequestMessage

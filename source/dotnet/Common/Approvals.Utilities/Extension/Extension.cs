@@ -37,7 +37,7 @@ public static class Extension
     /// <returns>returns Devise </returns>
     public static DeviceNotificationInfo ToDeviceNotificationInfo(this ApprovalRequestExpression approvalRequestExpression, ApprovalSummaryRow summaryRow, string correlationId)
     {
-        string approver;
+        string approver, approverId, approverDomain;
 
         if (summaryRow != null && summaryRow.Approver != null)
             approver = summaryRow.Approver;
@@ -46,12 +46,28 @@ public static class Extension
         if (string.IsNullOrEmpty(approver) && approvalRequestExpression.ActionDetail != null)
             approver = approvalRequestExpression.ActionDetail.ActionBy.Alias;
 
+        if (summaryRow != null && !string.IsNullOrWhiteSpace(summaryRow.PartitionKey) && !string.IsNullOrWhiteSpace(summaryRow.Approver) && !summaryRow.PartitionKey.Equals(summaryRow.Approver, StringComparison.InvariantCultureIgnoreCase))
+            approverId = summaryRow.PartitionKey;
+        else
+            approverId = approvalRequestExpression.AdditionalData.ContainsKey(Constants.ApproverId) ? Convert.ToString(approvalRequestExpression.AdditionalData[Constants.ApproverId]) : String.Empty;
+        if (string.IsNullOrEmpty(approverId) && approvalRequestExpression.ActionDetail != null)
+            approverId = approvalRequestExpression.ActionDetail.ActionBy.Id;
+
+        if (summaryRow != null && summaryRow.ApproverDomain != null)
+            approverDomain = summaryRow.ApproverDomain;
+        else
+            approverDomain = approvalRequestExpression.AdditionalData.ContainsKey(Constants.ApproverDomain) ? Convert.ToString(approvalRequestExpression.AdditionalData[Constants.ApproverDomain]) : Constants.DefaultDomain;
+        if (string.IsNullOrEmpty(approverDomain) && approvalRequestExpression.ActionDetail != null)
+            approverDomain = approvalRequestExpression.ActionDetail.ActionBy.UserPrincipalName?.GetDomainFromUPN();
+
         var devicenotificationinfo = new DeviceNotificationInfo()
         {
             RoutingId = new Guid(Convert.ToString(approvalRequestExpression.AdditionalData[Constants.RoutingIdColumnName])),
             DocumentTypeId = approvalRequestExpression.DocumentTypeId,
             ApprovalIdentifier = approvalRequestExpression.ApprovalIdentifier,
             Approver = approver,
+            ApproverId = approverId,
+            ApproverDomain = approverDomain,
             Application = summaryRow.Application,
             Requestor = approvalRequestExpression.AdditionalData.ContainsKey(Constants.Requestor) ? Convert.ToString(approvalRequestExpression.AdditionalData[Constants.Requestor]) : summaryRow.Requestor,
             Operation = approvalRequestExpression.Operation,
@@ -299,5 +315,62 @@ public static class Extension
             value = jObject[parameters.LastOrDefault()].ToString();
         }
         return value;
+    }
+
+    public static object GetUpdatedObject(this object data, string oldWhitelistedDomains, string currentDomain, string approverId)
+    {
+        if (data is string)
+        {
+            //For older whitelisted domains
+            if (oldWhitelistedDomains.Contains(currentDomain, StringComparison.InvariantCultureIgnoreCase))
+                return data + " and (c.ApproverId = '" + approverId + "' or not(IS_DEFINED(c.ApproverId)) or IS_NULL(c.ApproverId) or c.ApproverId = '')";
+            //For new domains
+            else
+                return data + " and c.ApproverId = '" + approverId + "'";
+        }
+        else if (data is List<TransactionHistory>)
+        {
+            var historyList = (List<TransactionHistory>)data;
+            //For old whitelisted domain
+            if (oldWhitelistedDomains.Contains(currentDomain, StringComparison.InvariantCultureIgnoreCase))
+                return historyList.Where(t => t.ApproverId == approverId || string.IsNullOrWhiteSpace(t.ApproverId)).ToList();
+            //for new domains
+            else
+                return historyList.Where(t => t.ApproverId == approverId).ToList();
+        }
+        return data;
+
+    }
+
+    public static string ValidateSummaryRow(ApprovalSummaryRow approvalSummaryRow)
+    {
+        if (approvalSummaryRow.LobPending)
+        {
+            //Action taken but response is pending from tenant
+            return Constants.LobPendingMessage;
+        }
+        else if (approvalSummaryRow.IsOfflineApproval)
+        {
+            //Request is submitted for background approval
+            return Constants.SubmittedForBackgroundMessage;
+        }
+        else if (approvalSummaryRow.IsOutOfSyncChallenged)
+        {
+            //Request is out of synchronization from tenant system
+            return Constants.OutOfSyncMessage;
+        }
+        return null;
+    }
+
+    // Helper method to sanitize input
+    public static string SanitizeInput(string input)
+    {
+        // Allow only alphanumeric characters, spaces, and basic punctuation
+        var allowedPattern = @"^[a-zA-Z0-9\s.,!?'-]*$";
+        if (System.Text.RegularExpressions.Regex.IsMatch(input, allowedPattern))
+        {
+            return input; // Input is valid
+        }
+        return null; // Input contains disallowed characters
     }
 }

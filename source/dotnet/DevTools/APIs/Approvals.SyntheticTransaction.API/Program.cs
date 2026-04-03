@@ -12,6 +12,7 @@ using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Helpers;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.LogManager;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.SyntheticTransaction.API.Services;
@@ -41,42 +42,46 @@ builder.Services.AddCors(options =>
                     .AllowAnyMethod();
         });
 });
-var appSettings = new KeyVaultHelper(builder.Configuration).GetKeyVault();
+var appSettings = new ApplicationSettingsHelper(builder.Configuration).GetSettings();
 
 builder.Services.AddControllers().AddNewtonsoftJson();
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 builder.Services.AddMemoryCache();
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
-builder.Services.AddSingleton<ConfigurationSetting>(provider => { return new ConfigurationSetting(appSettings); });
+builder.Services.AddSingleton<ConfigurationHelper>(provider =>
+{
+    return new ConfigurationHelper(appSettings);
+});
 builder.Services.AddScoped<ISyntheticTransactionHelper, SyntheticTransactionHelper>();
 builder.Services.AddScoped<IRandomFormDetails, RandomFormDetails>();
-builder.Services.AddScoped<ConfigurationHelper>();
 builder.Services.AddSingleton<IPerformanceLogger, PerformanceLogger>();
 builder.Services.AddSingleton<ApplicationInsightsTarget>();
 builder.Services.AddSingleton<ILogProvider, LogProvider>();
 builder.Services.AddScoped<IAuthenticationHelper, AuthenticationHelper>();
 builder.Services.AddScoped<IPayloadReceiverHelper, PayloadReceiverHelper>();
-builder.Services.AddScoped<IKeyVaultHelper, KeyVaultHelper>();
 builder.Services.AddScoped<IBulkDeleteHelper, BulkDeleteHelper>();
 builder.Services.AddScoped<ILoadGeneratorHelper, LoadGeneratorHelper>();
 // Secure credential selection for Azure resources
 #if DEBUG
-var azureCredential = new DefaultAzureCredential();  // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+    var azureCredential = new DefaultAzureCredential();  // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
 #else
     var azureCredential = new ManagedIdentityCredential(); // For production
 #endif
-builder.Services.AddScoped<Func<string, string, ITableHelper>>((provider) =>
+
+builder.Services.AddScoped<Func<string, ITableHelper>>((provider) =>
 {
-    return new Func<string, string, ITableHelper>((StorageAccountName, TokenCredential) => new TableHelper(StorageAccountName, azureCredential));
+    return new Func<string, ITableHelper>((StorageAccountName) => new TableHelper(StorageAccountName, azureCredential));
 });
-builder.Services.AddTransient<Func<string, string, IBlobStorageHelper>>((provider) =>
+builder.Services.AddTransient<Func<string, IBlobStorageHelper>>((provider) =>
 {
-    return new Func<string, string, IBlobStorageHelper>((StorageAccountName, TokenCredential) => new BlobStorageHelper(StorageAccountName, azureCredential));
+    return new Func<string, IBlobStorageHelper>((StorageAccountName) => new BlobStorageHelper(StorageAccountName, azureCredential));
 });
 builder.Services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
 builder.Services.AddSingleton<ISchemaGenerator, SchemaGenerator>();
-builder.Services.AddSingleton<HttpClientHandler>();
-builder.Services.AddHttpClient<IHttpHelper, HttpHelper>()
+
+builder.Services
+    .AddHttpClient<IHttpHelper, HttpHelper>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
     .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
     .AddPolicyHandler(HttpPolicyExtensions
                 .HandleTransientHttpError()

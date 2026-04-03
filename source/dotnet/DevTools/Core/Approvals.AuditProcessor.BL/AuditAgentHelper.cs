@@ -10,8 +10,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using System.Xml;
-using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.InteropExtensions;
+using global::Azure.Messaging.ServiceBus;
 using Microsoft.CFS.Approvals.AuditProcessor.BL.Interface;
 using Microsoft.CFS.Approvals.AuditProcessor.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
@@ -23,6 +22,7 @@ using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.Model;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 
 public class AuditAgentHelper : IAuditAgentHelper
 {
@@ -85,14 +85,12 @@ public class AuditAgentHelper : IAuditAgentHelper
     /// <param name="blobId">Blod Id</param>
     /// <param name="message">Service Bus Message</param>
     /// <returns></returns>
-    public async Task ProcessMessage(string blobId, Message message)
+    public async Task ProcessMessage(string blobId, ServiceBusReceivedMessage message)
     {
         // Log processing of message has started
         // TODO:: Logging into critical logs still throwing exception. Need to work on this getting the issue fixed.
-        await _auditAgentLoggingHelper.Log(TrackingEvent.ARXProcessingStartedByAuditAgent, message.Clone(), DateTime.UtcNow);
+        await _auditAgentLoggingHelper.Log(TrackingEvent.ARXProcessingStartedByAuditAgent, message, DateTime.UtcNow);
 
-        string messageBody = string.Empty;
-        Message brokeredMessageBackup = message.Clone();
         try
         {
             List<ApprovalRequestExpressionExt> approvalNotificationARXObj = new List<ApprovalRequestExpressionExt>();
@@ -129,13 +127,13 @@ public class AuditAgentHelper : IAuditAgentHelper
                 }
             }
 
-            if (message.UserProperties.ContainsKey("ApprovalRequestVersion") && message.UserProperties["ApprovalRequestVersion"].ToString() == _config[Microsoft.CFS.Approvals.Contracts.ConfigurationKey.ApprovalRequestVersion.ToString()])
+            if (message.ApplicationProperties.ContainsKey("ApprovalRequestVersion") && message.ApplicationProperties["ApprovalRequestVersion"].ToString() == _config[Microsoft.CFS.Approvals.Contracts.ConfigurationKey.ApprovalRequestVersion.ToString()])
             {
                 await _blobStorageHelper.DeleteBlob(Constants.AuditAgentMessageContainer, blobId);
             }
             // Log processing of message has completed
             // TODO:: Logging into critical logs still throwing exception. Need to work on this getting the issue fixed.
-            await _auditAgentLoggingHelper.Log(TrackingEvent.ARXProcessingCompleteByAuditAgent, brokeredMessageBackup, DateTime.UtcNow, approvalNotificationARXObj);
+            await _auditAgentLoggingHelper.Log(TrackingEvent.ARXProcessingCompleteByAuditAgent, message, DateTime.UtcNow, approvalNotificationARXObj);
         }
         catch (Exception ex)
         {
@@ -149,13 +147,13 @@ public class AuditAgentHelper : IAuditAgentHelper
     /// </summary>
     /// <param name="newBrokeredMessage"></param>
     /// <returns></returns>
-    private string GetRawAr(string blobId, Message newBrokeredMessage, out List<ApprovalRequestExpressionExt> approvalNotificationARXObj)
+    private string GetRawAr(string blobId, ServiceBusReceivedMessage newBrokeredMessage, out List<ApprovalRequestExpressionExt> approvalNotificationARXObj)
     {
         byte[] message;
-        if (newBrokeredMessage.UserProperties.ContainsKey("ApprovalRequestVersion") && newBrokeredMessage.UserProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
+        if (newBrokeredMessage.ApplicationProperties.ContainsKey("ApprovalRequestVersion") && newBrokeredMessage.ApplicationProperties["ApprovalRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
             message = _blobStorageHelper.DownloadByteArray(Constants.AuditAgentMessageContainer, blobId).Result;
         else
-            message = newBrokeredMessage.Body;
+            message = newBrokeredMessage.Body.ToArray();
 
         var arConverterAdaptor = _arConverterFactory.GetARConverter();
         approvalNotificationARXObj = arConverterAdaptor.GetAR(message, newBrokeredMessage, new ApprovalTenantInfo() { AppName = "AuditAgent", BusinessProcessName = "AuditAgentTenant", RowKey = "0" });
@@ -167,10 +165,67 @@ public class AuditAgentHelper : IAuditAgentHelper
         string rawArJSON = string.Empty;
 
         //Converting ARX brokered message to json
-        bool isARX = newBrokeredMessage.UserProperties.ContainsKey("ContentType") && newBrokeredMessage.UserProperties["ContentType"].ToString() == "ApprovalRequestExpression";
-        if (newBrokeredMessage.UserProperties.Keys.Contains("ApprovalRequestVersion") || isARX)
+        bool isARX = newBrokeredMessage.ApplicationProperties.ContainsKey("ContentType") && newBrokeredMessage.ApplicationProperties["ContentType"].ToString() == "ApprovalRequestExpression";
+        if (newBrokeredMessage.ApplicationProperties.Keys.Contains("ApprovalRequestVersion") || isARX)
         {
             rawArJSON = approvalNotificationARXObj.ToJson();
+        }
+        else
+        {
+            //converting brokered message's body to stream.
+            var stream = newBrokeredMessage.Body.ToStream();
+            var streamReader = new StreamReader(stream);
+            var messageBody = streamReader.ReadToEnd();
+            stream.Position = 0;
+
+            //Converting ApprovalRequestNotificationExt brokered message to json string
+            if (messageBody.Contains("ApprovalRequestNotificationExt"))
+            {
+                #region Processing ApprovalRequestNotificationExt
+
+                var arns = new List<MS.IT.CFE.FIN.MSApprovals.Model.ApprovalRequestNotificationExt>();
+                if (messageBody.Contains("ArrayOfApprovalRequestNotificationExt"))
+                {
+                    var serializer = new DataContractSerializer((new List<MS.IT.CFE.FIN.MSApprovals.Model.ApprovalRequestNotificationExt>()).GetType());
+                    var reader = XmlDictionaryReader.CreateBinaryReader(stream, XmlDictionaryReaderQuotas.Max);
+                    arns = (List<MS.IT.CFE.FIN.MSApprovals.Model.ApprovalRequestNotificationExt>)serializer.ReadObject(reader);
+                }
+                else
+                {
+                    var serializer = new DataContractSerializer((new MS.IT.CFE.FIN.MSApprovals.Model.ApprovalRequestNotificationExt()).GetType());
+                    var reader = XmlDictionaryReader.CreateBinaryReader(stream, XmlDictionaryReaderQuotas.Max);
+                    var approvalInfo = (MS.IT.CFE.FIN.MSApprovals.Model.ApprovalRequestNotificationExt)serializer.ReadObject(reader);
+                    arns.Add(approvalInfo);
+                }
+                rawArJSON = arns.ToJson();
+
+                #endregion Processing ApprovalRequestNotificationExt
+            }
+
+            //Converting ApprovalRequestNotification brokered message to json string
+            else if (messageBody.Contains("ApprovalRequestNotification"))
+            {
+                #region Processing ARN
+
+                var arns = new List<Microsoft.Approvals.Framework.Services.Interfaces.DataContracts.ApprovalRequestNotification>();
+                if (messageBody.Contains("ArrayOfApprovalRequestNotification"))
+                {
+                    var serializer = new DataContractSerializer((new List<Microsoft.Approvals.Framework.Services.Interfaces.DataContracts.ApprovalRequestNotification>()).GetType());
+                    var reader = XmlDictionaryReader.CreateBinaryReader(stream, XmlDictionaryReaderQuotas.Max);
+                    arns = (List<Microsoft.Approvals.Framework.Services.Interfaces.DataContracts.ApprovalRequestNotification>)serializer.ReadObject(reader);
+                }
+                else
+                {
+                    var serializer = new DataContractSerializer((new Microsoft.Approvals.Framework.Services.Interfaces.DataContracts.ApprovalRequestNotification()).GetType());
+                    var reader = XmlDictionaryReader.CreateBinaryReader(stream, XmlDictionaryReaderQuotas.Max);
+                    var approvalInfo = (Microsoft.Approvals.Framework.Services.Interfaces.DataContracts.ApprovalRequestNotification)serializer.ReadObject(reader);
+                    arns.Add(approvalInfo);
+                }
+
+                rawArJSON = arns.ToJson();
+
+                #endregion Processing ARN
+            }
         }
 
         return rawArJSON;
@@ -181,7 +236,7 @@ public class AuditAgentHelper : IAuditAgentHelper
     /// </summary>
     /// <param name="approvalRequestNotificationExts"></param>
     /// <returns></returns>
-    private List<ApprovalRequestExpressionExt> ProcessARXCollection(List<ApprovalRequestExpressionExt> approvalRequestNotificationExts, string rawArJson, ApprovalTenantInfo tenant, Message brokeredMessageFull)
+    private List<ApprovalRequestExpressionExt> ProcessARXCollection(List<ApprovalRequestExpressionExt> approvalRequestNotificationExts, string rawArJson, ApprovalTenantInfo tenant, ServiceBusReceivedMessage brokeredMessageFull)
     {
         // Defining a failed message list to contain all failed ARNExtn objects, to be logged later
         List<ApprovalRequestExpressionExt> failedMessages = new List<ApprovalRequestExpressionExt>();
@@ -211,10 +266,10 @@ public class AuditAgentHelper : IAuditAgentHelper
     /// </summary>
     /// <param name="approvalRequestExpressionExt"></param>
     /// <returns></returns>
-    private void ProcessARX(ApprovalRequestExpressionExt approvalRequestExpressionExt, string rawArJson, ApprovalTenantInfo tenantInfo, Message brokeredMessageFull)
+    private void ProcessARX(ApprovalRequestExpressionExt approvalRequestExpressionExt, string rawArJson, ApprovalTenantInfo tenantInfo, ServiceBusReceivedMessage brokeredMessageFull)
     {
         // Converting the ARN into JSON and writing it
-        string arxJSON = approvalRequestExpressionExt.ToJson();
+        string arxJSON = approvalRequestExpressionExt.ToJson(new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
 
         // Writing to the main audit agent table
         _auditAgentDataProvider.InsertInToDocumentDB(approvalRequestExpressionExt, rawArJson, brokeredMessageFull, "", "");

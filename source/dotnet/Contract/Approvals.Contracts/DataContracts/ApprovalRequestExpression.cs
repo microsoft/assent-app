@@ -12,7 +12,7 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
     /// Type which represents an approval request - base type
     /// </summary>
     [KnownType(typeof(ApprovalRequestExpressionV1))]
-    public abstract class ApprovalRequestExpression
+    public class ApprovalRequestExpression
     {
         /// <summary>
         /// Operation date time
@@ -67,6 +67,11 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
         /// In case of delete, this is list of approvers for whom this request should be removed from pending approval queue
         /// </summary>
         public List<Approver> Approvers { get; set; }
+
+        /// <summary>
+        /// List of Backup approvers corresponding to Approvers
+        /// </summary>
+        public List<Approver> BackupApprovers { get; set; }
 
         /// <summary>
         /// List of approvers for whom summary data should be deleted

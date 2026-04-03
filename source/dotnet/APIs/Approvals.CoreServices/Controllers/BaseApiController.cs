@@ -6,9 +6,10 @@ namespace Microsoft.CFS.Approvals.CoreServices.Controllers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Mail;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CFS.Approvals.Contracts;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
+using Microsoft.CFS.Approvals.Model;
 using Microsoft.CFS.Approvals.Utilities.Helpers;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
@@ -32,19 +33,14 @@ public class BaseApiController : ControllerBase
     { }
 
     /// <summary>
-    /// User alias.
+    /// Alias's Domain
     /// </summary>
-    public string Alias => GetAlias();
-
-    /// <summary>
-    /// Logged-in alias.
-    /// </summary>
-    public string LoggedInAlias => GetLoggedInAlias();
+    public string DomainName => GetDomain();
 
     /// <summary>
     /// Client device.
     /// </summary>
-    public string Host => GetClientDevice();
+    public string ClientDevice => GetClientDevice();
 
     /// <summary>
     /// Xcv.
@@ -54,7 +50,27 @@ public class BaseApiController : ControllerBase
     /// <summary>
     /// Tcv.
     /// </summary>
-    public string Tcv => GetTcv();
+    public string MessageId => GetMessageId();
+
+    /// <summary>
+    /// on behalf user
+    /// </summary>
+    public User OnBehalfUser => new User
+    {
+        MailNickname = GetAlias(),
+        UserPrincipalName = GetAlias() + DomainName,
+        Id = GetUserObjectId()
+    };
+
+    /// <summary>
+    /// on signed-in user
+    /// </summary>
+    public User SignedInUser => new User
+    {
+        MailNickname = GetLoggedInAlias(),
+        UserPrincipalName = GetLoggedInUpn(),
+        Id = GetSignedInUserId()
+    };
 
     /// <summary>
     /// Get alias
@@ -83,6 +99,53 @@ public class BaseApiController : ControllerBase
             alias = Request.Headers.FirstOrDefault(x => x.Key.ToLower().Equals(Constants.LoggedInUserAlias.ToLower())).Value.FirstOrDefault();
         }
         return alias;
+    }
+
+    /// <summary>
+    /// Get logged in upn.
+    /// </summary>
+    /// <returns>logged in user UPN</returns>
+    private string GetLoggedInUpn()
+    {
+        var upn = string.Empty;
+        if (Request.Headers.Keys.Contains(Constants.LoggedInUserUpn) || Request.Headers.Keys.Contains("loggedInUserUpn", StringComparer.InvariantCultureIgnoreCase))
+        {
+            upn = Request.Headers.FirstOrDefault(x => x.Key.ToLower().Equals(Constants.LoggedInUserUpn.ToLower())).Value.FirstOrDefault();
+        }
+        return upn;
+    }
+
+    private string GetSignedInUserId()
+    {
+        var objectId = string.Empty;
+        if (Request.Headers.Keys.Contains(Constants.XMSClientPrincipalId))
+        {
+            objectId = Request.Headers.FirstOrDefault(x => x.Key.Equals(Constants.XMSClientPrincipalId)).Value.FirstOrDefault();
+        }
+
+        return objectId;
+    }
+
+    private string GetUserObjectId()
+    {
+        var objectId = Request.Headers.FirstOrDefault(x => x.Key.ToLower().Equals(Constants.OnBehalfUserId.ToLower())).Value.FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(objectId))
+        {
+            objectId = Request.Headers.FirstOrDefault(x => x.Key.Equals(Constants.XMSClientPrincipalId)).Value.FirstOrDefault();
+        }
+
+        return objectId;
+    }
+
+    private string GetDomain()
+    {
+        var domain = string.Empty;
+        if (Request.Headers.Keys.Contains(Constants.Domain) || Request.Headers.Keys.Contains("domain", StringComparer.InvariantCultureIgnoreCase))
+        {
+            domain = Request.Headers.FirstOrDefault(x => x.Key.ToLower().Equals(Constants.Domain.ToLower())).Value.FirstOrDefault();
+        }
+
+        return domain;
     }
 
     /// <summary>
@@ -130,9 +193,9 @@ public class BaseApiController : ControllerBase
         string header = string.Empty;
         Dictionary<string, object> dictObj = new Dictionary<string, object>();
 
-        if (Request.Headers.Keys.Contains(Constants.FilterParameters))
+        if (Request.Headers.Keys.Contains(Constants.FilterParameters, StringComparer.OrdinalIgnoreCase))
         {
-            header = Request.Headers.FirstOrDefault(x => x.Key.Equals(Constants.FilterParameters)).Value.FirstOrDefault();
+            header = Request.Headers.FirstOrDefault(x => x.Key.Equals(Constants.FilterParameters, StringComparison.OrdinalIgnoreCase)).Value.FirstOrDefault();
             header = string.IsNullOrWhiteSpace(header) ? "" : Uri.UnescapeDataString(header);
             JSONHelper.ConvertObjectToJSON(header);
             JObject jsonObj = JObject.Parse(header);
@@ -162,7 +225,7 @@ public class BaseApiController : ControllerBase
     /// Get Tcv
     /// </summary>
     /// <returns>Tcv string</returns>
-    private string GetTcv()
+    private string GetMessageId()
     {
         if (Request.Headers.Keys.Contains(Constants.Tcv) || Request.Headers.Keys.Contains("tcv"))
         {
@@ -176,5 +239,19 @@ public class BaseApiController : ControllerBase
         {
             return Guid.NewGuid().ToString();
         }
+    }
+
+    /// <summary>
+    /// Get Tenants.
+    /// </summary>
+    /// <returns>Tenants</returns>
+    private string GetTenants()
+    {
+        var alias = string.Empty;
+        if (Request.Headers.Keys.Contains(Constants.Tenants) || Request.Headers.Keys.Contains("Tenants", StringComparer.InvariantCultureIgnoreCase))
+        {
+            alias = Request.Headers.FirstOrDefault(x => x.Key.ToLower().Equals(Constants.Tenants.ToLower())).Value.FirstOrDefault();
+        }
+        return alias;
     }
 }

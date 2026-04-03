@@ -61,14 +61,14 @@ public class SaveEditableDetailsController : BaseApiController
     /// <returns></returns>
     [SwaggerOperation(Tags = new[] { "Details" })]
     [HttpGet]
-    public IActionResult Get(int tenantId, string documentNumber)
+    public async Task<IActionResult> Get(int tenantId, string documentNumber)
     {
         #region Logging
 
         var logData = new Dictionary<LogDataKey, object>
         {
             { LogDataKey.Xcv, Xcv },
-            { LogDataKey.DXcv, Tcv },
+            { LogDataKey.DXcv, MessageId },
             { LogDataKey.StartDateTime, DateTime.UtcNow },
             { LogDataKey.TenantId, tenantId },
             { LogDataKey.DocumentNumber, documentNumber },
@@ -84,7 +84,7 @@ public class SaveEditableDetailsController : BaseApiController
                 ArgumentGuard.NotNull(tenantId, nameof(tenantId));
                 ArgumentGuard.NotNull(documentNumber, nameof(documentNumber));
 
-                var result = _saveEditableDetailsHelper.CheckUserAuthorizationForEdit(tenantId, documentNumber, Alias);
+                var result = await _saveEditableDetailsHelper.CheckUserAuthorizationForEdit(SignedInUser, OnBehalfUser, GetTokenOrCookie(), ClientDevice, Xcv, MessageId, tenantId, documentNumber);
                 logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
                 _logProvider.LogInformation(TrackingEvent.WebApiSaveEditableDetailsSuccess, logData);
                 return Ok(result);
@@ -136,8 +136,7 @@ public class SaveEditableDetailsController : BaseApiController
                     requestContent = await reader.ReadToEndAsync();
                 }
                 var detailsString = requestContent;
-                List<string> validationResults = _saveEditableDetailsHelper.SaveEditedDetails(detailsString, tenantId, Alias, xcv, tcv, LoggedInAlias);
-
+                List<string> validationResults = await _saveEditableDetailsHelper.SaveEditedDetails(SignedInUser, OnBehalfUser, GetTokenOrCookie(), ClientDevice, detailsString, tenantId, sessionId, tcv, xcv);
                 logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
                 _logProvider.LogInformation(TrackingEvent.WebApiSaveEditableDetailsSuccess, logData);
 

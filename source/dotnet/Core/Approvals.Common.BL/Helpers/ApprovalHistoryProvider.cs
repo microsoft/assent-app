@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Data.Azure.CosmosDb.Interface;
 using Microsoft.CFS.Approvals.Extensions;
 using Microsoft.CFS.Approvals.LogManager.Model;
@@ -170,11 +171,13 @@ public class ApprovalHistoryProvider : IApprovalHistoryProvider
     /// <param name="actionDate"></param>
     /// <param name="documentNumber"></param>
     /// <param name="actionTaken"></param>
+    /// <param name="domain">Approver Domain</param>
+    /// <param name="approverId">Approver Object Id</param>
     /// <returns></returns>
-    public async Task<bool> CheckIfHistoryInsertedAsync(ApprovalTenantInfo tenantInfo, string alias, string actionDate, string documentNumber, string actionTaken)
+    public async Task<bool> CheckIfHistoryInsertedAsync(ApprovalTenantInfo tenantInfo, string alias, string actionDate, string documentNumber, string actionTaken, string domain, string approverId)
     {
         var historyStorageProvider = _historyStorageFactory.GetStorageProvider(tenantInfo);
-        var historyList = await historyStorageProvider.GetHistoryDataAsync(alias, actionDate, documentNumber, actionTaken);
+        var historyList = await historyStorageProvider.GetHistoryDataAsync(alias, actionDate, documentNumber, actionTaken, domain, approverId);
         var list = historyList?.Where(h => (h.ActionDate.Value.ToUniversalTime()).ToString("yyyy-MM-dd HH:mm:ss") == actionDate).ToList();
         return (list == null || list.Count <= 0);
     }
@@ -309,10 +312,10 @@ public class ApprovalHistoryProvider : IApprovalHistoryProvider
     /// <param name="alias"></param>
     /// <param name="timePeriod"></param>
     /// <param name="searchCriteria"></param>
-    /// <param name="loggedInAlias"></param>
+    /// <param name="signedInUser"></param>
     /// <param name="Xcv"></param>
     /// <returns></returns>
-    public virtual async Task<JArray> GetHistoryCountforAliasAsync(string alias, int timePeriod, string searchCriteria, string loggedInAlias, string Xcv)
+    public virtual async Task<JArray> GetHistoryCountforAliasAsync(string alias, int timePeriod, string searchCriteria, User signedInUser, string Xcv)
     {
         var logData = new Dictionary<LogDataKey, object>
         {
@@ -321,7 +324,7 @@ public class ApprovalHistoryProvider : IApprovalHistoryProvider
             { LogDataKey.Tcv, Xcv },
             { LogDataKey.ReceivedTcv, Xcv },
             { LogDataKey.SessionId, Xcv },
-            { LogDataKey.UserRoleName, loggedInAlias },
+            { LogDataKey.UserRoleName, signedInUser.MailNickname },
             { LogDataKey.EventType, Constants.FeatureUsageEvent },
             { LogDataKey.UserAlias, alias },
             { LogDataKey.SearchText, searchCriteria },
@@ -336,7 +339,7 @@ public class ApprovalHistoryProvider : IApprovalHistoryProvider
         try
         {
             var historyStorageProvider = _historyStorageFactory.GetStorageProvider(null);
-            var history = await historyStorageProvider.GetHistoryDataAsync(alias, timePeriod);
+            var history = await historyStorageProvider.GetHistoryDataAsync(signedInUser.MailNickname, signedInUser.UserPrincipalName.GetDomainFromUPN(), signedInUser.Id, timePeriod);
             history = history ?? new List<TransactionHistory>();
             List<TransactionHistory> dtTransactionHistory;
             if (string.IsNullOrEmpty(searchCriteria))
@@ -363,17 +366,67 @@ public class ApprovalHistoryProvider : IApprovalHistoryProvider
     }
 
     /// <summary>
+    /// Get history counts for each month in a specified time period
+    /// </summary>
+    /// <param name="alias"></param>
+    /// <param name="timePeriod"></param>
+    /// <param name="tcv"></param>
+    /// <param name="approverDomain"></param>
+    /// <param name="approverId"></param>
+    /// <returns></returns>
+    public virtual async Task<JArray> GetHistoryIntervalCountsforAliasAsync(string alias, int timePeriod, string tcv, string approverDomain, string approverId)
+    {
+        var logData = new Dictionary<LogDataKey, object>
+        {
+            // Add common data items to LogData
+            { LogDataKey.EventType, Constants.FeatureUsageEvent },
+            { LogDataKey.UserAlias, alias },
+            { LogDataKey.Tcv, tcv },
+            { LogDataKey.IsCriticalEvent, CriticalityLevel.No.ToString() }
+        };
+
+        if (timePeriod == 0) { timePeriod = int.Parse(_config[ConfigurationKey.MonthsOfHistoryDataValue.ToString()]); }
+
+        var tasks = new List<Task>();
+        var intervalsCount = new int[timePeriod];
+        try
+        {
+            var historyStorageProvider = _historyStorageFactory.GetStorageProvider(null);
+            List<TransactionHistory> history = null;
+            foreach (var index in Enumerable.Range(0, timePeriod))
+            {
+                tasks.Add(Task.Run(async () => {
+                    history = await historyStorageProvider.GetHistoryDataAsync(alias, approverDomain, approverId, index + 1, index);
+                    history = history ?? new List<TransactionHistory>();
+                    List<TransactionHistory> dtTransactionHistory;
+                    dtTransactionHistory = history.ToList();
+                    intervalsCount.SetValue(dtTransactionHistory.Count, (timePeriod - 1) - index);
+                }));
+            }
+            await Task.WhenAll(tasks);
+        }
+        catch (Exception ex)
+        {
+            _logProvider.LogError(TrackingEvent.HistoryDataCountFail, ex, logData);
+        }
+        return JArray.FromObject(intervalsCount);
+    }
+
+    /// <summary>
     /// Get transaction history data
     /// </summary>
     /// <param name="alias"></param>
     /// <param name="timePeriod"></param>
     /// <param name="searchCriteria"></param>
+    /// <param name="approverDomain">Approver Domain</param>
+    /// <param name="approverId">Approver Object Id</param>
     /// <param name="page"></param>
     /// <param name="sortColumn"></param>
     /// <param name="sortDirection"></param>
+    /// <param name="tenantId">TenantId. Unique for each Tenant</param>
     /// <returns></returns>
-    public virtual async Task<PagedData<TransactionHistoryExtended>> GetHistoryDataAsync(string alias, int timePeriod, string searchCriteria
-       , int? page = null, string sortColumn = null, string sortDirection = "DESC")
+    public virtual async Task<PagedData<TransactionHistoryExtended>> GetHistoryDataAsync(string alias, int timePeriod, string searchCriteria,
+       string approverDomain, string approverId, int? page = null, string sortColumn = null, string sortDirection = "DESC", string tenantId = "")
     {
         var historyPagedData = new PagedData<TransactionHistoryExtended>();
         if (timePeriod == 0)
@@ -392,7 +445,7 @@ public class ApprovalHistoryProvider : IApprovalHistoryProvider
         searchCriteria = searchCriteria.ReplaceSqlSpecialCharacters();
 
         var historyStorageProvider = _historyStorageFactory.GetStorageProvider(null);
-        var history = await historyStorageProvider.GetHistoryDataAsync(alias, timePeriod);
+        var history = await historyStorageProvider.GetHistoryDataAsync(alias, approverDomain, approverId, timePeriod);
         history = history == null ? new List<TransactionHistory>() : history;
         List<TransactionHistory> dtTransactionHistory;
         if (string.IsNullOrEmpty(searchCriteria))
@@ -409,12 +462,24 @@ public class ApprovalHistoryProvider : IApprovalHistoryProvider
                                                        .ToList();
         }
 
+        historyPagedData.TenantList = (from th in dtTransactionHistory
+                                       select new TransactionHistoryExtended
+                                       {
+                                           TenantId = th.TenantId,
+                                           AppName = th.AppName
+                                       }).GroupBy(x => x.TenantId).Select(grp => grp.FirstOrDefault()).ToList();
+
+        if (dtTransactionHistory != null && !string.IsNullOrWhiteSpace(tenantId) && int.TryParse(tenantId, out int value))
+        {
+            dtTransactionHistory = dtTransactionHistory.Where(h => h?.TenantId == tenantId)?.ToList();
+        }
+
         historyPagedData.TotalCount = dtTransactionHistory.Count;
 
         if (sortColumn != null)
-            dtTransactionHistory = dtTransactionHistory.OrderByDescending(t => t.GetType().GetProperty(sortColumn).GetValue(t)).ToList();
+            dtTransactionHistory = sortDirection == "DESC" ? dtTransactionHistory.OrderByDescending(t => t.GetType().GetProperty(sortColumn).GetValue(t)).ToList() : dtTransactionHistory.OrderBy(t => t.GetType().GetProperty(sortColumn).GetValue(t)).ToList();
         else
-            dtTransactionHistory = dtTransactionHistory.OrderByDescending(t => t.ActionDate).ToList();
+            dtTransactionHistory = sortDirection == "DESC" ? dtTransactionHistory = dtTransactionHistory.OrderByDescending(t => t.ActionDate).ToList() : dtTransactionHistory = dtTransactionHistory.OrderBy(t => t.ActionDate).ToList();
 
         if (page != null)
             dtTransactionHistory = dtTransactionHistory.Skip(skipSize).Take(pageSize).ToList();
@@ -430,9 +495,9 @@ public class ApprovalHistoryProvider : IApprovalHistoryProvider
         }
 
             var tranHistories = dtTransactionHistory.ToList();
-            var tenants = _approvalTenantInfoProvider.GetAllTenantInfo(false);
+            var tenants = _approvalTenantInfoProvider.GetTenantInfo();
             var resultsExtended = from record in tranHistories
-                                  join tenant in tenants.Result on record.TenantId equals tenant.RowKey
+                                  join tenant in tenants on record.TenantId equals tenant.RowKey
                                   let recordExtended = extendTransactionHistoryRecord(record, tenant)
                                   select recordExtended;
             historyPagedData.Result = resultsExtended.ToList();

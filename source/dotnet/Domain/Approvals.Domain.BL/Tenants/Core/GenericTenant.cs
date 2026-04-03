@@ -59,7 +59,7 @@ public class GenericTenant : TenantBase
         ApprovalTenantInfo tenantInfo,
         string alias,
         string clientDevice,
-        string aadToken,
+        string oauth2Token,
         ILogProvider logger,
         IPerformanceLogger performanceLogger,
         IApprovalSummaryProvider approvalSummaryProvider,
@@ -70,12 +70,14 @@ public class GenericTenant : TenantBase
         IApprovalHistoryProvider approvalHistoryProvider,
         IBlobStorageHelper blobStorageHelper,
         IAuthenticationHelper authenticationHelper,
-        IHttpHelper httpHelper)
+        IHttpHelper httpHelper,
+        string objectId,
+        string domain)
         : base(
               tenantInfo,
               alias,
               clientDevice,
-              aadToken,
+              oauth2Token,
               logger,
               performanceLogger,
               approvalSummaryProvider,
@@ -86,7 +88,9 @@ public class GenericTenant : TenantBase
               approvalHistoryProvider,
               blobStorageHelper,
               authenticationHelper,
-              httpHelper)
+              httpHelper,
+              objectId,
+              domain)
     {
     }
 
@@ -97,9 +101,9 @@ public class GenericTenant : TenantBase
         return String.Format(urlFormat, approvalIdentifier.DocumentNumber, approvalIdentifier.FiscalYear, docTypeId);
     }
 
-    protected override string GetDetailURLUsingAttachmentId(string urlFormat, string attachmentId)
+    protected override string GetAttachmentDownloadUrl(string urlFormat, string attachmentId, ApprovalIdentifier approvalIdentifier)
     {
-        return String.Format(urlFormat, HttpUtility.UrlEncode(attachmentId));
+        return String.Format(urlFormat, HttpUtility.UrlEncode(attachmentId), approvalIdentifier.GetDocNumber(approvalTenantInfo), approvalTenantInfo.DocTypeId);
     }
 
     public override JArray ExtractApproverChain(string responseString, string currentApprover, string loggedInUser)

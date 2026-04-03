@@ -18,6 +18,7 @@ using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
 using Microsoft.CFS.Approvals.Domain.BL.Interface;
 using Microsoft.CFS.Approvals.Extensions;
+using Microsoft.CFS.Approvals.LogManager.Interface;
 using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.Model;
@@ -41,7 +42,7 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
     /// <summary>
     /// Initializes a new instance of the <see cref="BulkExternalDocumentActionHelper"/> class.
     /// </summary>
-    /// <param name="approvalSummaryProvider">The approval summary provider.</param>
+    /// <param name="summaryHelper">The approval summary provider.</param>
     /// <param name="config">The configuration.</param>
     /// <param name="logProvider">The logger.</param>
     /// <param name="nameResolutionHelper">The name resolution helper.</param>
@@ -53,9 +54,9 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
     /// <param name="approvalTenantInfoHelper">The approval tenant helper.</param>
     /// <param name="tenantFactory">The tenant factory</param>
     /// <param name="historyProvider">The history provider.</param>
-    /// <param name="attachmentHelper">The attachment helper.</param>
+    /// <param name="auditLogger"></param>
     public BulkExternalDocumentActionHelper(
-        IApprovalSummaryProvider approvalSummaryProvider,
+        ISummaryHelper summaryHelper,
         IConfiguration config,
         ILogProvider logProvider,
         INameResolutionHelper nameResolutionHelper,
@@ -67,9 +68,10 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
         IApprovalTenantInfoHelper approvalTenantInfoHelper,
         ITenantFactory tenantFactory,
         IApprovalHistoryProvider historyProvider,
-        IAttachmentHelper attachmentHelper)
+        IAuditLogger auditLogger,
+        IDelegationHelper delegationHelper)
         : base(
-              approvalSummaryProvider,
+              summaryHelper,
               config,
               logProvider,
               nameResolutionHelper,
@@ -80,7 +82,8 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
               tableHelper,
               approvalTenantInfoHelper,
               tenantFactory,
-              attachmentHelper)
+              auditLogger,
+              delegationHelper)
     {
         _historyProvider = historyProvider;
     }
@@ -91,25 +94,27 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
     /// <param name="tenantAdapter">The tenant adapter.</param>
     /// <param name="tenantInfo">The tenant information.</param>
     /// <param name="tenantId">The tenant map identifier.</param>
-    /// <param name="alias">The alias.</param>
-    /// <param name="loggedInAlias">The logged in alias.</param>
+    /// <param name="onBehalfUser">The on-behalf user entity.</param>
+    /// <param name="signedInUser">The signed in alias.</param>
     /// <param name="clientDevice">The client device.</param>
     /// <param name="approvalRequests">The approval requests.</param>
     /// <param name="xcv">The Xcv.</param>
     /// <param name="tcv">The TCV.</param>
     /// <param name="sessionId">The session identifier.</param>
+    /// <param name="oauth2UserToken">User token</param>
     /// <returns>Task of JObject.</returns>
     protected override async Task<JObject> ProcessUserActionsAsync(
             ITenant tenantAdapter,
             ApprovalTenantInfo tenantInfo,
             int tenantId,
-            string alias,
-            string loggedInAlias,
+            User onBehalfUser,
+            User signedInUser,
             string clientDevice,
             List<ApprovalRequest> approvalRequests,
             string xcv,
             string tcv,
-            string sessionId)
+            string sessionId,
+            string oauth2UserToken)
     {
         var userActionsResponseArray = new JArray();
         var userActionsResponseObject = new JObject();
@@ -121,18 +126,16 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
         {
             { LogDataKey.ClientDevice, clientDevice },
             { LogDataKey.IsCriticalEvent, CriticalityLevel.Yes.ToString() },
-            { LogDataKey.EventId, TrackingEvent.DocumentActionFailure },
-            { LogDataKey.EventName, TrackingEvent.DocumentActionFailure.ToString() },
             { LogDataKey.Tcv, tcv },
             { LogDataKey.Xcv, xcv },
             { LogDataKey.ReceivedTcv, tcv },
             { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, loggedInAlias },
-            { LogDataKey.Approver, loggedInAlias },
+            { LogDataKey.UserRoleName, signedInUser.MailNickname },
+            { LogDataKey.Approver, signedInUser.MailNickname },
             { LogDataKey.BusinessProcessName, string.Format(tenantInfo?.BusinessProcessName, Constants.BusinessProcessNameApprovalAction, approvalReq?.Action) },
             { LogDataKey.TenantId, tenantId },
             { LogDataKey.TenantName, tenantInfo?.AppName },
-            { LogDataKey.UserAlias, alias },
+            { LogDataKey.UserAlias, onBehalfUser.MailNickname },
             { LogDataKey.AppAction, approvalReq?.Action },
             { LogDataKey.Operation, approvalReq?.Action },
             { LogDataKey.DocumentTypeId, tenantInfo?.DocTypeId }
@@ -165,7 +168,7 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
                 {
                     approvalRequest.AdditionalData.Remove("summaryJSON");
                 }
-                actionResponse = await tenantAdapter.ExecuteActionAsync(approvalRequestsToTenant, loggedInAlias, sessionId, clientDevice, xcv, tcv, null);
+                actionResponse = await tenantAdapter.ExecuteActionAsync(approvalRequestsToTenant, signedInUser.MailNickname, sessionId, clientDevice, xcv, tcv, null);
 
                 #endregion Executing Bulk External Action Call
 
@@ -278,7 +281,7 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
             var actionResponseContentObject = new JObject();
             await Task.Run(async () =>
             {
-                await PostProcessActionResponses(tenantInfo, tenantId, alias, loggedInAlias, clientDevice, approvalRequests, tcv,
+            await PostProcessActionResponses(tenantInfo, tenantId, onBehalfUser.MailNickname, signedInUser.MailNickname, clientDevice, approvalRequests, tcv,
                    actionResponse, bTenantCallSuccess, tenantAdapter, actionResponseContentObject, userActionsResponseArray, null, sessionId);
             });
         }
@@ -377,20 +380,20 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
                 var approvalrequest = approvalRequests.FirstOrDefault(x => x.ApprovalIdentifier.DisplayDocumentNumber == approvalResponse?.ApprovalIdentifier?.GetDocNumber(tenantInfo));
                 var summaryJSON = approvalrequest.AdditionalData["summaryJSON"].ToJObject();
 
-                    var actionAuditLogInfo = new ActionAuditLogInfo
-                    {
-                        DisplayDocumentNumber = approvalResponse?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
-                        ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
-                        ActionStatus = Constants.SuccessStatus,
-                        ActionTaken = approvalReq?.Action,
-                        UnitValue = summaryJSON?["unitValue"]?.ToString() ?? string.Empty,
-                        UnitOfMeasure = summaryJSON?["unitOfMeasure"]?.ToString() ?? string.Empty,
-                        Approver = alias,
-                        ImpersonatedUser = loggedInAlias,
-                        ClientType = clientDevice,
-                        TenantId = tenantInfo?.TenantId.ToString(),
-                        Id = Guid.NewGuid()
-                    };
+                var actionAuditLogInfo = new ActionAuditLogInfo
+                {
+                    DisplayDocumentNumber = approvalResponse?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
+                    ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
+                    ActionStatus = Constants.SuccessStatus,
+                    ActionTaken = approvalReq?.Action,
+                    UnitValue = summaryJSON?["unitValue"]?.ToString() ?? string.Empty,
+                    UnitOfMeasure = summaryJSON?["unitOfMeasure"]?.ToString() ?? string.Empty,
+                    Approver = alias,
+                    ImpersonatedUser = loggedInAlias,
+                    ClientType = clientDevice,
+                    TenantId = tenantInfo?.TenantId.ToString(),
+                    Id = Guid.NewGuid()
+                };
 
                 actionAuditLogs.Add(actionAuditLogInfo);
                 logData.Modify(LogDataKey.Tcv, approvalResponse?.Telemetry?.Tcv);
@@ -439,55 +442,55 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
                     logData.Modify(LogDataKey.AppAction, approvalRequest.Action);
                     logData.Modify(LogDataKey.Operation, approvalRequest.Action);
 
-                        var actionDateTime = Convert.ToDateTime(approvalRequest.ActionDetails[approvalRequest.ActionDetails.Keys.FirstOrDefault(x => x.ToLowerInvariant() == Constants.ActionDateKey.ToLowerInvariant())]);
-                        var summaryJSON = approvalRequest.AdditionalData["summaryJSON"].ToJObject();
-                        if (!approvalResponses[i].ActionResult)
+                    var actionDateTime = Convert.ToDateTime(approvalRequest.ActionDetails[approvalRequest.ActionDetails.Keys.FirstOrDefault(x => x.ToLowerInvariant() == Constants.ActionDateKey.ToLowerInvariant())]);
+                    var summaryJSON = approvalRequest.AdditionalData["summaryJSON"].ToJObject();
+                    if (!approvalResponses[i].ActionResult)
+                    {
+                        if (actionObj.Property("ErrorMessage") == null)
                         {
-                            if (actionObj.Property("ErrorMessage") == null)
-                            {
-                                actionObj.Add("ErrorMessage", "Tracking ID:" + tcv + " :: " + approvalResponses[i].DisplayMessage + ".");
-                            }
-                            var actionAuditLogInfo = new ActionAuditLogInfo
-                            {
-                                DisplayDocumentNumber = approvalResponses[i]?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
-                                ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
-                                ActionStatus = Constants.FailedStatus,
-                                ActionTaken = approvalRequest?.Action,
-                                UnitValue = summaryJSON?["unitValue"]?.ToString() ?? string.Empty,
-                                UnitOfMeasure = summaryJSON?["unitOfMeasure"]?.ToString() ?? string.Empty,
-                                Approver = alias,
-                                ImpersonatedUser = loggedInAlias,
-                                ClientType = clientDevice,
-                                TenantId = tenantInfo?.TenantId.ToString(),
-                                ErrorMessage = approvalResponses[i]?.E2EErrorInformation?.ErrorMessages?.ToJson(),
-                                Id = Guid.NewGuid()
-                            };
+                            actionObj.Add("ErrorMessage", "Tracking ID:" + tcv + " :: " + approvalResponses[i].DisplayMessage + ".");
+                        }
+                        var actionAuditLogInfo = new ActionAuditLogInfo
+                        {
+                            DisplayDocumentNumber = approvalResponses[i]?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
+                            ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
+                            ActionStatus = Constants.FailedStatus,
+                            ActionTaken = approvalRequest?.Action,
+                            UnitValue = summaryJSON?["unitValue"]?.ToString() ?? string.Empty,
+                            UnitOfMeasure = summaryJSON?["unitOfMeasure"]?.ToString() ?? string.Empty,
+                            Approver = alias,
+                            ImpersonatedUser = loggedInAlias,
+                            ClientType = clientDevice,
+                            TenantId = tenantInfo?.TenantId.ToString(),
+                            ErrorMessage = approvalResponses[i]?.E2EErrorInformation?.ErrorMessages?.ToJson(),
+                            Id = Guid.NewGuid()
+                        };
 
                         actionAuditLogs.Add(actionAuditLogInfo);
 
-                            _logger.LogError(TrackingEvent.DocumentActionFailure, new Exception(approvalResponses[i]?.E2EErrorInformation?.ErrorMessages?.ToJson()), logData);
-                        }
-                        else
-                        {
-                            var actionAuditLogInfo = new ActionAuditLogInfo
-                            {
-                                DisplayDocumentNumber = approvalResponses[i]?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
-                                ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
-                                ActionStatus = Constants.SuccessStatus,
-                                ActionTaken = approvalRequest.Action,
-                                UnitValue = summaryJSON?["unitValue"]?.ToString() ?? string.Empty,
-                                UnitOfMeasure = summaryJSON?["unitOfMeasure"]?.ToString() ?? string.Empty,
-                                Approver = alias,
-                                ImpersonatedUser = loggedInAlias,
-                                ClientType = clientDevice,
-                                TenantId = tenantInfo?.TenantId.ToString(),
-                                Id = Guid.NewGuid()
-                            };
-                            actionAuditLogs.Add(actionAuditLogInfo);
-                            _logger.LogInformation(TrackingEvent.DocumentActionSuccess, logData);
-                            successApprovalRequests.Add(approvalRequest);
-                        }
+                        _logger.LogError(TrackingEvent.DocumentActionFailure, new Exception(approvalResponses[i]?.E2EErrorInformation?.ErrorMessages?.ToJson()), logData);
                     }
+                    else
+                    {
+                        var actionAuditLogInfo = new ActionAuditLogInfo
+                        {
+                            DisplayDocumentNumber = approvalResponses[i]?.ApprovalIdentifier?.GetDocNumber(tenantInfo),
+                            ActionDateTime = actionDateTime.ToUniversalTime().ToString("o"),
+                            ActionStatus = Constants.SuccessStatus,
+                            ActionTaken = approvalRequest.Action,
+                            UnitValue = summaryJSON?["unitValue"]?.ToString() ?? string.Empty,
+                            UnitOfMeasure = summaryJSON?["unitOfMeasure"]?.ToString() ?? string.Empty,
+                            Approver = alias,
+                            ImpersonatedUser = loggedInAlias,
+                            ClientType = clientDevice,
+                            TenantId = tenantInfo?.TenantId.ToString(),
+                            Id = Guid.NewGuid()
+                        };
+                        actionAuditLogs.Add(actionAuditLogInfo);
+                        _logger.LogInformation(TrackingEvent.DocumentActionSuccess, logData);
+                        successApprovalRequests.Add(approvalRequest);
+                    }
+                }
 
                 userActionsResponseArray[i] = actionObj;
             }
@@ -620,35 +623,38 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
                         approvalsNote = approvalRequest.ActionDetails.ToJson();
                     }
 
-                        var historyData = new TransactionHistory()
-                        {
-                            PartitionKey = approvalRequest.ApprovalIdentifier.GetDocNumber(approvalTenantInfo),
-                            RowKey = Guid.NewGuid().ToString(),
-                            Title = tenantAdapter.GetRequestTitleDescription(summaryJSON),
-                            Approver = summaryJSON["approverAlias"]?.ToString(),
-                            UnitValue = summaryJSON["unitValue"]?.ToString(),
-                            AmountUnits = summaryJSON["unitOfMeasure"]?.ToString(),
-                            SubmittedDate = Convert.ToDateTime(summaryJSON["submittedDate"]),
-                            SubmitterName = summaryJSON["submitterName"]?.ToString(),
-                            SubmittedAlias = summaryJSON["submitterAlias"]?.ToString(),
-                            ActionDate = (!Convert.ToDateTime(approvalRequest.ActionDetails["actionDate"]).Equals(DateTime.MinValue))
-                                ? Convert.ToDateTime(approvalRequest.ActionDetails["actionDate"])
-                                : DateTime.UtcNow,
-                            ActionTaken = !String.IsNullOrWhiteSpace(approvalRequest.Action)
-                                ? approvalRequest.Action
-                                : "None",
-                            DocumentNumber = approvalRequest.ApprovalIdentifier?.GetDocNumber(approvalTenantInfo),
-                            JsonData = summaryJSON.ToString(),
-                            TenantId = approvalTenantInfo.TenantId.ToString(),
-                            DocumentTypeID = approvalRequest.DocumentTypeID,
-                            AppName = approvalTenantInfo.AppName,
-                            DelegateUser = approvalRequest.ActionByDelegateInMSApprovals,
-                            Xcv = approvalRequest.Telemetry.Xcv,
-                            ActionTakenOnClient = clientDevice,
-                            ApproversNote = approvalsNote,
-                            CompanyCode = summaryJSON["companyCode"]?.ToString(),
-                            Timestamp = DateTime.UtcNow
-                        };
+                    var historyData = new TransactionHistory()
+                    {
+                        PartitionKey = approvalRequest.ApprovalIdentifier.GetDocNumber(approvalTenantInfo),
+                        RowKey = Guid.NewGuid().ToString(),
+                        Title = tenantAdapter.GetRequestTitleDescription(summaryJSON),
+                        Approver = summaryJSON["approverAlias"]?.ToString(),
+                        UnitValue = summaryJSON["unitValue"]?.ToString(),
+                        AmountUnits = summaryJSON["unitOfMeasure"]?.ToString(),
+                        SubmittedDate = Convert.ToDateTime(summaryJSON["submittedDate"]),
+                        SubmitterName = summaryJSON["submitterName"]?.ToString(),
+                        SubmittedAlias = summaryJSON["submitterAlias"]?.ToString(),
+                        ActionDate = (!Convert.ToDateTime(approvalRequest.ActionDetails["actionDate"]).Equals(DateTime.MinValue))
+                            ? Convert.ToDateTime(approvalRequest.ActionDetails["actionDate"])
+                            : DateTime.UtcNow,
+                        ActionTaken = !String.IsNullOrWhiteSpace(approvalRequest.Action)
+                            ? approvalRequest.Action
+                            : "None",
+                        DocumentNumber = approvalRequest.ApprovalIdentifier?.GetDocNumber(approvalTenantInfo),
+                        JsonData = summaryJSON.ToJson(new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }),
+                        TenantId = approvalTenantInfo.TenantId.ToString(),
+                        DocumentTypeID = approvalRequest.DocumentTypeID,
+                        AppName = approvalTenantInfo.AppName,
+                        DelegateUser = approvalRequest.ActionByDelegateInMSApprovals,
+                        Xcv = approvalRequest.Telemetry.Xcv,
+                        ActionTakenOnClient = clientDevice,
+                        ApproversNote = approvalsNote,
+                        CompanyCode = summaryJSON["companyCode"]?.ToString(),
+                        Timestamp = DateTime.UtcNow,
+                        Id = Guid.NewGuid(),
+                        ApproverId = await _nameResolutionHelper.GetObjectId(summaryJSON["approverAlias"]?.ToString()),
+                        ApproverDomain = (await _nameResolutionHelper.GetUserPrincipalName(summaryJSON["approverAlias"]?.ToString())).GetDomainFromUPN()
+                    };
 
                     historyDataList.Add(historyData);
                 }

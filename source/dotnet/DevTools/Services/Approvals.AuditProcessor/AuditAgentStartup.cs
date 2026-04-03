@@ -105,8 +105,10 @@ namespace AuditAgentAzFunction
             builder.Services.AddScoped<IApprovalTenantInfoProvider, ApprovalTenantInfoProvider>();
             builder.Services.AddScoped<IApprovalTenantInfoHelper, ApprovalTenantInfoHelper>();
             builder.Services.AddScoped<IFlightingDataProvider, FlightingDataProvider>();
-            builder.Services.AddSingleton<HttpClientHandler>();
+            builder.Services.AddScoped<IAuthenticationHelper, AuthenticationHelper>(); // Register IAuthenticationHelper for HttpHelper.
+
             builder.Services.AddHttpClient<IHttpHelper, HttpHelper>()
+                .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
                 .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
                 .AddPolicyHandler(GetRetryPolicy());
         }

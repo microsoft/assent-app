@@ -14,7 +14,9 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
@@ -62,7 +64,9 @@ public abstract class TenantBase : ITenant
         IApprovalHistoryProvider approvalHistoryProvider,
         IBlobStorageHelper blobStorageHelper,
         IAuthenticationHelper authenticationHelper,
-        IHttpHelper httpHelper)
+        IHttpHelper httpHelper,
+        string objectId,
+        string domain)
     {
         approvalTenantInfo = tenantInfo;
         Alias = alias;
@@ -79,6 +83,12 @@ public abstract class TenantBase : ITenant
         BlobStorageHelper = blobStorageHelper;
         AuthenticationHelper = authenticationHelper;
         HttpHelper = httpHelper;
+
+        Domain = string.IsNullOrWhiteSpace(domain) && !string.IsNullOrWhiteSpace(Alias) ?
+                    NameResolutionHelper.GetUserPrincipalName(Alias).Result.GetDomainFromUPN() : domain;
+        ObjectId = objectId;
+        if (string.IsNullOrWhiteSpace(ObjectId) && !string.IsNullOrWhiteSpace(Domain))
+            ObjectId = NameResolutionHelper.GetUser(alias + Domain).Result?.Id;
     }
 
     protected TenantBase(
@@ -116,7 +126,7 @@ public abstract class TenantBase : ITenant
         ApprovalTenantInfo tenantInfo,
         string alias,
         string clientDevice,
-        string aadToken,
+        string oauth2Token,
         ILogProvider logger,
         IPerformanceLogger performanceLogger,
         IApprovalSummaryProvider approvalSummaryProvider,
@@ -130,7 +140,7 @@ public abstract class TenantBase : ITenant
         approvalTenantInfo = tenantInfo;
         Alias = alias;
         ClientDevice = clientDevice;
-        UserToken = aadToken;
+        UserToken = oauth2Token;
         Logger = logger;
         PerformanceLogger = performanceLogger;
         ApprovalSummaryProvider = approvalSummaryProvider;
@@ -140,6 +150,8 @@ public abstract class TenantBase : ITenant
         FlightingDataProvider = flightingDataProvider;
         ApprovalHistoryProvider = approvalHistoryProvider;
         AuthenticationHelper = authenticationHelper;
+        ObjectId = !string.IsNullOrWhiteSpace(Alias) ? NameResolutionHelper.GetObjectId(Alias).Result : string.Empty;
+        Domain = !string.IsNullOrWhiteSpace(Alias) ? NameResolutionHelper.GetUserPrincipalName(Alias).Result.GetDomainFromUPN() : string.Empty;
     }
 
     #endregion CONSTRUCTOR
@@ -167,6 +179,16 @@ public abstract class TenantBase : ITenant
     /// The alias.
     /// </value>
     protected string Alias { get; set; }
+
+    /// <summary>
+    /// Gets or sets the objectId of Alias
+    /// </summary>
+    protected string ObjectId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the domain of Alias
+    /// </summary>
+    protected string Domain { get; set; }
 
     /// <summary>
     /// Gets or sets the client device.
@@ -316,18 +338,20 @@ public abstract class TenantBase : ITenant
                 var placeHolderDict = new Dictionary<string, object>();
                 placeHolderDict = Extension.ConvertJsonToDictionary(placeHolderDict, JsonConvert.SerializeObject(approvalRequest?.ApprovalIdentifier));
                 var placeholderUrlTenantIdList = Config[ConfigurationKey.UrlPlaceholderTenants.ToString()].Split(',').ToList();
-                var summaryUrl = (placeholderUrlTenantIdList.Contains(approvalTenantInfo.RowKey)) ? RetrieveTenantSummaryUrl(placeHolderDict) : GetSummaryUrl(approvalTenantInfo, approvalTenantInfo.TenantBaseUrl + approvalTenantInfo.SummaryURL, approvalRequest, approvalTenantInfo.DocTypeId);
+
+                var summaryUrl = (placeholderUrlTenantIdList.Contains(approvalTenantInfo.RowKey))
+                    ? RetrieveTenantSummaryUrl(placeHolderDict)
+                    : GetSummaryUrl(approvalTenantInfo, approvalTenantInfo.TenantBaseUrl + approvalTenantInfo.SummaryURL, approvalRequest, approvalTenantInfo.DocTypeId);
+
                 var serviceRoot = new Uri(summaryUrl);
                 HttpRequestMessage requestMessage = await CreateRequestForTenantSummary(serviceRoot, approvalRequest.Telemetry.Xcv, approvalRequest.Telemetry.Tcv);
 
-                logData.Modify(LogDataKey.EventId, GetEventId(OperationType.SummaryFetchInitiated));
-                logData.Modify(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.SummaryFetchInitiated);
+                logData[LogDataKey.CustomEventName] = approvalTenantInfo.AppName + "-" + OperationType.SummaryFetchInitiated;
                 Logger.LogInformation(GetEventId(OperationType.SummaryFetchInitiated), logData);
                 response = await SendRequestAsync(requestMessage, logData, Constants.WorkerRole);
 
-                logData.Modify(LogDataKey.EventId, GetEventId(OperationType.SummaryFetchComplete));
-                logData.Modify(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.SummaryFetchComplete);
-                logData.Add(LogDataKey.ResponseStatusCode, response.StatusCode);
+                logData[LogDataKey.CustomEventName] = approvalTenantInfo.AppName + "-" + OperationType.SummaryFetchComplete;
+                logData[LogDataKey.ResponseStatusCode] = response.StatusCode;
 
                 #region logging Xcv, Tcv from response headers
 
@@ -359,9 +383,8 @@ public abstract class TenantBase : ITenant
             }
             catch (Exception jsonValidationException)
             {
-                logData.Modify(LogDataKey.EventId, GetEventId(OperationType.Summary));
-                logData.Modify(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.Summary);
-                logData.Add(LogDataKey.ResponseContent, await response?.Content?.ReadAsStringAsync());
+                logData[LogDataKey.CustomEventName] = approvalTenantInfo.AppName + "-" + OperationType.Summary;
+                logData[LogDataKey.ResponseContent] = response?.Content != null ? await response?.Content?.ReadAsStringAsync() : string.Empty;
                 Logger.LogError(GetEventId(OperationType.Summary), new Exception("Failed to retrive summary from " + approvalTenantInfo.AppName, jsonValidationException), logData);
                 if (jsonValidationException != null && jsonValidationException.InnerException != null)
                 {
@@ -417,20 +440,22 @@ public abstract class TenantBase : ITenant
     /// <returns>List of string</returns>
     public virtual List<string> GetSummaryOperationTypes()
     {
-        return new List<string>() { Constants.SummaryOperationType, Constants.CurrentApprover, Constants.ApprovalChainOperation };
+        return new List<string>() { Constants.SummaryOperationType, Constants.CurrentApprover, Constants.ApprovalChainOperation, Constants.OcrOperationType };
     }
 
     /// <summary>
     /// Get Approval Summary By RowKey And Approver
     /// </summary>
     /// <param name="rowKey"></param>
-    /// <param name="approver"></param>
+    /// <param name="approverAlias"></param>
+    /// <param name="approverId"></param>
+    /// <param name="approverDomain"></param>
     /// <param name="fiscalYear"></param>
     /// <param name="tenantInfo"></param>
     /// <returns></returns>
-    public virtual ApprovalSummaryRow GetApprovalSummaryByRowKeyAndApprover(string rowKey, string approver, string fiscalYear, ApprovalTenantInfo tenantInfo)
+    public virtual ApprovalSummaryRow GetApprovalSummaryByRowKeyAndApprover(string rowKey, string approverAlias, string approverId, string approverDomain, string fiscalYear, ApprovalTenantInfo tenantInfo)
     {
-        return ApprovalSummaryProvider.GetApprovalSummaryByDocumentNumberIncludingSoftDeleteData(tenantInfo.DocTypeId, rowKey, approver);
+        return ApprovalSummaryProvider.GetApprovalSummaryByDocumentNumberIncludingSoftDeleteData(tenantInfo.DocTypeId, rowKey, approverAlias, approverId, approverDomain);
     }
 
     #endregion TenantBase Methods
@@ -524,13 +549,13 @@ public abstract class TenantBase : ITenant
                         Application = approvalTenantInfo.AppName,
                         LobPending = false,
                         ActionTakenOnClient = "None",
-                        Requestor = summaryJson.Submitter.Alias,
+                        Requestor = summaryJson?.Submitter?.UserPrincipalName ?? summaryJson?.Submitter?.Alias,
                         RowKey = approvalRequest.ApprovalIdentifier.ToAzureTableRowKey(approvalTenantInfo),
                         RoutingId = approvalRequest.AdditionalData[Constants.RoutingIdColumnName].ToString(),
                         WaitForLOBResponse = false,
                         LastFailed = false,
                         PreviousApprover = null,
-                        SummaryJson = summaryJson.ToJson(),
+                        SummaryJson = summaryJson.ToJson(new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }),
                         NotificationJson = (approvalRequest.NotificationDetail).ToJson(),
                         OperationDateTime = approvalRequest.OperationDateTime,
                         Xcv = approvalRequest.Telemetry.Xcv,
@@ -549,8 +574,14 @@ public abstract class TenantBase : ITenant
                         approver.Name = await NameResolutionHelper.GetUserName(approver.Alias);
                         var copySummaryRow = summaryRowJsonString.FromJson<ApprovalSummaryRow>();
 
-                        copySummaryRow.PartitionKey = approver.Alias;
+                        if (Config[Constants.OldWhitelistedDomains].Contains(approver.UserPrincipalName.GetDomainFromUPN(), StringComparison.InvariantCultureIgnoreCase))
+                            copySummaryRow.PartitionKey = approver.Alias;
+                        else
+                            copySummaryRow.PartitionKey = approver.Id;
+
                         copySummaryRow.Approver = approver.Alias;
+                        copySummaryRow.ApproverDomain = approver.UserPrincipalName.GetDomainFromUPN();
+                        copySummaryRow.IsBackupApprover = approver.IsBackupApprover;
                         copySummaryRow.OriginalApprovers = approver.OriginalApprovers != null && approver.OriginalApprovers.Any() ? (approver.OriginalApprovers).ToJson() : string.Empty;
                         if (!approvalRequest.AdditionalData.ContainsKey(Constants.Approver))
                         {
@@ -574,7 +605,13 @@ public abstract class TenantBase : ITenant
 
                     if (approvalRequest.AdditionalData.ContainsKey(Constants.Approver))
                     {
-                        summaryRow.PartitionKey = approvalRequest.AdditionalData[Constants.Approver];
+                        if (approvalRequest.AdditionalData.ContainsKey(Constants.ApproverDomain) && !Config[Constants.OldWhitelistedDomains].Contains(approvalRequest.AdditionalData[Constants.ApproverDomain], StringComparison.InvariantCultureIgnoreCase)
+                            && approvalRequest.AdditionalData.ContainsKey(Constants.ApproverId))
+                            summaryRow.PartitionKey = approvalRequest.AdditionalData[Constants.ApproverId].ToString();
+                        else
+                            summaryRow.PartitionKey = approvalRequest.AdditionalData[Constants.Approver];
+
+                        summaryRow.ApproverDomain = approvalRequest.AdditionalData.ContainsKey(Constants.ApproverDomain) ? approvalRequest.AdditionalData[Constants.ApproverDomain] : Config[ConfigurationKey.DomainName.ToString()];
                         summaryRow.Approver = approvalRequest.AdditionalData[Constants.Approver];
                     }
                     summaryRows.Add(summaryRow);
@@ -802,13 +839,13 @@ public abstract class TenantBase : ITenant
     /// <param name="Tcv">Tcv</param>
     /// <param name="operationType">The Type of operation.</param>
     /// <returns>returns Http Request Message</returns>
-    protected virtual async Task<HttpRequestMessage> CreateRequestForDetailsOrAction(HttpMethod method, string uri, string Xcv = "", string Tcv = "", string operationType = "")
+    protected virtual async Task<HttpRequestMessage> CreateRequestForDetailsOrAction(HttpMethod method, string uri, string Xcv = "", string Tcv = "", string operationType = "", string approverUpn = "")
     {
         HttpRequestMessage reqMessage = new HttpRequestMessage(method, uri);
 
         JObject serviceParameterObject = GetServiceParameter(operationType);
 
-        await GetAndAttachTokenBasedOnAuthType(reqMessage, uri, serviceParameterObject);
+        await GetAndAttachTokenBasedOnAuthType(reqMessage, uri, serviceParameterObject, approverUpn);
         AddXcvTcvToRequestHeaders(ref reqMessage, Xcv, Tcv);
         reqMessage.Headers.Add(Constants.ActionByAlias, Alias);
         return reqMessage;
@@ -872,10 +909,7 @@ public abstract class TenantBase : ITenant
         return serviceParameterObject;
     }
 
-    /// <summary>
-    /// Set Service Parameter
-    /// </summary>
-    /// <param name="serviceParameterObject"></param>
+    //Will add this method to a common place in future
     private void SetServiceParameter(JObject serviceParameterObject)
     {
         if (serviceParameterObject != null)
@@ -923,8 +957,6 @@ public abstract class TenantBase : ITenant
         HttpResponseMessage lobResponse = null;
         var logData = new Dictionary<LogDataKey, object>
             {
-                { LogDataKey.EventId, GetEventId(OperationType.Detail) },
-                { LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.Detail + "-" + operation },
                 { LogDataKey.Tcv, tcv },
                 { LogDataKey.ReceivedTcv, tcv },
                 { LogDataKey.SessionId, tcv },
@@ -952,31 +984,12 @@ public abstract class TenantBase : ITenant
             using (PerformanceLogger.StartPerformanceLogger("PerfLog", componentName, string.Format(Constants.PerfLogActionWithInfo, approvalTenantInfo.AppName, operation, "Internal"),
                 new Dictionary<LogDataKey, object> { { LogDataKey.DocumentNumber, approvalIdentifier.DocumentNumber } }))
             {
-                if (logData.ContainsKey(LogDataKey.EventId))
-                {
-                    logData.Remove(LogDataKey.EventId);
-                }
-
-                if (logData.ContainsKey(LogDataKey.EventName))
-                {
-                    logData.Remove(LogDataKey.EventName);
-                }
-
+                logData[LogDataKey.CustomEventName] = approvalTenantInfo.AppName + "-" + OperationType.Detail + "-" + operation;
                 Logger.LogInformation(TrackingEvent.DetailFetchInitiated, logData);
 
                 lobResponse = await GetLobResponseAsync(approvalIdentifier, operation, page, xcv, tcv, businessProcessName, approvalTenantInfo.DocTypeId);
 
-                if (logData.ContainsKey(LogDataKey.EventId))
-                {
-                    logData.Remove(LogDataKey.EventId);
-                }
-
-                if (logData.ContainsKey(LogDataKey.EventName))
-                {
-                    logData.Remove(LogDataKey.EventName);
-                }
-
-                logData.Add(LogDataKey.ResponseStatusCode, lobResponse.StatusCode);
+                logData[LogDataKey.ResponseStatusCode] = lobResponse.StatusCode;
 
                 #region logging Xcv, Tcv from response headers
 
@@ -984,21 +997,11 @@ public abstract class TenantBase : ITenant
                 string tcvMappingKeyInRequestHeader = GetXcvOrTcvMappingKeyOfTenant(Constants.TcvMappingKey);
                 if (!string.IsNullOrEmpty(xcvMappingKeyInRequestHeader) && lobResponse.Headers.Contains(xcvMappingKeyInRequestHeader))
                 {
-                    if (logData.ContainsKey(LogDataKey.Xcv))
-                    {
-                        logData.Remove(LogDataKey.Xcv);
-                    }
-
-                    logData.Add(LogDataKey.Xcv, lobResponse.Headers.GetValues(xcvMappingKeyInRequestHeader).FirstOrDefault());
+                    logData[LogDataKey.Xcv] = lobResponse.Headers.GetValues(xcvMappingKeyInRequestHeader).FirstOrDefault();
                 }
                 if (!string.IsNullOrEmpty(tcvMappingKeyInRequestHeader) && lobResponse.Headers.Contains(tcvMappingKeyInRequestHeader))
                 {
-                    if (logData.ContainsKey(LogDataKey.Tcv))
-                    {
-                        logData.Remove(LogDataKey.Tcv);
-                    }
-
-                    logData.Add(LogDataKey.Tcv, lobResponse.Headers.GetValues(tcvMappingKeyInRequestHeader).FirstOrDefault());
+                    logData[LogDataKey.Tcv] = lobResponse.Headers.GetValues(tcvMappingKeyInRequestHeader).FirstOrDefault();
                 }
 
                 #endregion logging Xcv, Tcv from response headers
@@ -1010,17 +1013,7 @@ public abstract class TenantBase : ITenant
         }
         catch (Exception ex)
         {
-            if (logData.ContainsKey(LogDataKey.EventId))
-            {
-                logData.Remove(LogDataKey.EventId);
-            }
-
-            if (logData.ContainsKey(LogDataKey.EventName))
-            {
-                logData.Remove(LogDataKey.EventName);
-            }
-
-            logData.Add(LogDataKey.ResponseContent, await lobResponse?.Content?.ReadAsStringAsync());
+            logData[LogDataKey.ResponseContent] = lobResponse?.Content != null ? await lobResponse?.Content?.ReadAsStringAsync() : string.Empty;
             Logger.LogError(TrackingEvent.DetailFetchFailure, ex, logData);
             throw;
         }
@@ -1036,7 +1029,7 @@ public abstract class TenantBase : ITenant
     /// <param name="tcv">The TCV.</param>
     /// <param name="businessProcessName">Name of the business process.</param>
     /// <param name="docTypeId">Document Type ID</param>
-    public async Task<HttpResponseMessage> GetLobResponseAsync(ApprovalIdentifier approvalIdentifier, string operation, int page, string xcv, string tcv, string businessProcessName, string docTypeId)
+    public virtual async Task<HttpResponseMessage> GetLobResponseAsync(ApprovalIdentifier approvalIdentifier, string operation, int page, string xcv, string tcv, string businessProcessName, string docTypeId)
     {
         var placeHolderDict = new Dictionary<string, object>();
         var actualApprovalIdentifier = await GetApprovalIdentifier(approvalIdentifier.DocumentNumber, xcv, tcv) ?? approvalIdentifier;
@@ -1124,7 +1117,7 @@ public abstract class TenantBase : ITenant
     /// <param name="urlFormat">The URL format.</param>
     /// <param name="attachmentId">The attachment identifier.</param>
     /// <param name="page">The page.</param>
-    protected virtual string GetDetailURLUsingAttachmentId(string urlFormat, string attachmentId)
+    protected virtual string GetAttachmentDownloadUrl(string urlFormat, string attachmentId, ApprovalIdentifier approvalIdentifier)
     {
         throw new NotImplementedException();
     }
@@ -1202,13 +1195,20 @@ public abstract class TenantBase : ITenant
 
             using (IDisposable trace1 = PerformanceLogger.StartPerformanceLogger("PerfLog", Constants.WebClient, string.Format(Constants.PerfLogActionWithInfo, approvalTenantInfo.AppName, operation, "Approver Chain : Getting current document"), new Dictionary<LogDataKey, object> { { LogDataKey.DocumentNumber, approvalIdentifier.DocumentNumber }, { LogDataKey.UserAlias, currentUser } }))
             {
-                var approverEntity = ApprovalDetailProvider.GetApprovalsDetails(approvalTenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber, Constants.CurrentApprover);
+                var approverEntity = ApprovalDetailProvider.GetApprovalsDetails(approvalTenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber, Constants.CurrentApprover, approvalTenantInfo.DocTypeId);
                 if (approverEntity != null)
                 {
                     var approvers = approverEntity.JSONData.FromJson<List<Approver>>();
                     if (approvers.Count > 0)
                     {
-                        documentSummary = ApprovalSummaryProvider.GetApprovalSummaryByDocumentNumberAndApprover(approvalTenantInfo.DocTypeId, approvalIdentifier.DisplayDocumentNumber, approvers.FirstOrDefault().Alias);
+                        #region fetch approver Id and approver domain
+
+                        if (string.IsNullOrWhiteSpace(approvers.FirstOrDefault().UserPrincipalName))
+                            approvers.FirstOrDefault().UserPrincipalName = await NameResolutionHelper.GetUserPrincipalName(approvers.FirstOrDefault().Alias);
+
+                        #endregion fetch approver Id and approver domain
+
+                        documentSummary = ApprovalSummaryProvider.GetApprovalSummaryByDocumentNumberAndApprover(approvalTenantInfo.DocTypeId, approvalIdentifier.DisplayDocumentNumber, approvers.FirstOrDefault().Alias, approvers.FirstOrDefault().Id, approvers.FirstOrDefault().UserPrincipalName.GetDomainFromUPN());
                     }
                 }
                 if (documentSummary == null)
@@ -1252,7 +1252,7 @@ public abstract class TenantBase : ITenant
                 #endregion CREATE FUTURE APPROVER CHAIN
             }
         }
-        else if (operation.Equals(Constants.AdditionalDetails, StringComparison.InvariantCultureIgnoreCase))
+        else if (operation.Equals(Constants.AdditionalDetails, StringComparison.InvariantCultureIgnoreCase) || operation.Equals(string.Format(Constants.AdditionalDetailsNew, approvalTenantInfo.DocTypeId), StringComparison.InvariantCultureIgnoreCase))
         {
             var responseString = await lobResponse.Content.ReadAsStringAsync();
             if (!string.IsNullOrWhiteSpace(responseString) && responseString.IsJson())
@@ -1356,7 +1356,7 @@ public abstract class TenantBase : ITenant
                     new Dictionary<LogDataKey, object> { { LogDataKey.DocumentNumber, approvalIdentifier.DocumentNumber } }))
                 {
                     //fetch cached details here
-                    ApprovalDetailsEntity content = (ApprovalDetailProvider.GetApprovalsDetails(tenantInfo.TenantId, approvalIdentifier.DocumentNumber, operation));
+                    ApprovalDetailsEntity content = (ApprovalDetailProvider.GetApprovalsDetails(tenantInfo.TenantId, approvalIdentifier.DocumentNumber, operation, tenantInfo.DocTypeId));
                     if (content != null)
                     {
                         responseAdaptor = new HttpResponseMessage
@@ -1419,7 +1419,7 @@ public abstract class TenantBase : ITenant
         {
             if (isOperationCached && !isDetailsPresentInStorage)
             {
-                if (ApprovalDetailProvider.GetApprovalsDetails(tenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber, Constants.CurrentApprover) != null)
+                if (ApprovalDetailProvider.GetApprovalsDetails(tenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber, Constants.CurrentApprover, tenantInfo.DocTypeId) != null)
                 {
                     List<ApprovalDetailsEntity> detailsRows = new List<ApprovalDetailsEntity>();
                     ApprovalDetailsEntity detailsRow = new ApprovalDetailsEntity();
@@ -1428,7 +1428,7 @@ public abstract class TenantBase : ITenant
                         detailsRow.JSONData = await responseContent.ReadAsStringAsync();
                         detailsRow.TenantID = tenantInfo.TenantId;
                         detailsRow.PartitionKey = approvalIdentifier.GetDocNumber(tenantInfo);
-                        detailsRow.RowKey = operation;
+                        detailsRow.RowKey = operation + "|" + approvalTenantInfo.DocTypeId;
                     }
                     detailsRows.Add(detailsRow);
                     await ApprovalDetailProvider.AddApprovalsDetails(detailsRows, tenantInfo, loggedInAlias, xcv, tcv, true);
@@ -1491,7 +1491,7 @@ public abstract class TenantBase : ITenant
 
             string documentNumber = approvalRequest.ApprovalIdentifier.GetDocNumber(approvalTenantInfo);
             // TODO:: Revisit this as just for logging we are making one summary call here which we can pass via parameter as calling method must have summary information already
-            ApprovalSummaryRow summary = summaryRowParent ?? ApprovalSummaryProvider.GetApprovalSummaryByDocumentNumberAndApprover(approvalTenantInfo.DocTypeId, documentNumber, Alias);
+            ApprovalSummaryRow summary = summaryRowParent ?? ApprovalSummaryProvider.GetApprovalSummaryByDocumentNumberAndApprover(approvalTenantInfo.DocTypeId, documentNumber, Alias, ObjectId, Domain);
             string endPointUrl = GetTenantActionUrl(null, approvalRequest.Action);
 
             logData.Add(LogDataKey.DocumentNumber, documentNumber);
@@ -1515,15 +1515,13 @@ public abstract class TenantBase : ITenant
             using (PerformanceLogger.StartPerformanceLogger("PerfLog", string.IsNullOrWhiteSpace(clientDevice) ? Constants.WebClient : clientDevice, string.Format(Constants.PerfLogAction, approvalTenantInfo.AppName, "Document Action : LOB call"),
                 new Dictionary<LogDataKey, object> { { LogDataKey.UserActionsString, approvalRequests.ToJson() } }))
             {
-                logData.Add(LogDataKey.EventId, GetEventId(OperationType.ActionInitiated));
-                logData.Add(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.ActionInitiated);
+                logData[LogDataKey.CustomEventName] = approvalTenantInfo.AppName + "-" + OperationType.ActionInitiated;
                 Logger.LogInformation(GetEventId(OperationType.ActionInitiated), logData);
 
                 lobResponse = await SendRequestAsync(reqMessage, logData, clientDevice);
 
-                logData.Modify(LogDataKey.EventId, GetEventId(OperationType.ActionComplete));
-                logData.Modify(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.ActionComplete);
-                logData.Add(LogDataKey.ResponseStatusCode, lobResponse.StatusCode);
+                logData[LogDataKey.CustomEventName] = approvalTenantInfo.AppName + "-" + OperationType.ActionComplete;
+                logData[LogDataKey.ResponseStatusCode] = lobResponse.StatusCode;
                 Logger.LogInformation(GetEventId(OperationType.ActionComplete), logData);
             }
 
@@ -1531,11 +1529,10 @@ public abstract class TenantBase : ITenant
         }
         catch (Exception ex)
         {
-            logData.Modify(LogDataKey.EventId, GetEventId(OperationType.Action));
-            logData.Modify(LogDataKey.EventName, approvalTenantInfo.AppName + "-" + OperationType.Action);
+            logData[LogDataKey.CustomEventName] = approvalTenantInfo.AppName + "-" + OperationType.Action;
 
             var responseContent = lobResponse?.Content != null ? await lobResponse?.Content?.ReadAsStringAsync() : string.Empty;
-            logData.Add(LogDataKey.ResponseContent, responseContent);
+            logData[LogDataKey.ResponseContent] = responseContent;
             Logger.LogError(GetEventId(OperationType.Action), ex, logData);
             throw;
         }
@@ -1570,11 +1567,14 @@ public abstract class TenantBase : ITenant
             ApprovalSummaryRow approvalSummaryRow = summaryRowParent ?? GetSummaryObject(approvalRequest.ApprovalIdentifier.GetDocNumber(approvalTenantInfo));
 
             // Get all details from ApprovalDetails table and filter to get only the row which has TransactionalDetails (LastfailedException message etc.)
-            List<ApprovalDetailsEntity> transactionalDetails = ApprovalDetailProvider.GetAllApprovalsDetails(approvalTenantInfo.TenantId, approvalRequest.ApprovalIdentifier.GetDocNumber(approvalTenantInfo));
+            List<ApprovalDetailsEntity> transactionalDetails = ApprovalDetailProvider.GetAllApprovalDetailsByTenantAndDocumentNumber(approvalTenantInfo.TenantId, approvalRequest.ApprovalIdentifier.GetDocNumber(approvalTenantInfo)).Result;
             JObject previousExceptionsMessages = new JObject();
+            ApprovalDetailsEntity previousExceptionsMessagesRow = null;
             if (transactionalDetails != null && transactionalDetails.Any())
             {
-                var previousExceptionsMessagesRow = transactionalDetails.FirstOrDefault(x => x.RowKey.Equals(Constants.TransactionDetailsOperationType + '|' + Alias, StringComparison.InvariantCultureIgnoreCase));
+                previousExceptionsMessagesRow = transactionalDetails
+                                                    .FirstOrDefault(x => x.RowKey.Equals(string.Format(Constants.TransactionDetailsOperationTypeNew + '|' + Alias, approvalTenantInfo.DocTypeId), StringComparison.InvariantCultureIgnoreCase)
+                                                    || x.RowKey.Equals(Constants.TransactionDetailsOperationType + '|' + Alias, StringComparison.InvariantCultureIgnoreCase));
                 if (previousExceptionsMessagesRow != null)
                 {
                     previousExceptionsMessages = previousExceptionsMessagesRow.JSONData.ToJObject();
@@ -1641,12 +1641,21 @@ public abstract class TenantBase : ITenant
                 ApprovalSummaryProvider.ApplyCaseConstraints(approvalSummaryRow);
                 ApprovalSummaryProvider.SetNextReminderTime(approvalSummaryRow, DateTime.UtcNow);
 
+                //setting this to empty to avoid insertion error in case summaryJson exceeds 64kb
+                if (!string.IsNullOrWhiteSpace(approvalSummaryRow.BlobPointer))
+                    approvalSummaryRow.SummaryJson = string.Empty;
+
                 List<ApprovalSummaryRow> summaryRowsToUpdate = new List<ApprovalSummaryRow>() { approvalSummaryRow };
                 List<ApprovalDetailsEntity> detailsEntitiesToUpdate = new List<ApprovalDetailsEntity>();
+
+                var SummaryOperationRowFromDetails = transactionalDetails?.FirstOrDefault(detail =>
+                detail.RowKey.Equals(Constants.SummaryOperationType, StringComparison.InvariantCultureIgnoreCase) ||
+                detail.RowKey.Equals(string.Format(Constants.SummaryOperationTypeNew, approvalTenantInfo.DocTypeId), StringComparison.InvariantCultureIgnoreCase));
+
                 ApprovalDetailsEntity approvalDetailsEntitySum = new ApprovalDetailsEntity()
                 {
                     PartitionKey = approvalRequest?.ApprovalIdentifier?.GetDocNumber(approvalTenantInfo),
-                    RowKey = Constants.SummaryOperationType,
+                    RowKey = SummaryOperationRowFromDetails?.RowKey ?? string.Format(Constants.SummaryOperationTypeNew, approvalTenantInfo.DocTypeId),
                     ETag = global::Azure.ETag.All,
                     JSONData = summaryRowsToUpdate.ToJson(),
                     TenantID = approvalTenantInfo.TenantId
@@ -1658,7 +1667,7 @@ public abstract class TenantBase : ITenant
                     ApprovalDetailsEntity approvalDetailsEntityTransactionDetails = new ApprovalDetailsEntity()
                     {
                         PartitionKey = approvalRequest?.ApprovalIdentifier?.GetDocNumber(approvalTenantInfo),
-                        RowKey = Constants.TransactionDetailsOperationType + '|' + Alias,
+                        RowKey = previousExceptionsMessagesRow?.RowKey ?? string.Format(Constants.TransactionDetailsOperationTypeNew + '|' + Alias, approvalTenantInfo.DocTypeId),
                         ETag = global::Azure.ETag.All,
                         JSONData = previousExceptionsMessages.ToString(),
                         TenantID = approvalTenantInfo.TenantId
@@ -1676,7 +1685,7 @@ public abstract class TenantBase : ITenant
         {
             // TODO:: IMP:: In case of this error, the action proceeds and the tile will be either visible after successful action
             // or invisible after failure action. This needs to be inspected.
-            Logger.LogError(TrackingEvent.SummaryRowUpdateFailed, ex, logData);
+            Logger.LogError(TrackingEvent.UpdateSummaryFail, ex, logData);
             return null;
         }
     }
@@ -1702,7 +1711,7 @@ public abstract class TenantBase : ITenant
     /// <returns>returns approval summary row</returns>
     private ApprovalSummaryRow GetSummaryObject(string documentNumber)
     {
-        var summary = ApprovalSummaryProvider.GetApprovalSummaryByDocumentNumberAndApprover(approvalTenantInfo.DocTypeId, documentNumber, Alias);
+        var summary = ApprovalSummaryProvider.GetApprovalSummaryByDocumentNumberAndApprover(approvalTenantInfo.DocTypeId, documentNumber, Alias, ObjectId, Domain);
 
         if (summary == null)
         {
@@ -1719,7 +1728,7 @@ public abstract class TenantBase : ITenant
     /// <returns>Dictionary of AdditionalData</returns>
     private Dictionary<string, string> GetAdditionalData(ApprovalSummaryRow summaryRow)
     {
-        var additionalDataJson = ApprovalDetailProvider.GetApprovalsDetails(approvalTenantInfo.TenantId, summaryRow.DocumentNumber, Constants.AdditionalDetails)?.JSONData;
+        var additionalDataJson = ApprovalDetailProvider.GetApprovalDetailsByOperation(approvalTenantInfo.TenantId, summaryRow.DocumentNumber, Constants.AdditionalDetails, approvalTenantInfo.DocTypeId).Result?.JSONData;
         SummaryModel summaryData = summaryRow.SummaryJson.FromJson<SummaryModel>(
                                                             new JsonSerializerSettings
                                                             {
@@ -1791,7 +1800,7 @@ public abstract class TenantBase : ITenant
             actionObject = serializationType switch
             {
                 (int)(SerializerType.DataContractSerializer) => (JSONHelper.ConvertObjectToJSON<ApprovalRequest>(approvalRequest)).ToJObject(),
-                _ => (approvalRequest.ToJson()).ToJObject(),
+                _ => (approvalRequest.ToJson(new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore })).ToJObject(),
             };
 
             // This is done to support old tenants
@@ -2136,7 +2145,37 @@ public abstract class TenantBase : ITenant
                 approvalRequest.ActionDetails[Constants.ActionDateKey] = DateTime.UtcNow.ToString();
             }
         }
-        approvalRequest.ActionByAlias = alias;
+        if (approvalRequest.AdditionalData != null && approvalRequest.AdditionalData.ContainsKey("ElevatedApproverUpn"))
+        {
+            var requestDetails = ApprovalDetailProvider.GetAllApprovalDetailsByTenantAndDocumentNumber(approvalTenantInfo.TenantId, approvalRequest.ApprovalIdentifier.GetDocNumber(approvalTenantInfo)).Result;
+            var currentApproverInDbJson = requestDetails.FirstOrDefault(r => r.RowKey.Equals(string.Format(Constants.CurrentApproverNew + '|' + Alias, approvalTenantInfo.DocTypeId), StringComparison.InvariantCultureIgnoreCase)
+                                                        || r.RowKey.Equals(Constants.CurrentApprover, StringComparison.OrdinalIgnoreCase));
+            var currentApprovers = currentApproverInDbJson != null ? currentApproverInDbJson.JSONData.FromJson<List<Approver>>() : null;
+            var currentApprover = currentApprovers.FirstOrDefault(c => !c.IsBackupApprover);
+            if (currentApprover != null)
+            {
+                approvalRequest.ActionByAlias = currentApprover.Alias;
+                approvalRequest.ActionBy = new User
+                {
+                    Alias = currentApprover.Alias,
+                    MailNickname = currentApprover.MailNickname,
+                    UserPrincipalName = currentApprover.UserPrincipalName,
+                    Id = currentApprover.Id
+                };
+            }
+        }
+        else
+        {
+            approvalRequest.ActionByAlias = alias;
+            var approverEntity = new User()
+            {
+                Alias = alias,
+                Id = ObjectId,
+                UserPrincipalName = alias + Domain,
+                MailNickname = alias
+            };
+            approvalRequest.ActionBy = approverEntity;
+        }
         if (string.IsNullOrWhiteSpace(approvalRequest.DocumentTypeID))
         {
             approvalRequest.DocumentTypeID = approvalTenantInfo.DocTypeId.ToUpperInvariant();
@@ -2274,8 +2313,9 @@ public abstract class TenantBase : ITenant
     /// <param name="approvalIdentifier">The approval identifier.</param>
     /// <param name="attachmentId">The attachment identifier.</param>
     /// <param name="telemetry">The telemetry.</param>
+    /// <param name="approverUpn"></param>
     /// <returns></returns>
-    public async Task<byte[]> DownloadDocumentUsingAttachmentIdAsync(ApprovalIdentifier approvalIdentifier, string attachmentId, ApprovalsTelemetry telemetry)
+    public async Task<byte[]> DownloadDocumentUsingAttachmentIdAsync(ApprovalIdentifier approvalIdentifier, string attachmentId, ApprovalsTelemetry telemetry, string approverUpn = "")
     {
         string blobNameFormat = "{0}|{1}|{2}"; //2(tenantId)|572015453(DocumentNumber)|45124525(attachmentId)
         string blobName = string.Format(blobNameFormat, approvalTenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber, attachmentId);
@@ -2289,7 +2329,7 @@ public abstract class TenantBase : ITenant
         }
         else // if attachment is not found in BLOB, get it from LoB application and also save the attachment in BLOB
         {
-            return await GetAttachmentContentFromLob(approvalIdentifier, attachmentId, telemetry);
+            return await GetAttachmentContentFromLob(approvalIdentifier, attachmentId, telemetry, approverUpn);
         }
     }
 
@@ -2302,8 +2342,15 @@ public abstract class TenantBase : ITenant
     /// <returns></returns>
     public async Task<byte[]> PreviewDocumentUsingAttachmentIdAsync(ApprovalIdentifier approvalIdentifier, string attachmentId, ApprovalsTelemetry telemetry)
     {
-        string blobNameFormat = "{0}|{1}|{2}"; //2(tenantId)|572015453(DocumentNumber)|45124525(attachmentId)
+        string blobNameFormat = "{0}|{1}|{2}-converted"; //2(tenantId)|572015453(DocumentNumber)|45124525(attachmentId)-converted
         string blobName = string.Format(blobNameFormat, approvalTenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber, attachmentId);
+        var convertedBlobExists = await BlobStorageHelper.DoesExist(Constants.NotificationAttachmentsBlobName, blobName);
+
+        if (!convertedBlobExists) //if a converted version of the attachment doesnt exist
+        {
+            blobNameFormat = "{0}|{1}|{2}"; //2(tenantId)|572015453(DocumentNumber)|45124525(attachmentId)
+            blobName = string.Format(blobNameFormat, approvalTenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber, attachmentId);
+        }
 
         var blobExists = await BlobStorageHelper.DoesExist(Constants.NotificationAttachmentsBlobName, blobName);
         if (blobExists) // Check if Attachment is stored in BLOB
@@ -2323,14 +2370,15 @@ public abstract class TenantBase : ITenant
     /// <param name="approvalIdentifier">The approval identifier.</param>
     /// <param name="attachmentId">The attachment identifier.</param>
     /// <param name="telemetry">The telemetry.</param>
+    /// <param name="approverUpn"></param>
     /// <returns></returns>
-    public virtual async Task<byte[]> GetAttachmentContentFromLob(ApprovalIdentifier approvalIdentifier, string attachmentId, ApprovalsTelemetry telemetry)
+    public virtual async Task<byte[]> GetAttachmentContentFromLob(ApprovalIdentifier approvalIdentifier, string attachmentId, ApprovalsTelemetry telemetry, string approverUpn = "")
     {
         HttpResponseMessage lobResponse;
         var actionName = AttachmentOperationName();
         byte[] bytArr = null;
-        string detailURL = GetDetailURLUsingAttachmentId(approvalTenantInfo.GetEndPointURL(actionName, ClientDevice), attachmentId);
-        lobResponse = await HttpHelper.SendRequestAsync(await CreateRequestForDetailsOrAction(HttpMethod.Get, detailURL, telemetry.Xcv, telemetry.Tcv, actionName));
+        string detailURL = GetAttachmentDownloadUrl(approvalTenantInfo.GetEndPointURL(actionName, ClientDevice), attachmentId, approvalIdentifier);
+        lobResponse = await HttpHelper.SendRequestAsync(await CreateRequestForDetailsOrAction(HttpMethod.Get, detailURL, telemetry.Xcv, telemetry.Tcv, actionName, approverUpn));
         if (lobResponse.IsSuccessStatusCode)
         {
             using (MemoryStream streamData = (MemoryStream)await lobResponse.Content.ReadAsStreamAsync())
@@ -2358,13 +2406,22 @@ public abstract class TenantBase : ITenant
         {
             return new List<Attachment>();
         }
-        List<Attachment> attachments = summaryRows.FirstOrDefault()?.SummaryJson.FromJson<SummaryJson>().Attachments;
+
+        List<Attachment> attachments = null;
+        if (summaryRows != null && summaryRows.Count > 0)
+        {
+            var summaryJson = string.IsNullOrEmpty(summaryRows.FirstOrDefault().BlobPointer) || !string.IsNullOrWhiteSpace(summaryRows.FirstOrDefault()?.SummaryJson) ? summaryRows.FirstOrDefault()?.SummaryJson : await BlobStorageHelper.DownloadText(Constants.ApprovalSummaryBlobContainerName, summaryRows.FirstOrDefault().BlobPointer);
+            attachments = summaryJson.FromJson<SummaryJson>().Attachments;
+        }
+
         // If attachments is not found in SummaryJson.Attachments, then query the Details table to get the Attachment details
         if (attachments == null || attachments.Count == 0)
         {
             // Get Attachment details from Approval Details table
-            var detailRow = ApprovalDetailProvider.GetApprovalsDetails(approvalTenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber, AttachmentDetailsOperationName());
-            if (detailRow == null)
+            var detailRow = ApprovalDetailProvider.GetApprovalsDetails(approvalTenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber, AttachmentDetailsOperationName(), approvalTenantInfo.DocTypeId);
+            var _client = approvalTenantInfo.DetailOperations.DetailOpsList.Where(x => x.operationtype == AttachmentDetailsOperationName()).FirstOrDefault()._client;
+
+            if (detailRow == null && _client)
             {
                 // If attachment details are not found in table, get it at real-time from tenant
                 var lobResponse = await GetDetailAsync(approvalIdentifier, AttachmentDetailsOperationName(), 0, Environment.UserName, telemetry.Xcv, telemetry.Tcv, telemetry.BusinessProcessName, false, Constants.WorkerRole);
@@ -2375,7 +2432,7 @@ public abstract class TenantBase : ITenant
                         JSONData = await lobResponse.Content.ReadAsStringAsync(),
                         TenantID = approvalTenantInfo.TenantId,
                         PartitionKey = approvalIdentifier?.GetDocNumber(approvalTenantInfo),
-                        RowKey = AttachmentDetailsOperationName()
+                        RowKey = AttachmentDetailsOperationName() + "|" + approvalTenantInfo.DocTypeId
                     };
                 }
             }
@@ -2400,12 +2457,13 @@ public abstract class TenantBase : ITenant
         // Combine the list of attachments uploaded from the ui for the approval request.
         // Get the approval transaction details for the given document id.
         List<Attachment> attachmentsSummary = new List<Attachment>();
-        var approvalDetails = ApprovalDetailProvider.GetAllApprovalsDetails(approvalTenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber);
+        var approvalDetails = await ApprovalDetailProvider.GetAllApprovalDetailsByTenantAndDocumentNumber(approvalTenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber);
 
         if (approvalDetails != null && approvalDetails.Any())
         {
             // Filter to get only the row which has TransactionalDetails
-            var existingAttachmentsRecord = approvalDetails.FirstOrDefault(x => x.RowKey.Equals(Constants.AttachmentsOperationType, StringComparison.InvariantCultureIgnoreCase));
+            var existingAttachmentsRecord = approvalDetails.FirstOrDefault(x => x.RowKey.Equals(string.Format(Constants.UploadAttachmentsOperationTypeNew, approvalTenantInfo.DocTypeId), StringComparison.InvariantCultureIgnoreCase)
+                                                            || x.RowKey.Equals(Constants.UploadAttachmentsOperationType, StringComparison.InvariantCultureIgnoreCase));
 
             if (existingAttachmentsRecord != null)
             {
@@ -2444,7 +2502,7 @@ public abstract class TenantBase : ITenant
         try
         {
             // iff this is an active request, store the attachment in BLOB
-            if (ApprovalDetailProvider.GetApprovalsDetails(approvalTenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber, Constants.CurrentApprover) != null)
+            if (ApprovalDetailProvider.GetApprovalsDetails(approvalTenantInfo.TenantId, approvalIdentifier.DisplayDocumentNumber, Constants.CurrentApprover, approvalTenantInfo.DocTypeId) != null)
             {
                 string blobNameFormat = "{0}|{1}|{2}"; //2(tenantId)|572015453(DocumentNumber)|45124525(attachmentId)
                 string blobName = string.Format(blobNameFormat, tenantId, approvalIdentifier.DisplayDocumentNumber, attachmentId);
@@ -2491,9 +2549,8 @@ public abstract class TenantBase : ITenant
     /// <param name="documentSummaries"></param>
     /// <param name="featureName"></param>
     /// <returns>returns bool</returns>
-    protected bool IsActionableEmailAllowed(List<ApprovalSummaryRow> documentSummaries, FlightingFeatureName featureName)
+    protected bool IsActionableEmailAllowed(List<ApprovalSummaryRow> documentSummaries)
     {
-        var isFlightingEnabled = false;
         var logData = new Dictionary<LogDataKey, object>
         {
             { LogDataKey.EventType, Constants.FeatureUsageEvent },
@@ -2511,16 +2568,13 @@ public abstract class TenantBase : ITenant
             logData.Add(LogDataKey.ReceivedTcv, documentSummaries.FirstOrDefault()?.Tcv);
             logData.Add(LogDataKey.Xcv, documentSummaries.FirstOrDefault()?.Xcv);
             logData.Add(LogDataKey.DXcv, documentSummaries.FirstOrDefault()?.DocumentNumber);
-            logData.Add(LogDataKey.FeatureId, (int)featureName);
 
-            isFlightingEnabled = FlightingDataProvider.IsFeatureEnabledForUser(documentSummaries.FirstOrDefault()?.Approver, (int)featureName);
-
-            return approvalTenantInfo.NotifyEmailWithApprovalFunctionality && isFlightingEnabled;
+            return approvalTenantInfo.NotifyEmailWithApprovalFunctionality;
         }
         catch (Exception ex)
         {
             Logger.LogError(TrackingEvent.ValidateIfEamilSentWithDetailsFail, ex, logData);
-            return isFlightingEnabled;
+            return false;
         }
     }
 
@@ -2529,8 +2583,8 @@ public abstract class TenantBase : ITenant
     /// Default implementation doesn't modify the ARX object and return the object as is.
     /// </summary>
     /// <param name="requestExpressions"></param>
-    /// <returns>returns list containing Approval REquest Expression ext</returns>
-    public virtual List<ApprovalRequestExpressionExt> ModifyApprovalRequestExpression(List<ApprovalRequestExpressionExt> requestExpressions)
+    /// <returns>returns list containing Approval Request Expression ext</returns>
+    public virtual async Task<List<ApprovalRequestExpressionExt>> ModifyApprovalRequestExpression(List<ApprovalRequestExpressionExt> requestExpressions)
     {
         // Added 'To' alias in NotificationDetails as the Approver alias. No CC aliases required.
         // ARX is modified in case of CREATE and UPDATE operation only
@@ -2548,10 +2602,42 @@ public abstract class TenantBase : ITenant
                     TemplateKey = "PendingApproval"
                 };
             }
+            await ModifyApprovers(requestExpression);
 
             modifiedRequestExpressions.Add(requestExpression);
         }
         return modifiedRequestExpressions;
+    }
+
+    protected async Task ModifyApprovers(ApprovalRequestExpressionExt requestExpression)
+    {
+        if (requestExpression.Approvers != null && requestExpression.Approvers.Count > 0)
+        {
+            if (requestExpression.Operation == ApprovalRequestOperation.Delete)
+            {
+                requestExpression.Approvers = null;
+            }
+            else
+            {
+                foreach (var approver in requestExpression.Approvers)
+                {
+                    Graph.Models.User user;
+                    if (!string.IsNullOrWhiteSpace(approver.Id))
+                    {
+                        user = await NameResolutionHelper.GetUser(approver.Id);
+                    }
+                    else if (!string.IsNullOrWhiteSpace(approver.UserPrincipalName))
+                        user = await NameResolutionHelper.GetUser(approver.UserPrincipalName);
+                    else
+                    {
+                        user = await NameResolutionHelper.GetUser(approver.Alias);
+                    }
+                    approver.UserPrincipalName = user.UserPrincipalName;
+                    approver.Id = user.Id;
+                    approver.Alias = user.UserPrincipalName.Split('@')[0];
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -2637,7 +2723,7 @@ public abstract class TenantBase : ITenant
         var isMobileFriendlyAdaptiveCard = approvalTenantInfo.NotifyEmailWithMobileFriendlyActionCard switch
         {
             (int)NotifyEmailWithMobileFriendlyActionCard.DisableForAll => false,
-            (int)NotifyEmailWithMobileFriendlyActionCard.EnableForFlightedUsers => IsActionableEmailAllowed(summaryRows, FlightingFeatureName.ActionableEmailWithMobileFriendlyAdaptiveCard),
+            (int)NotifyEmailWithMobileFriendlyActionCard.EnableForFlightedUsers => IsActionableEmailAllowed(summaryRows),
             (int)NotifyEmailWithMobileFriendlyActionCard.EnableForAll => true,
             _ => false,
         };
@@ -2657,6 +2743,7 @@ public abstract class TenantBase : ITenant
                     logData).Result;
 
                 PopulatePlaceHolderDict(placeHolderDict, "AdaptiveJSON", adaptiveCardFinal.ToString());
+                PopulatePlaceHolderDict(placeHolderDict, "ActionableMessage", adaptiveCardFinal.ToString());
 
                 logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
                 Logger.LogInformation(TrackingEvent.MobileFriendlyTemplateGenerationSuccessful, logData);
@@ -2911,7 +2998,7 @@ public abstract class TenantBase : ITenant
     public bool CheckIfExistsAndGetCachedAdaptiveCard(string documentNumber, out JObject adaptiveCard)
     {
         adaptiveCard = new JObject();
-        ApprovalDetailsEntity detailsData = ApprovalDetailProvider.GetApprovalDetailsByOperation(approvalTenantInfo.TenantId, documentNumber, Constants.AdaptiveDTL + ClientDevice).Result;
+        ApprovalDetailsEntity detailsData = ApprovalDetailProvider.GetApprovalDetailsByOperation(approvalTenantInfo.TenantId, documentNumber, Constants.AdaptiveDTL + ClientDevice, approvalTenantInfo.DocTypeId).Result;
         if (detailsData != null)
         {
             if (!string.IsNullOrEmpty(detailsData.Version) && detailsData.Version.Equals(approvalTenantInfo.AdaptiveCardVersion))
@@ -3179,13 +3266,13 @@ public abstract class TenantBase : ITenant
     /// <param name="xcv">Xcv.</param>
     /// <param name="tcv">Tcv.</param>
     /// <returns><see cref="ApprovalIdentifier"/> object.</returns>
-    private async Task<ApprovalIdentifier> GetApprovalIdentifier(string documentNumber, string xcv = "", string tcv = "")
+    protected async Task<ApprovalIdentifier> GetApprovalIdentifier(string documentNumber, string xcv = "", string tcv = "")
     {
         ApprovalIdentifier approvalIdentifier = null;
 
         // If ApprovalSummary record is available, get the ApprovalIdentifier from SummaryJson.
         // Else if TransactionHistory record is available, get the ApprovalIdentifier from JsonData.
-        var summary = ApprovalSummaryProvider.GetApprovalSummaryByDocumentNumberAndApprover(approvalTenantInfo.DocTypeId, documentNumber, Alias);
+        var summary = ApprovalSummaryProvider.GetApprovalSummaryByDocumentNumberAndApprover(approvalTenantInfo.DocTypeId, documentNumber, Alias, ObjectId, Domain);
 
         if (summary != null)
         {
@@ -3214,7 +3301,7 @@ public abstract class TenantBase : ITenant
     /// <param name="requestMessage"></param>
     /// <param name="serviceRoot"></param>
     /// <param name="serviceParameterObject">Service Parameter</param>
-    private async Task GetAndAttachTokenBasedOnAuthType(HttpRequestMessage requestMessage, string serviceRoot, JObject serviceParameterObject = null)
+    private async Task GetAndAttachTokenBasedOnAuthType(HttpRequestMessage requestMessage, string serviceRoot, JObject serviceParameterObject = null, string approverUpn = "")
     {
         string accessToken;
         if (serviceParameterObject == null)
@@ -3250,60 +3337,48 @@ public abstract class TenantBase : ITenant
                 // There is no need for a user token be passed, like the ACS token in past, because AAD based authentication is only based on app tokens for now.
                 // If user tokens are supported in future, they should be added here.
                 accessToken = (await AuthenticationHelper.AcquireOAuth2TokenByScopeAsync(
-                                                serviceParameterObject[Constants.ClientID].ToString(),
-                                                serviceParameterObject[Constants.AuthKey].ToString(),
-                                                serviceParameterObject[Constants.Authority].ToString(),
-                                                serviceParameterObject[Constants.ResourceURL].ToString(),
-                                                "/.default")).AccessToken;
+                                serviceParameterObject[Constants.ClientID].ToString(),
+                                serviceParameterObject[Constants.AuthKey].ToString(),
+                                serviceParameterObject[Constants.Authority].ToString(),
+                                serviceParameterObject[Constants.ResourceURL].ToString(),
+                                "/.default")).AccessToken;
                 requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Constants.AuthorizationHeaderScheme, accessToken);
                 break;
 
-            case AuthenticationModelType.CorpSTS:
-                accessToken = AuthenticationHelper.GetAcsSimpleWebTokenFromSharedSecret(false);
-                string accessToken2;
-                try
-                {
-                    accessToken2 = AuthenticationHelper.GetAcsSimpleWebTokenFromSharedSecret(true);
-                }
-                catch
-                {
-                    accessToken2 = accessToken;
-                }
+            case AuthenticationModelType.OAuth2ClientCredentials:
+                // Acquire OAuth2 token using client credentials (ClientID, AuthKey, Authority, Scope)
+                accessToken = await AuthenticationHelper.AcquireOAuth2TokenByScopeAsync(
+                    serviceParameterObject[Constants.ClientID].ToString(),
+                    serviceParameterObject[Constants.AuthKey].ToString(),
+                    serviceParameterObject[Constants.Authority].ToString(),
+                    serviceParameterObject[Constants.Scope].ToString());
+                // Set the Authorization header with the acquired access token
+                requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Constants.AuthorizationHeaderScheme, accessToken);
 
-                requestMessage.Headers.Add(Constants.AuthorizationHeader, accessToken);
-                requestMessage.Headers.Add("AuthorizationToken", accessToken2);
+                var onBehalfUser = !string.IsNullOrWhiteSpace(approverUpn)
+                    ? await NameResolutionHelper.GetUser(approverUpn)
+                    : await NameResolutionHelper.GetUser(Alias + Domain);
+                requestMessage.Headers.Add("x-on-behalf-of-user", string.Format("email:{0}", onBehalfUser?.Mail));
                 break;
 
             case AuthenticationModelType.OAuth2OnBehalf:
-                // get the On behalf AAD Token containing the User Claims and specific scope
+                // get the On behalf OAuth 2.0 Token containing the User Claims and specific scope
                 accessToken = await AuthenticationHelper.GetOnBehalfBearerToken((ClaimsIdentity)ClaimsPrincipal.Current?.Identity, serviceParameterObject);
                 requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Constants.AuthorizationHeaderScheme, accessToken);
                 break;
 
             case AuthenticationModelType.UserOnBehalf:
-                try
-                {
-                    accessToken = await AuthenticationHelper.GetOnBehalfUserToken(UserToken.Replace("Bearer ", string.Empty).Replace("bearer ", string.Empty),
-                        serviceParameterObject);
-                    logData.Add(LogDataKey.IdentityProviderTokenType, "OnBehalfUserToken");
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(TrackingEvent.OAuth2TokenGenerationError, ex, logData);
-                    accessToken = (await AuthenticationHelper.AcquireOAuth2TokenByScopeAsync(
-                                    serviceParameterObject[Constants.ClientID].ToString(),
-                                    serviceParameterObject[Constants.AuthKey].ToString(),
-                                    serviceParameterObject[Constants.Authority].ToString(),
-                                    serviceParameterObject[Constants.ResourceURL].ToString(),
-                                    "/.default")).AccessToken;
-                    logData.Add(LogDataKey.IdentityProviderTokenType, "AADAppTokenFallback");
-                }
+                accessToken = await AuthenticationHelper.GetOnBehalfUserToken(UserToken.Replace("Bearer ", string.Empty).Replace("bearer ", string.Empty),
+                                serviceParameterObject,
+                                Config[ConfigurationKey.ManagedIdentityClientId.ToString()],
+                                Config[ConfigurationKey.ManagedIdentityFederatedAudience.ToString()]);
+                logData.Add(LogDataKey.IdentityProviderTokenType, "OnBehalfUserToken");
 
                 requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Constants.AuthorizationHeaderScheme, accessToken);
                 break;
 
             case AuthenticationModelType.ManagedIdentityToken:
-                accessToken = await AuthenticationHelper.GetManagedIdentityToken(serviceParameterObject[Constants.Scope].ToString());
+                accessToken = await AuthenticationHelper.GetManagedIdentityToken(Config[ConfigurationKey.ManagedIdentityClientId.ToString()], serviceParameterObject[Constants.ResourceURL].ToString());
                 requestMessage.Headers.Authorization = new AuthenticationHeaderValue(Constants.AuthorizationHeaderScheme, accessToken);
                 break;
         }
@@ -3461,14 +3536,14 @@ public abstract class TenantBase : ITenant
     /// <summary>
     /// Gets the delegated users asynchronously.
     /// </summary>
-    /// <param name="alias">User alias.</param>
+    /// <param name="onBehalfUser">on behalf user entity.</param>
     /// <param name="parameters">Key-value pair for filtering parameters.</param>
     /// <param name="clientDevice">The clientDevice.</param>
     /// <param name="xcv">The XCV.</param>
     /// <param name="tcv">The TCV.</param>
     /// <param name="sessionId">Current user session Id.</param>
     /// <returns>returns delegated users.</returns>
-    public async Task<HttpResponseMessage> GetUsersDelegatedToAsync(string alias, Dictionary<string, object> parameters, string clientDevice, string xcv, string tcv, string sessionId)
+    public async Task<HttpResponseMessage> GetUsersDelegatedToAsync(User onBehalfUser, Dictionary<string, object> parameters, string clientDevice, string xcv, string tcv, string sessionId)
     {
         // Prepare Log data.
         var logData = new Dictionary<LogDataKey, object>
@@ -3478,7 +3553,7 @@ public abstract class TenantBase : ITenant
             { LogDataKey.SessionId, sessionId },
             { LogDataKey.StartDateTime, DateTime.UtcNow },
             { LogDataKey.IsCriticalEvent, CriticalityLevel.Yes.ToString() },
-            { LogDataKey.UserRoleName, alias },
+            { LogDataKey.UserRoleName, onBehalfUser.UserPrincipalName },
             { LogDataKey.TenantId, approvalTenantInfo.TenantId },
             { LogDataKey.TenantName, approvalTenantInfo.AppName },
             { LogDataKey.DocumentTypeId, approvalTenantInfo.DocTypeId }
@@ -3605,11 +3680,16 @@ public abstract class TenantBase : ITenant
     /// </summary>
     /// <param name="method">The method.</param>
     /// <param name="uri">The URI.</param>
+    /// <param name="templateId">MEO Email Template ID</param>
     /// <param name="Xcv">Xcv</param>
     /// <param name="Tcv">Tcv</param>
     /// <returns>returns Http Request Message</returns>
-    public async Task<HttpRequestMessage> CreateRequestForNotification(HttpMethod method, string uri, string Xcv = "", string Tcv = "")
+    public async Task<HttpRequestMessage> CreateRequestForNotification(HttpMethod method, string uri, string templateId, string Xcv = "", string Tcv = "")
     {
+        if (approvalTenantInfo.EnableMEOFramework && !string.IsNullOrWhiteSpace(templateId))
+        {
+            uri = Config[ConfigurationKey.NotificationBroadcastUriMEO.ToString()];
+        }
         HttpRequestMessage reqMessage = new HttpRequestMessage(method, uri);
         JObject serviceParameter = new JObject
         {
@@ -3619,7 +3699,7 @@ public abstract class TenantBase : ITenant
         };
         var resourceUrl = Config[ConfigurationKey.NotificationFrameworkResourceUrl.ToString()];
         serviceParameter.Add("ResourceURL", resourceUrl);
-        serviceParameter.Add("AuthenticationType", 1);
+        serviceParameter.Add("AuthenticationType", AuthenticationModelType.ManagedIdentityToken.ToJToken());
         await GetAndAttachTokenBasedOnAuthType(reqMessage, uri, serviceParameter);
         AddXcvTcvToRequestHeaders(ref reqMessage, Xcv, Tcv);
         reqMessage.Headers.Add(Constants.ActionByAlias, Alias);
@@ -3739,4 +3819,302 @@ public abstract class TenantBase : ITenant
     }
 
     #endregion PullTenant Methods
+
+    #region UploadAttachment
+
+    /// <summary>
+    /// Validation for the file attachment.
+    /// </summary>
+    /// <param name="files">Uploaded attachment collecion.</param>
+    /// <param name="existingAttachments">List of Existing uploaded attachments.</param>
+    /// <param name="attachmentProperties">Attachment properties for the tenant.</param>
+    /// <param name="attachmentUploadInfo">List of Uploaded Attachment Details.</param>
+    /// <param name="tcv">Transaction Id for the attachment.</param>
+    /// <param name="xcv">Document number for the approval request.</param>
+    /// <returns>Return List of AttachmentUploadStatus And Valid Uploaded files</returns>
+    public Tuple<List<AttachmentUploadStatus>, List<IFormFile>> ValidateAttachmentUpload(IFormFileCollection files, List<Attachment> existingAttachments, AttachmentProperties attachmentProperties, List<AttachmentUploadInfo> attachmentUploadInfo, string tcv, string xcv)
+    {
+        var validFileCollection = new List<IFormFile>();
+        List<AttachmentUploadStatus> fileUploadStatuses = new List<AttachmentUploadStatus>();
+        Parallel.ForEach(files, file =>
+        {
+            bool fileValid = true;
+            var errorMessage = new List<string>();
+            AttachmentUploadInfo attachmentInfo = attachmentUploadInfo.Where(a => a.Name.Equals(file.FileName)).FirstOrDefault();
+            FileAttachmentOptions fileAttachmentOptions = attachmentProperties?.FileAttachmentOptions;
+
+            if (fileAttachmentOptions != null && !fileAttachmentOptions.AllowFileUpload)
+            {
+                fileValid = false;
+                errorMessage.Add("File upload feature is disabled");
+            }
+
+            if (fileAttachmentOptions != null && !fileAttachmentOptions.AllowedFileTypes.Split(',').Contains($".{attachmentInfo.Name.Split('.')[attachmentInfo.Name.Split('.').Length - 1]}"))
+            {
+                fileValid = false;
+                errorMessage.Add("File Type is not permitted.");
+            }
+
+            if (fileAttachmentOptions != null && fileAttachmentOptions.MaxAttachments != null && (existingAttachments.Count + attachmentUploadInfo.Count) > fileAttachmentOptions.MaxAttachments)
+            {
+                fileValid = false;
+                errorMessage.Add("Maximum file count exceeded.");
+            }
+
+            if (fileAttachmentOptions != null && attachmentInfo.FileSize > fileAttachmentOptions.MaxFileSizeInBytes)
+            {
+                fileValid = false;
+                errorMessage.Add("Maximum file size exceeded.");
+            }
+            var attachment = existingAttachments.Where(x => x.Name.Equals(attachmentInfo.Name, StringComparison.InvariantCultureIgnoreCase))
+                                    .Select(x => x)
+                                    .FirstOrDefault();
+            if (attachment != null && !attachment.Category.Equals(attachmentInfo.Category))
+            {
+                fileValid = false;
+                errorMessage.Add($"Already uploaded under {attachment.Category} section.");
+            }
+            if (fileValid)
+                validFileCollection.Add(file);
+            else
+            {
+                var e2EErrorInformation = new ApprovalResponseErrorInfo()
+                {
+                    ErrorMessages = errorMessage,
+                    ErrorType = ApprovalResponseErrorType.IntendedError
+                };
+
+                fileUploadStatuses.Add(new AttachmentUploadStatus()
+                {
+                    Name = file.FileName,
+                    ActionResult = false,
+                    E2EErrorInformation = e2EErrorInformation,
+                    DisplayMessage = "Attachment upload failed.",
+                    Telemetry = new ApprovalsTelemetry() { BusinessProcessName = approvalTenantInfo.BusinessProcessName, Tcv = tcv, Xcv = xcv }
+                });
+            }
+        });
+        return new Tuple<List<AttachmentUploadStatus>, List<IFormFile>>(fileUploadStatuses, validFileCollection);
+    }
+
+    /// <summary>
+    /// Method to create HttpRequestMessage for Attachments.
+    /// </summary>
+    /// <param name="method">Http method</param>
+    /// <param name="uri">Attachment upload endpoint</param>
+    /// <returns>Http request message</returns>
+    public async Task<HttpRequestMessage> CreateAttachmentRequestForTenant(HttpMethod method, string uri)
+    {
+        HttpRequestMessage reqMessage = new HttpRequestMessage(method, uri);
+        JObject serviceParameterObject = GetServiceParameter(Constants.UploadAttachmentsOperationType);
+        await GetAndAttachTokenBasedOnAuthType(reqMessage, uri, serviceParameterObject);
+        return reqMessage;
+    }
+
+    /// <summary>
+    /// Method to create Http Request content body.This will be overridden in each LOB to add additional detail in formData Collection.
+    /// </summary>
+    /// <param name="reqMessage">Http Request message</param>
+    /// <param name="fileCollection">Collection of Attachment</param>
+    /// <param name="attachmentUploadInfo">Attachments details</param>
+    /// <param name="approvalIdentifier">Approval Identifier</param>
+    /// <param name="docTypeId">Document type id </param>
+    /// <param name="signedInUser"> signed in user alias</param>
+    public virtual void CreateAttachmentContentForTenant(HttpRequestMessage reqMessage, List<IFormFile> fileCollection, List<AttachmentUploadInfo> attachmentUploadInfo, ApprovalIdentifier approvalIdentifier, string docTypeId, string signedInUser)
+    {
+        MultipartFormDataContent content = new MultipartFormDataContent();
+        Parallel.ForEach(fileCollection, file =>
+        {
+            {
+                AttachmentUploadInfo attachmentInfo = attachmentUploadInfo.Where(a => a.Name.Equals(file.FileName)).FirstOrDefault();
+                StreamContent attachment = new StreamContent(file.OpenReadStream());
+                attachment.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+                content.Add(attachment, file.Name, file.FileName);
+                content.Add(new StringContent(attachmentInfo.Category), $"{file.Name}.Category");
+                content.Add(new StringContent(attachmentInfo.Description), $"{file.Name}.Description");
+                content.Add(new StringContent(file.FileName.Split(".")[0]), $"{file.Name}.Title");
+
+                // Sanitize and encode the signed-in user alias to prevent injection/XSS issues downstream.
+                var sanitizedSignedInUser = string.IsNullOrEmpty(signedInUser)
+                    ? string.Empty
+                    : WebUtility.HtmlEncode(Regex.Replace(signedInUser, @"[^a-zA-Z0-9\.\-_]", string.Empty));
+                content.Add(new StringContent(sanitizedSignedInUser), $"{file.Name}.UploadedByAlias");
+            }
+        });
+        content.Add(new StringContent(WebUtility.HtmlEncode(approvalIdentifier.DisplayDocumentNumber)), "displayDocumentNumber");
+        content.Add(new StringContent(WebUtility.HtmlEncode(approvalIdentifier.DocumentNumber)), "documentNumber");
+        content.Add(new StringContent(WebUtility.HtmlEncode(approvalIdentifier.FiscalYear)), "fiscalYear");
+        content.Add(new StringContent(WebUtility.HtmlEncode(docTypeId)), "documentTypeId");
+        reqMessage.Headers.Add("CorrelationId", Guid.NewGuid().ToString());
+        reqMessage.Content = content;
+    }
+
+    /// <summary>
+    /// Method to add Attachment Metadata and Upload Attachment in Blob storage
+    /// </summary>
+    /// <param name="fileUploadStatuses">File upload status.</param>
+    /// <param name="files">Collection of Attachment.</param>
+    /// <param name="attachmentUploadInfo">Uploaded attachments details</param>
+    /// <param name="attachmentsSummary">List of Existing and uploaded attachment details.</param>
+    /// <param name="attachmentProperties">Attachment Property</param>
+    /// <param name="httpResponseMessage">Http Response : to get attachment additional data from response.</param>
+    /// <param name="documentNumber">Document Number</param>
+    /// <param name="loggedInAlias">Loggedin user alias</param>
+    /// <param name="xcv">Document number for the approval request.</param>
+    /// <param name="tcv">Transaction Id for the attachment.</param>
+    /// <returns></returns>
+    public async Task AddAttachmentMetadataAndUploadAttachmentInBlob(
+        List<Attachment> uploadAttachmentsResponse,
+        List<AttachmentUploadStatus> fileUploadStatuses,
+        List<IFormFile> files,
+        List<AttachmentUploadInfo> attachmentUploadInfo,
+        List<Attachment> attachmentsSummary,
+        AttachmentProperties attachmentProperties,
+        HttpResponseMessage httpResponseMessage,
+        string documentNumber,
+        string loggedInAlias,
+        string xcv,
+        string tcv)
+    {
+        var options = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = 5,
+            CancellationToken = CancellationToken.None
+        };
+        await Parallel.ForEachAsync(files, options, async (file, cancellationToken) =>
+        {
+            AttachmentUploadInfo attachmentInfo = attachmentUploadInfo.Where(a => a.Name.Equals(file.FileName)).FirstOrDefault();
+            string fileName = file.FileName;
+            try
+            {
+                Attachment attachment = attachmentsSummary
+                    .Where(x => x.Name.Equals(fileName, StringComparison.InvariantCultureIgnoreCase))
+                    .Select(x => x)
+                    .FirstOrDefault();
+
+                if (file != null && attachmentInfo != null)
+                {
+                    string fileurl = string.Empty;
+                    if (attachmentInfo.FileSize > 0)
+                    {
+                        // Upload file in the blob store.
+                        fileurl = await BlobStorageHelper.UploadStreamData(file.OpenReadStream(), attachmentProperties?.AttachmentContainerName, $"{documentNumber}/{fileName}");
+
+                        // If the file does exists.
+                        if (attachment is null)
+                        {
+                            List<string> listOfAttachmentIDs = attachmentsSummary.Select(a => a.ID).ToList();
+                            attachmentsSummary.Add(attachment = new Attachment()
+                            {
+                                ID = uploadAttachmentsResponse.Where(a => a.Name.Equals(file.FileName)).FirstOrDefault().ID,
+                                Url = fileurl,
+                                Name = fileName,
+                                IsPreAttached = false,
+                                UploadedBy = loggedInAlias,
+                                UploadedDate = DateTime.UtcNow,
+                                Category = attachmentInfo.Category,
+                                Description = attachmentInfo.Description,
+                            });
+                        }
+                        else
+                        {
+                            attachmentsSummary.ForEach(a =>
+                            {
+                                if (a.Name.Equals(fileName, StringComparison.InvariantCultureIgnoreCase))
+                                {
+                                    a.ID = uploadAttachmentsResponse.Where(a => a.Name.Equals(file.FileName)).FirstOrDefault().ID;
+                                    a.Description = attachmentInfo.Description;
+                                    a.UploadedBy = loggedInAlias;
+                                    a.UploadedDate = DateTime.UtcNow;
+                                }
+                            });
+                        }
+                        // Get all approval details data and check if it has row key = UPATTACH or UPATTACH|doctypeid
+                        var allApprovalDetails = await ApprovalDetailProvider.GetAllApprovalDetailsByTenantAndDocumentNumber(approvalTenantInfo.TenantId, documentNumber);
+                        var uploadAttachmentOperationRowFromDetails = allApprovalDetails?.FirstOrDefault(detail =>
+                            detail.RowKey.Equals(Constants.UploadAttachmentsOperationType, StringComparison.InvariantCultureIgnoreCase) ||
+                            detail.RowKey.Equals(string.Format(Constants.UploadAttachmentsOperationTypeNew, approvalTenantInfo.DocTypeId), StringComparison.InvariantCultureIgnoreCase));
+
+                        // Add UPATTACH details into ApprovalDetails Table
+                        ApprovalDetailsEntity approvalDetailsEntity = new ApprovalDetailsEntity()
+                        {
+                            PartitionKey = documentNumber,
+                            RowKey = uploadAttachmentOperationRowFromDetails?.RowKey ?? string.Format(Constants.UploadAttachmentsOperationTypeNew, approvalTenantInfo.DocTypeId),
+                            ETag = global::Azure.ETag.All,
+                            JSONData = attachmentsSummary.ToJson(),
+                            TenantID = int.Parse(approvalTenantInfo.RowKey)
+                        };
+                        ApprovalsTelemetry telemetry = new ApprovalsTelemetry()
+                        {
+                            Xcv = xcv,
+                            Tcv = tcv,
+                            BusinessProcessName = string.Format(approvalTenantInfo.BusinessProcessName, Constants.BusinessProcessNameAddAttachments, Constants.BusinessProcessNameUserTriggered)
+                        };
+
+                        await ApprovalDetailProvider.AddTransactionalAndHistoricalDataInApprovalsDetails(approvalDetailsEntity, approvalTenantInfo, telemetry);
+                     
+                        fileUploadStatuses.Add(new AttachmentUploadStatus()
+                        {
+                            Name = fileName,
+                            ActionResult = true,
+                            ID = attachment.ID,
+                            Url = fileurl,
+                            FileSize = attachmentInfo.FileSize
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                var e2EErrorInformation = new ApprovalResponseErrorInfo()
+                {
+                    ErrorMessages = new List<string>() { ex.Message },
+                    ErrorType = ApprovalResponseErrorType.UnintendedTransientError
+                };
+
+                fileUploadStatuses.Add(new AttachmentUploadStatus()
+                {
+                    Name = fileName,
+                    ActionResult = false,
+                    E2EErrorInformation = e2EErrorInformation,
+                    DisplayMessage = "Attachment upload failed unintendedly.",
+                    Telemetry = new ApprovalsTelemetry() { BusinessProcessName = approvalTenantInfo.BusinessProcessName, Tcv = tcv, Xcv = xcv }
+                });
+            }
+        });
+    }
+
+    /// <summary>
+    /// Check if Attachment flighting feature is enable for user.
+    /// This Method will get removed once this feature enable for all users.
+    /// </summary>
+    /// <param name="userAlias">Alias of the Approver of this request</param>
+    /// <param name="uploadAttachmentFeaureId">Attachment flighting feature id.</param>
+    /// <returns>return true/false</returns>
+    public virtual bool CheckUserAttachmentFlightingFeature(string userAlias, int uploadAttachmentFeaureId)
+    {
+        //This check will be remove once upload attachment feature enable for all users.
+        return FlightingDataProvider.IsFeatureEnabledForUser(userAlias, uploadAttachmentFeaureId, Domain);
+    }
+
+    #endregion UploadAttachment
+
+    /// <summary>
+    /// Checks whether NotifyWatchDogEmailWithApprovalFunctionality and NotifyEmailWithApprovalFunctionality are configured for the specific Tenant or not.
+    /// Return true if enabled, else returns false
+    /// </summary>
+    /// <param name="summaryRow"></param>
+    /// <param name="tenant"></param>
+    /// <returns>returns bool</returns>
+    public EmailType GetEmailType(List<ApprovalSummaryRow> summaryRow, ITenant tenant)
+    {
+        if (approvalTenantInfo.NotifyWatchDogEmailWithApprovalFunctionality && tenant.ValidateIfEmailShouldBeSentWithDetails(summaryRow))
+        {
+            return EmailType.ActionableEmail;
+        }
+        else
+        {
+            return EmailType.NormalEmail;
+        }
+    }
 }

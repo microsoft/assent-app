@@ -155,22 +155,24 @@ public class LogProvider : ILogProvider
             if (dataDictionary == null) dataDictionary = new Dictionary<TLog, object>();
             dataDictionary = AddActionName(new StackFrame(2), dataDictionary);
 
-            if (!dataDictionary.ContainsKey(Enum.Parse<TLog>("EventId")))
-                dataDictionary[Enum.Parse<TLog>("EventId")] = Convert.ToInt32(trackingEvent);
-            if (!dataDictionary.ContainsKey(Enum.Parse<TLog>("EventName")))
+            if (dataDictionary.ContainsKey(Enum.Parse<TLog>("CustomEventId")) && 
+                int.TryParse(dataDictionary[Enum.Parse<TLog>("CustomEventId")]?.ToString(), out int customEventId))
             {
-                dataDictionary[Enum.Parse<TLog>("EventName")] = trackingEvent.ToString();
-                dataDictionary[Enum.Parse<TLog>("_TrackingEvent")] = dataDictionary[Enum.Parse<TLog>("EventName")];
+                dataDictionary[Enum.Parse<TLog>("EventId")] = customEventId;
             }
             else
             {
-                dataDictionary[Enum.Parse<TLog>("_TrackingEvent")] = dataDictionary[Enum.Parse<TLog>("EventName")];
+                dataDictionary[Enum.Parse<TLog>("EventId")] = Convert.ToInt32(trackingEvent);
             }
+            dataDictionary[Enum.Parse<TLog>("EventName")] = dataDictionary.ContainsKey(Enum.Parse<TLog>("CustomEventName")) ?
+                dataDictionary[Enum.Parse<TLog>("CustomEventName")] :
+                trackingEvent.ToString();
+            dataDictionary[Enum.Parse<TLog>("_TrackingEvent")] = dataDictionary[Enum.Parse<TLog>("EventName")];
+            dataDictionary[Enum.Parse<TLog>("LoggingDateTimeUtc")] = DateTime.UtcNow;
 
-            if (!dataDictionary.ContainsKey(Enum.Parse<TLog>("LoggingDateTimeUtc")))
-            {
-                dataDictionary.Add(Enum.Parse<TLog>("LoggingDateTimeUtc"), DateTime.UtcNow);
-            }
+            // Clear out custom name after logging
+            dataDictionary.Remove(Enum.Parse<TLog>("CustomEventId"));
+            dataDictionary.Remove(Enum.Parse<TLog>("CustomEventName"));
 
             LogEventInfo logEventInfo = new LogEventInfo() { Exception = exception, Message = dataDictionary.ToJson(), Level = (logType == LogType.Error ? NLog.LogLevel.Error : (logType == LogType.Warning ? NLog.LogLevel.Warn : NLog.LogLevel.Info)) };
 

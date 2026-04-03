@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Models;
@@ -48,19 +49,18 @@ public class TestActionsController : ControllerBase
     /// </summary>
     /// <param name="azureStorageHelper"></param>
     /// <param name="bulkDeleteHelper"></param>
-    /// <param name="configurationSetting"></param>
+    /// <param name="configurationHelper"></param>
     /// <param name="actionContextAccessor"></param>
     /// <param name="logProvider"></param>
-    public TestActionsController(Func<string, string, ITableHelper> azureStorageHelper,
+    public TestActionsController(Func<string, ITableHelper> azureStorageHelper,
         IBulkDeleteHelper bulkDeleteHelper,
-        ConfigurationSetting configurationSetting,
+        ConfigurationHelper configurationHelper,
         IActionContextAccessor actionContextAccessor,
         ILogProvider logProvider)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _azureStorageHelper = azureStorageHelper(
-          configurationSetting.appSettings[_environment].StorageAccountName,
-           configurationSetting.appSettings[_environment].StorageAccountKey);
+          configurationHelper.appSettings[_environment]["StorageAccountName"]);
         _bulkDeleteHelper = bulkDeleteHelper;
         _logProvider = logProvider;
     }
@@ -78,12 +78,14 @@ public class TestActionsController : ControllerBase
         Dictionary<LogDataKey, object> logData = new Dictionary<LogDataKey, object>();
         logData.Add(LogDataKey.Xcv, request.DocumentKeys.DisplayDocumentNumber);
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.Environment, _environment);
         logData.Add(LogDataKey.Operation, "Test Actions - Controller");
 
         var error = new ApprovalResponseErrorInfo();
         ApprovalResponse approvalResponse = null;
-        var tenant = _azureStorageHelper.GetTableEntityByfield<TenantEntity>("ApprovalTenantInfo", "DocTypeId", request.DocumentTypeID);
+        var tenant = _azureStorageHelper.GetTableEntityByfield<TenantEntity>("ApprovalTenantInfo", "DocTypeId", request.DocumentTypeID.ToLowerInvariant());
 
         try
         {
@@ -113,7 +115,6 @@ public class TestActionsController : ControllerBase
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "ActionFailure");
             _logProvider.LogError(TrackingEvent.ActionFailure, ex, logData);
             error.ErrorMessages = new List<string> { TenantActionMessage.MsgActionFailure.StringValue<TenantActionMessage>() };
             error.ErrorType = ApprovalResponseErrorType.UnintendedError;

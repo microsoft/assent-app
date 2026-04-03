@@ -150,6 +150,21 @@ public class TableHelper : ITableHelper
     }
 
     /// <summary>
+    /// Get table entity by partitionKey and RowKey asynchronously
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="TableName"></param>
+    /// <param name="PartitionKey"></param>
+    /// <param name="RowKey"></param>
+    /// <returns></returns>
+    public async Task<T> GetTableEntityByPartitionKeyAndRowKeyAsync<T>(string TableName, string PartitionKey, string RowKey) where T : class, ITableEntity, new()
+    {
+        TableClient tableClient = CreateTableClient(TableName);
+        var response = await tableClient.GetEntityAsync<T>(PartitionKey, RowKey);
+        return response.Value;
+    }
+
+    /// <summary>
     /// Get table entity list by partitionKey and RowKey
     /// </summary>
     /// <typeparam name="T"></typeparam>

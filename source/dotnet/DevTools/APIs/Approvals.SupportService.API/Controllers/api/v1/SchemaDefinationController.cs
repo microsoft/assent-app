@@ -7,8 +7,8 @@ using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Models;
-using Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -33,7 +33,7 @@ public class SchemaDefinationController : ControllerBase
     /// <param name="azureTableStorageHelper"></param>
     /// <param name="configurationHelper"></param>
     /// <param name="actionContextAccessor"></param>
-    public SchemaDefinationController(Func<string, string, ITableHelper> azureTableStorageHelper,
+    public SchemaDefinationController(Func<string, ITableHelper> azureTableStorageHelper,
         ConfigurationHelper configurationHelper,
         IActionContextAccessor actionContextAccessor)
     {
@@ -41,8 +41,7 @@ public class SchemaDefinationController : ControllerBase
 
         _configurationHelper = configurationHelper;
         _azureTableStorageHelper = azureTableStorageHelper(
-             configurationHelper.appSettings[_environment]["StorageAccountName"],
-            configurationHelper.appSettings[_environment]["StorageAccountKey"]);
+             configurationHelper.appSettings[_environment]["StorageAccountName"]);
     }
 
     /// <summary>

@@ -79,6 +79,8 @@ public class LoadGeneratorController : ControllerBase
         var tcv = Guid.NewGuid().ToString();
         logData.Add(LogDataKey.Xcv, tcv);
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.Environment, _environment);
         logData.Add(LogDataKey.TenantName, tenant);
         logData.Add(LogDataKey.UserAlias, approver);
@@ -102,7 +104,6 @@ public class LoadGeneratorController : ControllerBase
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "LoadGenerationFailure");
             _logProvider.LogError(TrackingEvent.LoadGenerationFailure, ex, logData);
             return BadRequest(ex.Message);
         }

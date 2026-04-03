@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Constant;
@@ -33,19 +34,18 @@ public class TestDownloadDocumentController : ControllerBase
     /// Constructor of TestDownloadDocumentController
     /// </summary>
     /// <param name="blobStorageHelper"></param>
-    /// <param name="configurationSetting"></param>
+    /// <param name="configurationHelper"></param>
     /// <param name="actionContextAccessor"></param>
     /// <param name="logProvider"></param>
     public TestDownloadDocumentController(
-        Func<string, string, IBlobStorageHelper> blobStorageHelper,
-        ConfigurationSetting configurationSetting,
+        Func<string, IBlobStorageHelper> blobStorageHelper,
+        ConfigurationHelper configurationHelper,
         IActionContextAccessor actionContextAccessor,
         ILogProvider logProvider)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _blobStorageHelper = blobStorageHelper(
-          configurationSetting.appSettings[_environment].StorageAccountName,
-          configurationSetting.appSettings[_environment].StorageAccountKey);
+          configurationHelper.appSettings[_environment]["StorageAccountName"]);
         _logProvider = logProvider;
     }
 
@@ -64,6 +64,8 @@ public class TestDownloadDocumentController : ControllerBase
         Dictionary<LogDataKey, object> logData = new Dictionary<LogDataKey, object>();
         logData.Add(LogDataKey.Xcv, tcv);
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.Environment, _environment);
         logData.Add(LogDataKey.DetailOperation, "GetAttachment");
         logData.Add(LogDataKey.Operation, "Test Download Document - Controller");
@@ -87,7 +89,6 @@ public class TestDownloadDocumentController : ControllerBase
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "GetAttachmentFailure");
             _logProvider.LogError(TrackingEvent.GetAttachmentFailure , ex, logData);
             return BadRequest("AttachmentID cannot be null");
         }

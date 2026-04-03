@@ -17,7 +17,7 @@ namespace Microsoft.CFS.Approvals.Contracts.DataContracts
         /// </summary>
         [Required(ErrorMessage = Constants.ApproverHeirarchyNullMessage)]
         [MinLength(1, ErrorMessage = Constants.ApproverHeirarchyCountMessage)]
-        public List<NameAliasEntity> Approvers { get; set; }
+        public List<User> Approvers { get; set; }
 
         /// <summary>
         /// Type of approver - Example: Interim, Safe, VP.

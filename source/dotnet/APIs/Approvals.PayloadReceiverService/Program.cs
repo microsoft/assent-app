@@ -11,13 +11,12 @@ using global::Azure.Messaging.ServiceBus;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.Cosmos;
-using Microsoft.CFS.Approvals.Messaging.Azure.ServiceBus.Helpers;
-using Microsoft.CFS.Approvals.Messaging.Azure.ServiceBus.Interface;
-using Microsoft.CFS.Approvals.Common.BL.Interface;
 using Microsoft.CFS.Approvals.Common.BL;
-using Microsoft.CFS.Approvals.Common.DL.Interface;
+using Microsoft.CFS.Approvals.Common.BL.Interface;
 using Microsoft.CFS.Approvals.Common.DL;
+using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Core.BL.Factory;
 using Microsoft.CFS.Approvals.Core.BL.Helpers;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
@@ -25,10 +24,12 @@ using Microsoft.CFS.Approvals.Data.Azure.CosmosDb.Helpers;
 using Microsoft.CFS.Approvals.Data.Azure.CosmosDb.Interface;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Helpers;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
-using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.LogManager;
-using Microsoft.CFS.Approvals.PayloadReceiver.BL.Interface;
+using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
+using Microsoft.CFS.Approvals.Messaging.Azure.ServiceBus.Helpers;
+using Microsoft.CFS.Approvals.Messaging.Azure.ServiceBus.Interface;
 using Microsoft.CFS.Approvals.PayloadReceiver.BL;
+using Microsoft.CFS.Approvals.PayloadReceiver.BL.Interface;
 using Microsoft.CFS.Approvals.PayloadReceiverService.Utils;
 using Microsoft.CFS.Approvals.Utilities.Helpers;
 using Microsoft.CFS.Approvals.Utilities.Interface;
@@ -38,15 +39,15 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
-using Polly.Extensions.Http;
 using Polly;
+using Polly.Extensions.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 IConfigurationRefresher refresher;
 IConfiguration config = builder.Services.BuildServiceProvider().GetService<IConfiguration>();
 
 #if DEBUG
-var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+        var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
 #else
         var azureCredential = new ManagedIdentityCredential();
 #endif
@@ -77,11 +78,9 @@ builder.WebHost.ConfigureAppConfiguration((hostingContext, config) =>
 builder.Services.AddControllers().AddNewtonsoftJson(options =>
     options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore
 );
-// Add Logging
-builder.Services.AddLogging(configure =>
-{
-    configure.AddApplicationInsights(config?[Constants.AppinsightsInstrumentationkey]);
-});
+// Add Logging and Telemetry
+builder.Services.AddApplicationInsightsTelemetry(config?[Constants.AppinsightsInstrumentationkey]);
+
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 // Register the Swagger generator, defining one or more Swagger documents
 builder.Services.AddSwaggerGen(c =>
@@ -104,7 +103,7 @@ var client = new BlobServiceClient(
 var cosmosdbClient = new CosmosClient(config?[ConfigurationKey.CosmosDbEndPoint.ToString()],
                 azureCredential, new CosmosClientOptions() { AllowBulkExecution = true });
 var serviceBusClient = new ServiceBusClient(
-                            config?[ConfigurationKey.ServiceBusNamespace.ToString()] + ".servicebus.windows.net",
+                            config?[Constants.ServiceBusNamespace],
                             azureCredential);
 builder.Services.AddSingleton<ApplicationInsightsTarget>();
 builder.Services.AddSingleton<ILogProvider, LogProvider>();
@@ -123,23 +122,26 @@ builder.Services.AddScoped<IApprovalHistoryProvider, ApprovalHistoryProvider>();
 builder.Services.AddScoped<ITenantFactory, TenantFactory>();
 builder.Services.AddScoped<IApprovalTenantInfoHelper, ApprovalTenantInfoHelper>();
 builder.Services.AddScoped<IValidationFactory, ValidationFactory>();
-builder.Services.AddScoped<IPayloadDelivery, PayloadDelivery>();
+builder.Services.AddScoped<IPayloadDelivery<ApprovalRequestExpression>, PayloadDelivery<ApprovalRequestExpression>>();
 builder.Services.AddScoped<IPayloadReceiver, PayloadReceiver>();
 builder.Services.AddScoped<IPayloadValidator, PayloadValidator>();
 builder.Services.AddScoped<IApprovalRequestExpressionHelper, ApprovalRequestExpressionHelper>();
 builder.Services.AddScoped<IPayloadReceiverManager, PayloadReceiverManager>();
 builder.Services.AddScoped<IApprovalDetailProvider, ApprovalDetailProvider>();
 builder.Services.AddScoped<IApprovalSummaryProvider, ApprovalSummaryProvider>();
-builder.Services.AddScoped<IApprovalSummaryHelper, ApprovalSummaryHelper>();
+builder.Services.AddScoped<IDelegationHelper, DelegationHelper>();
+builder.Services.AddScoped<ISummaryHelper, SummaryHelper>();
 builder.Services.AddScoped<AuthorizationMiddleware, AuthorizationMiddleware>();
-builder.Services.AddSingleton<HttpClientHandler>();
-builder.Services.AddHttpClient<IHttpHelper, HttpHelper>()
+
+builder.Services
+    .AddHttpClient<IHttpHelper, HttpHelper>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
     .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
     .AddPolicyHandler(HttpPolicyExtensions
-        .HandleTransientHttpError()
-        .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-        .WaitAndRetryAsync(6, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2,
-            retryAttempt))));
+                .HandleTransientHttpError()
+                .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                .WaitAndRetryAsync(6, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2,
+                    retryAttempt))));
 
 var app = builder.Build();
 if (app.Environment.IsDevelopment())

@@ -43,7 +43,7 @@ public class HelpController : BaseApiController
     {
         try
         {
-            var responseObject = _aboutHelper.GetHelpData(Host, sessionId, LoggedInAlias, Host, Alias);
+            var responseObject = _aboutHelper.GetHelpData(sessionId, SignedInUser.MailNickname, ClientDevice, OnBehalfUser.MailNickname);
             return Ok(responseObject);
         }
         catch (Exception ex)

@@ -26,13 +26,14 @@ public interface ITenantDownTimeMessagesProvider
     /// <summary>
     /// Returns all active notifications grouped by bannertype. Mainly consumed by Summary page
     /// </summary>
-    IEnumerable<UserPreference> GetUserPreferencesByAlias(string loggedInAlias);
+    /// <param name="loggedInUpn"></param>
+    IEnumerable<UserPreference> GetUserPreferencesByAlias(string loggedInUpn);
 
     /// <summary>
     /// Inserts into or Updates the Tenant downtime message table
     /// </summary>
-    /// <param name="loggedInAlias"></param>
+    /// <param name="loggedInUpn"></param>
     /// <param name="realtimeTenantInfo"></param>
     /// <returns>boolean value if insert or update completed successfully</returns>
-    bool InsertOrUpdateTenantDowntimeMessage(ApprovalTenantInfoRealTime realtimeTenantInfo, string loggedInAlias);
+    bool InsertOrUpdateTenantDowntimeMessage(ApprovalTenantInfoRealTime realtimeTenantInfo, string loggedInUpn);
 }

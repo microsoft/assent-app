@@ -74,16 +74,16 @@ public class ApprovalHistoryHelper : IApprovalHistoryHelper
     /// <summary>
     /// Get history data for the user with the given search criteria.
     /// </summary>
-    /// <param name="alias">Alias.</param>
+    /// <param name="signedInUser">signed-in user entity.</param>
     /// <param name="timePeriod">Time period.</param>
     /// <param name="searchCriteria">Search criteria.</param>
     /// <param name="page">Page number.</param>
     /// <param name="sortColumn">Sort column.</param>
     /// <param name="sortDirection">Sort direction (ASC or DESC).</param>
     /// <returns>History data for the user with the given search criteria.</returns>
-    private async Task<PagedData<TransactionHistoryExtended>> GetHistoryData(string alias, int timePeriod, string searchCriteria, int? page = null, string sortColumn = null, string sortDirection = "DESC")
+    private async Task<PagedData<TransactionHistoryExtended>> GetHistoryData(User signedInUser, int timePeriod, string searchCriteria, int? page = null, string sortColumn = null, string sortDirection = "DESC")
     {
-        return await _historyProvider.GetHistoryDataAsync(alias, timePeriod, searchCriteria, page, sortColumn, sortDirection);
+        return await _historyProvider.GetHistoryDataAsync(signedInUser.MailNickname, timePeriod, searchCriteria, signedInUser.UserPrincipalName.GetDomainFromUPN(), signedInUser.Id, page, sortColumn, sortDirection);
     }
 
     /// <summary>
@@ -95,14 +95,14 @@ public class ApprovalHistoryHelper : IApprovalHistoryHelper
     /// <param name="searchCriteria">Search criteria.</param>
     /// <param name="timePeriod">Time period.</param>
     /// <param name="sessionId">Session Id.</param>
-    /// <param name="loggedInAlias">Logged-in user alias.</param>
+    /// <param name="signedInUser">signed-in user entity.</param>
     /// <param name="alias">Alias.</param>
     /// <param name="clientDevice">Client device.</param>
     /// <param name="xcv">Xcv.</param>
     /// <param name="tcv">Tcv.</param>
     /// <param name="tenantId">TenantId. Unique for each Tenant</param>
     /// <returns>History data for the user with the given search criteria.</returns>
-    public async Task<JObject> GetHistory(int page, string sortColumn, string sortDirection, string searchCriteria, int timePeriod, string sessionId, string loggedInAlias, string alias, string clientDevice, string xcv, string tcv, string tenantId = "")
+    public async Task<JObject> GetHistory(int page, string sortColumn, string sortDirection, string searchCriteria, int timePeriod, string sessionId, User signedInUser, string alias, string clientDevice, string xcv, string tcv, string tenantId = "")
     {
         #region Logging
 
@@ -112,7 +112,7 @@ public class ApprovalHistoryHelper : IApprovalHistoryHelper
             { LogDataKey.Xcv, xcv },
             { LogDataKey.Tcv, tcv },
             { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, loggedInAlias },
+            { LogDataKey.UserRoleName, signedInUser.MailNickname },
             { LogDataKey.ClientDevice, clientDevice },
             { LogDataKey.EventType, Constants.FeatureUsageEvent },
             { LogDataKey.UserAlias, alias },
@@ -137,16 +137,13 @@ public class ApprovalHistoryHelper : IApprovalHistoryHelper
                     throw new InvalidDataException(_config[ConfigurationKey.Message_PageLessThan1.ToString()]);
                 }
 
-                var historyData = await GetHistoryData(alias, timePeriod, searchCriteria, page, sortColumn, sortDirection);
-                if (historyData.Result != null && !string.IsNullOrWhiteSpace(tenantId) && int.TryParse(tenantId, out int value))
-                {
-                    historyData.Result = historyData.Result.Where(h => h?.TenantId == tenantId)?.ToList();
-                }
+                var historyData = await GetHistoryData(signedInUser, timePeriod, searchCriteria, page, sortColumn, sortDirection);
 
                 var responseObject = new
                 {
                     TotalRecords = historyData.TotalCount,
-                    Records = historyData.Result
+                    Records = historyData.Result,
+                    TenantList = historyData.TenantList
                 };
 
                 // Serialize.
@@ -178,14 +175,14 @@ public class ApprovalHistoryHelper : IApprovalHistoryHelper
     /// <param name="searchCriteria">Search criteria.</param>
     /// <param name="timePeriod">Time period.</param>
     /// <param name="sessionId">Session Id.</param>
-    /// <param name="loggedInAlias">Logged-in user alias.</param>
+    /// <param name="signedInUser">signed-in user entity.</param>
     /// <param name="alias">Alias.</param>
     /// <param name="clientDevice">Client device.</param>
     /// <param name="xcv">Xcv.</param>
     /// <param name="tcv">Tcv.</param>
     /// <param name="tenantId">TenantId. Unique for each Tenant</param>
     /// <returns>History data for the user with the given search criteria.</returns>
-    public async Task<JArray> GetHistoryMappedToSummary(int page, string sortColumn, string sortDirection, string searchCriteria, int timePeriod, string sessionId, string loggedInAlias, string alias, string clientDevice, string xcv, string tcv, string tenantId = "")
+    public async Task<JArray> GetHistoryMappedToSummary(int page, string sortColumn, string sortDirection, string searchCriteria, int timePeriod, string sessionId, User signedInUser, string alias, string clientDevice, string xcv, string tcv, string tenantId = "")
     {
         var logData = new Dictionary<LogDataKey, object>
         {
@@ -193,7 +190,7 @@ public class ApprovalHistoryHelper : IApprovalHistoryHelper
             { LogDataKey.Xcv, xcv },
             { LogDataKey.Tcv, tcv },
             { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, loggedInAlias },
+            { LogDataKey.UserRoleName, signedInUser.MailNickname },
             { LogDataKey.ClientDevice, clientDevice },
             { LogDataKey.EventType, Constants.FeatureUsageEvent },
             { LogDataKey.UserAlias, alias },
@@ -204,7 +201,7 @@ public class ApprovalHistoryHelper : IApprovalHistoryHelper
 
         try
         {
-            var responseObject = await GetHistory(page, sortColumn, sortDirection, searchCriteria, timePeriod, sessionId, loggedInAlias, alias, clientDevice, xcv, tcv, tenantId);
+            var responseObject = await GetHistory(page, sortColumn, sortDirection, searchCriteria, timePeriod, sessionId, signedInUser, alias, clientDevice, xcv, tcv, tenantId);
             List<TransactionHistoryExtended> historyData = responseObject["Records"].ToJson().FromJson<List<TransactionHistoryExtended>>();
 
             // Log Success.
@@ -229,14 +226,14 @@ public class ApprovalHistoryHelper : IApprovalHistoryHelper
     /// <param name="searchCriteria">Search criteria.</param>
     /// <param name="timePeriod">Time period.</param>
     /// <param name="sessionId">Session Id.</param>
-    /// <param name="loggedInAlias">Logged-in user alias.</param>
+    /// <param name="signedInUser">signed-in user entity.</param>
     /// <param name="alias">Alias.</param>
     /// <param name="clientDevice">Client device.</param>
     /// <param name="xcv">Xcv.</param>
     /// <param name="tcv">Tcv.</param>
     /// <param name="tenantId">TenantId. Unique for each Tenant</param>
     /// <returns>Excel with hisotry data for the user with the given search criteria.</returns>
-    public async Task<byte[]> DownloadHistoryDataInExcel(string sortColumn, string sortDirection, string searchCriteria, int timePeriod, string sessionId, string loggedInAlias, string alias, string clientDevice, string xcv, string tcv, string tenantId = "")
+    public async Task<byte[]> DownloadHistoryDataInExcel(string sortColumn, string sortDirection, string searchCriteria, int timePeriod, string sessionId, User signedInUser, string alias, string clientDevice, string xcv, string tcv, string tenantId = "")
     {
         #region Logging
 
@@ -246,7 +243,7 @@ public class ApprovalHistoryHelper : IApprovalHistoryHelper
             { LogDataKey.Xcv, xcv },
             { LogDataKey.Tcv, tcv },
             { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, loggedInAlias },
+            { LogDataKey.UserRoleName, signedInUser.MailNickname },
             { LogDataKey.ClientDevice, clientDevice },
             { LogDataKey.EventType, Constants.FeatureUsageEvent },
             { LogDataKey.UserAlias, alias },
@@ -261,7 +258,7 @@ public class ApprovalHistoryHelper : IApprovalHistoryHelper
 
         try
         {
-            var historyData = await GetHistoryData(alias, timePeriod, searchCriteria, null, sortColumn, sortDirection);
+            var historyData = await GetHistoryData(signedInUser, timePeriod, searchCriteria, null, sortColumn, sortDirection);
             if (historyData.Result != null && !string.IsNullOrWhiteSpace(tenantId))
             {
                 historyData.Result = historyData.Result.Where(h => h?.TenantId == tenantId)?.ToList();
@@ -304,13 +301,13 @@ public class ApprovalHistoryHelper : IApprovalHistoryHelper
     /// <param name="alias">Alias.</param>
     /// <param name="timePeriod">Time period.</param>
     /// <param name="searchCriteria">Search criteria.</param>
-    /// <param name="loggedInAlias">Logged-in user alias.</param>
+    /// <param name="signedInUser">signed-in user entity.</param>
     /// <param name="sessionId">Session Id.</param>
     /// <param name="clientDevice">Client device.</param>
     /// <param name="xcv">Xcv.</param>
     /// <param name="tcv">Tcv.</param>
     /// <returns>History count for the user with the given search criteria.</returns>
-    public async Task<JArray> GetHistoryCountforAlias(string alias, int timePeriod, string searchCriteria, string loggedInAlias, string sessionId, string clientDevice, string xcv, string tcv)
+    public async Task<JArray> GetHistoryCountforAlias(string alias, int timePeriod, string searchCriteria, User signedInUser, string sessionId, string clientDevice, string xcv, string tcv)
     {
         #region Logging
 
@@ -320,7 +317,7 @@ public class ApprovalHistoryHelper : IApprovalHistoryHelper
             { LogDataKey.Xcv, xcv },
             { LogDataKey.Tcv, tcv },
             { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, loggedInAlias },
+            { LogDataKey.UserRoleName, signedInUser.MailNickname },
             { LogDataKey.ClientDevice, clientDevice },
             { LogDataKey.EventType, Constants.FeatureUsageEvent },
             { LogDataKey.UserAlias, alias },
@@ -334,7 +331,7 @@ public class ApprovalHistoryHelper : IApprovalHistoryHelper
         {
             using (_performanceLogger.StartPerformanceLogger("PerfLog", string.IsNullOrWhiteSpace(clientDevice) ? Constants.WebClient : clientDevice, string.Format(Constants.PerfLogCommon, "History Count"), logData))
             {
-                var historyData = await _historyProvider.GetHistoryCountforAliasAsync(alias, timePeriod, searchCriteria, loggedInAlias, tcv);
+                var historyData = await _historyProvider.GetHistoryCountforAliasAsync(alias, timePeriod, searchCriteria, signedInUser, tcv);
 
                 // Log Success.
                 logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
@@ -385,7 +382,7 @@ public class ApprovalHistoryHelper : IApprovalHistoryHelper
                 { "DocumentNumberPrefix", string.Empty }
             };
 
-            var submitter = new NameAliasEntity() { Name = historyData.SubmitterName, Alias = historyData.SubmittedAlias };
+            var submitter = new User() { Name = historyData.SubmitterName, Alias = historyData.SubmittedAlias };
 
             Dictionary<string, string> additionalData = new Dictionary<string, string>() {
                                     { "TemplateUri", string.Format(AdaptiveTemplateUrl, tenantId) },

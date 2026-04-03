@@ -5,18 +5,20 @@ using System;
 using System.Net.Http;
 using Azure.Core;
 using Azure.Identity;
+using Azure.Messaging.ServiceBus.Administration;
 using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
-using Microsoft.Azure.ServiceBus.Management;
 using Microsoft.CFS.Approvals.Common.BL;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Core.BL.Factory;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Helpers;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.LogManager;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
+using Microsoft.CFS.Approvals.SupportService.API.Utils;
 using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
 using Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper;
 using Microsoft.CFS.Approvals.Utilities.Helpers;
@@ -38,10 +40,10 @@ builder.Services.AddCors(options =>
                     .AllowAnyMethod();
         });
 });
+
 builder.Services.AddControllers().AddNewtonsoftJson();
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 var appSettings = new ApplicationSettingsHelper(builder.Configuration).GetSettings();
-builder.Services.AddScoped<IAIHelper, AIHelper>();
 builder.Services.AddScoped<IServiceBusHelper, ServiceBusHelper>();
 builder.Services.AddSingleton<ConfigurationHelper>(provider =>
 {
@@ -49,15 +51,20 @@ builder.Services.AddSingleton<ConfigurationHelper>(provider =>
 });
 
 #if DEBUG
-var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+    var azureCredential = new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
 #else
     var azureCredential = new ManagedIdentityCredential();
 #endif
 
-builder.Services.AddTransient<Func<string, string, ITableHelper>>((provider) =>
+// Secure Azure credential selection for TableHelper
+builder.Services.AddTransient<Func<string, ITableHelper>>((provider) =>
 {
-    return new Func<string, string, ITableHelper>(
-         (StorageAccountName, TokenCredential) => new TableHelper(StorageAccountName, azureCredential)
+    return new Func<string, ITableHelper>(
+         (StorageAccountName) =>
+         {
+
+             return new TableHelper(StorageAccountName, azureCredential);
+         }
     );
 });
 
@@ -73,6 +80,9 @@ builder.Services.AddTransient<Func<string, IBlobStorageHelper>>((provider) =>
           }
      );
 });
+builder.Services.AddSingleton<TokenCredential>(azureCredential);
+builder.Services.AddScoped<ITelemetryHelper, TelemetryHelper>();
+builder.Services.AddScoped<AuthorizationMiddleware, AuthorizationMiddleware>();
 builder.Services.AddSingleton<IActionContextAccessor, ActionContextAccessor>();
 builder.Services.AddScoped<IUserDelegationHelper, UserDelegationHelper>();
 builder.Services.AddSingleton<ApplicationInsightsTarget>();
@@ -91,10 +101,14 @@ builder.Services.AddScoped<IAuthenticationHelper, AuthenticationHelper>();
 builder.Services.AddScoped<ISubscribeFeaturesHelper, SubscribeFeaturesHelper>();
 builder.Services.AddScoped<IMarkRequestOutOfSyncHelper, MarkRequestOutOfSyncHelper>();
 builder.Services.AddScoped<ITenantOnBoardingHelper, TenantOnBoardingHelper>();
-builder.Services.AddSingleton<Func<string, ManagementClient>>((provider) =>
+// Secure Azure credential selection for ServiceBusAdministrationClient
+builder.Services.AddSingleton<Func<string, ServiceBusAdministrationClient>>((provider) =>
 {
-    return new Func<string, ManagementClient>(
-         (ServiceBusConnection) => new ManagementClient(ServiceBusConnection)
+    return new Func<string, ServiceBusAdministrationClient>(
+         (ServiceBusNamespace) =>
+         {
+             return new ServiceBusAdministrationClient(ServiceBusNamespace, azureCredential);
+         }
     );
 });
 builder.Services.AddScoped<Func<string, IARConverterFactory>>((provider) =>
@@ -102,17 +116,19 @@ builder.Services.AddScoped<Func<string, IARConverterFactory>>((provider) =>
     return new Func<string, IARConverterFactory>(
         (environment) => new ARConverterFactory(
             provider.GetService<IPerformanceLogger>(),
-            provider.GetService<ConfigurationHelper>().appSettings[environment]));
+            provider.GetService<ConfigurationHelper>().appSettings[environment],
+            provider.GetService<INameResolutionHelper>()));
 });
-builder.Services.AddSingleton<HttpClientHandler>();
 
-builder.Services.AddHttpClient<IHttpHelper, HttpHelper>()
+builder.Services
+    .AddHttpClient<IHttpHelper, HttpHelper>()
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
     .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
     .AddPolicyHandler(HttpPolicyExtensions
-        .HandleTransientHttpError()
-        .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-        .WaitAndRetryAsync(6, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2,
-            retryAttempt))));
+                .HandleTransientHttpError()
+                .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                .WaitAndRetryAsync(6, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2,
+                    retryAttempt))));
 
 var app = builder.Build();
 if(app.Environment.IsDevelopment())
@@ -128,6 +144,7 @@ app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors(MyAllowSpecificOrigins);
 app.UseAuthorization();
+app.UseMiddleware<AuthorizationMiddleware>();
 
 app.UseEndpoints(endpoints =>
 {

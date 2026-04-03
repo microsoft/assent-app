@@ -115,6 +115,7 @@ namespace Microsoft.CFS.Approvals.Contracts
 
         public const int ReminderDetailFrequencyEventId = 8003;
         public const string ReminderDetailFrequencyMessage = "ReminderTemplate.Frequency cannot be zero.";
+        public const string ReminderDetailExpirationMessage = "ReminderTemplate.Expiration should be a future date and time.";
 
         #endregion ReminderDetail
 
@@ -153,6 +154,20 @@ namespace Microsoft.CFS.Approvals.Contracts
 
         #endregion SummaryJson
 
+        #region Azure Open AI
+
+        public const string Temperature = "Temperature";
+        public const string MaxTokens = "MaxTokens";
+        public const string NucleusSamplingFactor = "NucleusSamplingFactor";
+        public const string FrequencyPenalty = "FrequencyPenalty";
+        public const string PresencePenalty = "PresencePenalty";
+        public const string StoredOutputEnabled = "StoredOutputEnabled";
+        public const string GenerationSampleCount = "GenerationSampleCount";
+        public const string AIPluginNotFoundMessage = "AIPlugin is not found";
+        public const string OpenApiYamlNotFoundMessage = "openapi.yaml is not found";
+
+        #endregion Azure Open AI
+
         public const string ApplicationName = "Approvals";
         public const string ServiceTreeAppId = "0685ecb0-8dfa-4ff5-9485-31d4ba8e867f";
 
@@ -162,6 +177,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string MustUpdateConfig = "MustUpdateConfig";
 
         public const string CurrentApprover = "CurrentApprover";
+        public const string CurrentApproverNew = "CurrentApprover|{0}";
         public const string AdaptiveDTL = "AdaptiveDTL";
         public const string FailureEmailNotificationTemplateKey = "EmailNotificationForDetailsFail";
         public const string UserAttachments = "UserAttachments";
@@ -182,6 +198,8 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string WireRequestID = "WireRequestID";
         public const string FiscalYear = "FiscalYear";
         public const string Approver = "Approver";
+        public const string ApproverId = "ApproverId";
+        public const string ApproverDomain = "ApproverDomain";
         public const string OriginalApprover = "OriginalApprover";
         public const string DocumentTypeId = "DocumentTypeId";
         public const string Operation = "Operation";
@@ -191,6 +209,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string DelayTimeKey = "_DelayTime";
         public const string TelemetryContractName = "appInsightsContract";
         public const string AppinsightsInstrumentationkey = "APPINSIGHTS_INSTRUMENTATIONKEY";
+        public const string ServiceBusNamespace = "ServiceBusNamespace:fullyQualifiedNamespace";
         public const string StorageAccountName = "StorageAccountName";
         public const string StorageAccountKey = "StorageAccountKey";
         public const string AuthKey = "AuthKey";
@@ -201,13 +220,12 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string AppConfigurationSecrets = "AppConfigurationSecrets";
         public const string Authority = "Authority";
 
+        public const string DefaultDomain = "@microsoft.com";
+
         public const string PullModelURLPlaceHolderStart = "\\|#";
         public const string PullModelURLPlaceHolderEnd = "#\\|";
 
         public static readonly Guid InvoiceDocumentTypeId = new Guid("f30862f8-9be9-482b-b312-d38c8f56c745");
-
-        public const string HmacUri = "Uri type is Hmac";
-        public const string AcsUri = "Uri type is AcsUri";
 
         public const string PerfLogActionWithInfo = "{0} - {1} - {2}";
         public const string PerfLogAction = "{0} - {1}";
@@ -230,6 +248,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string NotificationFrameworkProvider = "NotificationFrameworkProvider";
 
         public const string RoutingIdColumnName = "RoutingId";
+        public const string MSInvoiceVendorNameKey = "VendorName";
         public const string CosmicApproverDetailsIdKey = "ApproverDetailId";
 
         public const string AzureTableRowKeyStandardPrefix = "{0}" + Constants.FieldsSeparator;
@@ -239,29 +258,25 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string ApprovalEmailNotificationTemplatesAzureTableName = "ApprovalEmailNotificationTemplates";
         public const string TransactionHistoryTableName = "TransactionHistory";
         public const string ApprovalAzureBlobContainerName = "approvalblobdata";
+        public const string ApprovalSummaryBlobContainerName = "approvalsummaryblobdata";
         public const string TenantImagesBlobContainerName = "tenanticons";
         public const string PrimaryMessageContainer = "primaryapprovalsmessage";
         public const string AuditAgentMessageContainer = "auditagentapprovalsmessage";
         public const string NotificationMessageContainer = "notificationapprovalsmessage";
+        public const string SecondaryMessageContainer = "secondaryapprovalsmessage";
+        public const string reassingmentMessageContainer = "reassignmentapprovalsmessage";
         public const string FlightingAzureTableName = "Flighting";
         public const string FlightingUserPreferenceAzureTableName = "UserPreference";
         public const string FlightingFeatureAzureTableName = "FlightingFeature";
+        public const string FlightingFeatureStatusAzureTableName = "FlightingFeatureStatus";
         public const string FlightingRingAzureTableName = "FlightingRing";
-        public const string UserDelegationSettingsAzureTableName = "UserDelegationSetting";
-        public const string UserDelegationSettingsHistoryAzureTableName = "UserDelegationSettingsHistory";
         public const string NotificationImagesBlobName = "notificationimages";
         public const string NotificationAttachmentsBlobName = "outlookattachments";
         public const string OutlookDynamicTemplates = "outlookdynamictemplates";
         public const string OutlookActionableEmailIcons = "outlookactionableemailicons";
+        public const string BlobUrl = "https://{0}.blob.core.windows.net/{1}/{2}|{3}|{4}";
 
-        public const string DataString = "wrap_name={0}&wrap_password={1}&wrap_scope={2}";
-        public const string ContentTypeKeyName = "Content-Type";
-        public const string ContentTypeKeyValue = "application/x-www-form-urlencoded";
-        public const string PostString = "POST";
-        public const char SplitToken = '&';
-        public const string Wrap_Access_TokenKeyName = "wrap_access_token=";
-        public const char SplitToken2 = '=';
-        public const string AuthorizationKeyString = "WRAP access_token=\"{0}\"";
+        public const string QuickTourSlides = "quicktourslides";
 
         public const string OperationTypeAction = "ACT";
         public const string OperationTypeOutOfSync = "OSA";
@@ -271,7 +286,18 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string WorkerRole = "Worker";
         public const string OutlookClient = "Outlook";
         public const string TeamsClient = "Teams";
+        public const string FinanceAssistantClient = "FinanceAssistant";
         public const string ReactClient = "React";
+
+        #region Adaptive Card Placeholders
+
+        public const string ApproverNamePlaceholder = "#Approver.Name#";
+        public const string ApproverAliasPlaceholder = "#Approver.Alias#";
+        public const string ActionDatePlaceholder = "#ActionDate#";
+        public const string TcvPlaceholder = "#Tcv#";
+
+        #endregion Adaptive Card Placeholders
+
         public const string PayloadReceiver = "PayloadReceiver";
         public const string ContentTypeJson = "application/json";
         public const string AdditionalData = "AdditionalData";
@@ -282,31 +308,58 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string AuthorizationHeader = "Authorization";
         public const string CookieHeader = "Cookie";
         public const string UserAlias = "UserAlias";
+        public const string OnBehalfUserUpn = "OnBehalfUserUpn";
+        public const string OnBehalfUserId = "OnBehalfUserId";
         public const string LoggedInUserAlias = "LoggedInUserAlias";
+        public const string Tenants = "Tenants";
+        public const string LoggedInUserUpn = "LoggedInUserUpn";
         public const string DelegatedUserAlias = "DelegatedUserAlias";
+        public const string OnBehalfUserToken = "OnBehalfUserToken";
+        public const string Domain = "Domain";
+        public const string ObjectId = "ObjectId";
+        public const string XMSClientPrincipalId = "X-MS-CLIENT-PRINCIPAL-ID";
         public const string DetailOpsList = "DetailOpsList";
         public const string OperationType = "operationtype";
         public const string ServiceParameter = "ServiceParameter";
         public const string OperationTypeSummary = "Summary";
         public const string SourcePendingApproval = "PendingApproval";
         public const string digitalSignatureReplace = "digitalSignature=&";
+        public const string WRTDetailsAction = "DT1";
         public const string DocumentDownloadAction = "DOC1";
         public const string DocumentPreviewAction = "DOCUMENTPREVIEW";
         public const string BulkDocumentDownloadAction = "BULKDOC";
+        public const string OldWhitelistedDomains = "OldWhitelistedDomains";
         public const string WhitelistedDomains = "WhitelistedDomains";
 
         public const string SingleDownloadAction = "Download";
+
+        public const string InvoiceDetailsAction = "DT1";
 
         public const string AuthSumOperationType = "authsum";
         public const string ApprovalChainOperation = "APPRCHAIN";
         public const string ProcurementDetailAction = "DTL";
         public const string HeaderOperationType = "HDR";
         public const string SummaryOperationType = "SUM";
-        public const string AttachmentsOperationType = "ATTACH";
         public const string AttachmentUpload = "Attachment Upload";
         public const string EditedDetailsOperationType = "EditedDetails";
         public const string TransactionDetailsOperationType = "TransactionDetails";
         public const string AdditionalDetails = "ADDNDTL";
+        public const string UploadAttachmentsOperationType = "UPATTACH";
+        public const string OcrOperationType = "OCR";
+        public const string DiscrepanciesOperationType = "DISC"; // Keep for backward compatibility
+        public const string AIAnalysisOperationType = "AI";
+
+        public const string ApprovalChainOperationNew = "APPRCHAIN|{0}";
+        public const string ProcurementDetailActionNew = "DTL|{0}";
+        public const string HeaderOperationTypeNew = "HDR|{0}";
+        public const string SummaryOperationTypeNew = "SUM|{0}";
+        public const string EditedDetailsOperationTypeNew = "EditedDetails|{0}";
+        public const string TransactionDetailsOperationTypeNew = "TransactionDetails|{0}";
+        public const string AdditionalDetailsNew = "ADDNDTL|{0}";
+        public const string UploadAttachmentsOperationTypeNew = "UPATTACH|{0}";
+        public const string OcrOperationTypeNew = "OCR|{0}";
+        public const string DiscrepanciesOperationTypeNew = "DISC|{0}"; // Keep for backward compatibility
+        public const string AIAnalysisOperationTypeNew = "AI|{0}";
 
         public const string EditableField = "EditableField";
         public const string EditableFields = "EditableFields";
@@ -332,16 +385,24 @@ namespace Microsoft.CFS.Approvals.Contracts
 
         public const string ActionSuccessfulMessage = "Your action has been submitted for processing.";
 
-        public const string GenericErrorMessage = "Action failed. Please try again later. If this issue persists, please send email to {0} with the {1}";
+        public const string GenericErrorMessage = "Action failed. Please try again later. If this issue persists, please send email to [MSApprovals Support](mailto:{0}) with the {1}";
         public const string TenantDowntimeMessage = "{0} is currently undergoing maintenance. Please try after some time. If this issue persists, please send email to {1}";
 
         public const string TenantDetailFetchFailureMessage = "Error loading request details: We could not retrieve details data from the line of business application. Approval actions cannot be submitted at this time. Please refresh or try opening this page later.";
 
         public const string NotFlightedMornUIErrorMessage = "Tenant/ User not flighted to the modern UI experience";
 
+        public const string FlightingAPIErrorMessage = "Not able to get user feature status";
+        public const string QuickTourAPIErrorMessage = "Failed to fetch Quick tour features";
+
         public const string DownloadAllAttachmentsFile = "AllAttachments.zip";
 
         public const string AdaptiveTemplateVersion = "1.0";
+
+        public const string SocketExceptionMessage = "Alias resolution failed due to socket exception";
+
+        public const string ServiceBusSourcePrimary = "SourcePrimary";
+        public const string ServiceBusSourceOCR = "SourceOCR";
 
         #region SupportPortalConstants
 
@@ -390,6 +451,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string BusinessProcessNameDocumentApprovalStatus = "DocumentApprovalStatus";
         public const string BusinessProcessNameARConverter = "ARConverter";
 
+        public const string IsRead = "Read";
         public const string OutOfSyncAction = "OutOfSync";
         public const string UndoOutOfSyncAction = "UndoOutOfSync";
         public const string OfflineApproval = "OfflineApproval";
@@ -398,6 +460,8 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string FailedStatus = "Failed";
 
         public const string BusinessProcessNameGetActionDetailsFromTenant = "GetActionDetailsFromTenant";
+
+        public const string ManagedIdentityToken = "ManagedIdentityToken";
 
         #endregion Telemetry & Logging
 

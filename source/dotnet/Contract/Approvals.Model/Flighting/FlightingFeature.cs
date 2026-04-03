@@ -22,4 +22,7 @@ public partial class FlightingFeature : BaseTableEntity
     public Nullable<DateTime> FeatureLastUpdate { get; set; }
     public Nullable<decimal> FeatureVersion { get; set; }
     public virtual ICollection<Flighting> Flightings { get; set; }
+    public string FlightingStatus { get; set; }
+    public string QuickTourSlidesJson { get; set; }
+    public bool TeachingCoach { get; set; }
 }

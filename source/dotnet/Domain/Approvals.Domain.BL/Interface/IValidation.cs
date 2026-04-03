@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
-using Microsoft.CFS.Approvals.Domain.BL.Tenants.Model;
 using Microsoft.CFS.Approvals.Model;
 
 public interface IValidation
@@ -25,14 +24,4 @@ public interface IValidation
     /// <param name="alias">Alias of the user</param>
     /// <returns>True if the alias is from a non-microsoft domain, else False</returns>
     public bool IsExternalUser(string alias);
-
-    /// <summary>
-    /// Validation for the file attachment.
-    /// </summary>
-    /// <param name="file">File uploaded.</param>
-    /// <param name="attachments">List of attachments.</param>
-    /// <param name="attachmentProperties">Attachment properties for the tenant.</param>
-    /// <param name="files">List of files uploaded.</param>
-    /// <returns>Returns the validation result object.</returns>
-    public ValidationCheckResult ValidateAttachmentUpload(AttachmentUploadInfo file, List<Attachment> attachmentsSummary, AttachmentProperties attachmentProperties, List<AttachmentUploadInfo> files);
 }

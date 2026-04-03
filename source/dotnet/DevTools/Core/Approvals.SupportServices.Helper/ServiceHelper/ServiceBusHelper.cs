@@ -6,12 +6,15 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using global::Azure.Identity;
+using global::Azure.Messaging.ServiceBus;
+using global::Azure.Messaging.ServiceBus.Administration;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
-using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.Management;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.Model;
 using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
@@ -21,7 +24,7 @@ using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
 /// </summary>
 public class ServiceBusHelper : IServiceBusHelper
 {
-    private readonly ManagementClient _managementClient;
+    private readonly ServiceBusAdministrationClient _managementClient;
     private readonly ConfigurationHelper _configurationHelper;
     private readonly string _environment;
     private string _messageType;
@@ -37,13 +40,13 @@ public class ServiceBusHelper : IServiceBusHelper
     /// <param name="managementClient"></param>
     public ServiceBusHelper(ConfigurationHelper configurationHelper,
         IActionContextAccessor actionContextAccessor,
-        Func<string, ManagementClient> managementClient,
+        Func<string, ServiceBusAdministrationClient> managementClient,
         Func<string, IARConverterFactory> arConverterFactory,
         Func<string, IBlobStorageHelper> blobStorageHelper)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _configurationHelper = configurationHelper;
-        _managementClient = managementClient(_configurationHelper.appSettings[_environment]["ServiceBusConnection"]);
+        _managementClient = managementClient(_configurationHelper.appSettings[_environment]["ServiceBusNamespace:fullyQualifiedNamespace"]);
         _aRConverterFactory = arConverterFactory(_environment);
         _blobStorageHelper = blobStorageHelper(configurationHelper.appSettings[_environment]["StorageAccountName"]);
     }
@@ -59,8 +62,8 @@ public class ServiceBusHelper : IServiceBusHelper
     {
         Dictionary<string, ArrayList> result = new Dictionary<string, ArrayList>();
         _messageType = messageType;
-        var messages = GetMessagesFromSubscription(topicName, subscriptionName, messageType);
-        result = GetMessage(messages);
+        var messages = GetMessagesFromSubscriptionAsync(topicName, subscriptionName, messageType);
+        result = GetMessage(messages.GetAwaiter().GetResult());
         return result;
     }
 
@@ -69,11 +72,14 @@ public class ServiceBusHelper : IServiceBusHelper
     /// </summary>
     /// <param name="topicName"></param>
     /// <returns></returns>
-    public List<string> GetSubscriptions(string topicName)
+    public async Task<List<string>> GetSubscriptionsAsync(string topicName)
     {
         var subscriptionDescription = new List<string>();
-        var subscription = _managementClient.GetSubscriptionsAsync(topicName).Result;
-        subscriptionDescription.AddRange(subscription.Select(s => s.SubscriptionName));
+        var subscriptions = _managementClient.GetSubscriptionsAsync(topicName);
+        await foreach (SubscriptionProperties prop in subscriptions)
+        {
+            subscriptionDescription.Add(prop.SubscriptionName);
+        }            
         return subscriptionDescription;
     }
 
@@ -81,16 +87,14 @@ public class ServiceBusHelper : IServiceBusHelper
     /// Get topics
     /// </summary>
     /// <returns></returns>
-    public List<string> GetTopics()
+    public async Task<List<string>> GetTopicsAsync()
     {
         var topicDescriptions = new List<string>();
+        var topics = _managementClient.GetTopicsAsync();
 
-        for (int skip = 0; skip < 1000; skip += 100)
+        await foreach (TopicProperties prop in topics)
         {
-            var topics = _managementClient.GetTopicsAsync(100, skip).Result;
-            if (!topics.Any()) break;
-
-            topicDescriptions.AddRange(topics.Select(s => s.Path));
+            topicDescriptions.Add(prop.Name);
         }
         return topicDescriptions;
     }
@@ -98,31 +102,50 @@ public class ServiceBusHelper : IServiceBusHelper
     /// <summary>
     /// Get all brokered messages for selectd topic and subscription which are either deadletter or active
     /// </summary>
-    /// <param name="connectionString"></param>
     /// <param name="topicName"></param>
     /// <param name="subscriptionName"></param>
     /// <param name="messageType"></param>
     /// <returns></returns>
-    public IList<Message> GetMessagesFromSubscription(string topicName, string subscriptionName, string messageType)
+    public async Task<IList<ServiceBusReceivedMessage>> GetMessagesFromSubscriptionAsync(string topicName, string subscriptionName, string messageType)
     {
         ServiceBusMessageType msgType;
         Enum.TryParse(messageType, out msgType);
-        Microsoft.Azure.ServiceBus.Core.MessageReceiver messageReceiver = new Microsoft.Azure.ServiceBus.Core.MessageReceiver(_configurationHelper.appSettings[_environment]["ServiceBusConnection"], EntityNameHelper.FormatSubscriptionPath(topicName, subscriptionName) + (msgType == ServiceBusMessageType.DeadLetter ? "/$DeadLetterQueue" : ""), Microsoft.Azure.ServiceBus.ReceiveMode.PeekLock);
-        messageReceiver.PrefetchCount = 100;
-        List<Message> brokeredMessages = new List<Message>();
+        var messagesOfQueue = new List<ServiceBusReceivedMessage>();
+        var previousSequenceNumber = -1L;
+        var sequenceNumber = 0L;
 
-        IList<Message> messages = new List<Message>();
-        messages = (IList<Message>)messageReceiver.PeekAsync(100).Result;
+        // Use DefaultAzureCredential only in DEBUG (local development), ManagedIdentityCredential in production.
+        global::Azure.Core.TokenCredential credential;
+#if DEBUG
+        credential = new DefaultAzureCredential();  // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+#else
+        credential = new ManagedIdentityCredential();
+#endif
 
-        brokeredMessages.AddRange(messages);
-        while (messages.Count > 0)
+        await using var client = new ServiceBusClient(_configurationHelper.appSettings[_environment]["ServiceBusNamespace:fullyQualifiedNamespace"], credential);
+        ServiceBusReceiver messageReceiver = client.CreateReceiver(topicName, subscriptionName + (msgType == ServiceBusMessageType.DeadLetter ? "/$DeadLetterQueue" : ""), new ServiceBusReceiverOptions() { ReceiveMode = ServiceBusReceiveMode.PeekLock, PrefetchCount = 100 });
+        do
         {
-            messages = (IList<Message>)messageReceiver.PeekAsync(100).Result;
-            brokeredMessages.AddRange(messages);
-        }
-        return brokeredMessages;
+            var messageBatch = await messageReceiver.PeekMessagesAsync(int.MaxValue, sequenceNumber);
 
+            if (messageBatch.Count > 0)
+            {
+                sequenceNumber = messageBatch[^1].SequenceNumber;
 
+                if (sequenceNumber == previousSequenceNumber)
+                    break;
+
+                messagesOfQueue.AddRange(messageBatch);
+
+                previousSequenceNumber = sequenceNumber;
+            }
+            else
+            {
+                break;
+            }
+        } while (true);
+
+        return messagesOfQueue;
     }
 
     /// <summary>
@@ -130,7 +153,7 @@ public class ServiceBusHelper : IServiceBusHelper
     /// </summary>
     /// <param name="messages"></param>
     /// <returns></returns>
-    public Dictionary<string, ArrayList> GetMessage(IList<Message> messages)
+    public Dictionary<string, ArrayList> GetMessage(IList<ServiceBusReceivedMessage> messages)
     {
         Dictionary<string, ArrayList> result = new Dictionary<string, ArrayList>();
         var arxs = new List<ApprovalRequestExpression>();
@@ -139,10 +162,10 @@ public class ServiceBusHelper : IServiceBusHelper
             try
             {
                 byte[] messageContent;
-                if (message.UserProperties.ContainsKey("ApprovalRequestVersion") && message.UserProperties["ApprovalRequestVersion"].ToString() == _configurationHelper.appSettings[_environment][Microsoft.CFS.Approvals.Contracts.ConfigurationKey.ApprovalRequestVersion.ToString()])
+                if (message.ApplicationProperties.ContainsKey("ApprovalRequestVersion") && message.ApplicationProperties["ApprovalRequestVersion"].ToString() == _configurationHelper.appSettings[_environment][Microsoft.CFS.Approvals.Contracts.ConfigurationKey.ApprovalRequestVersion.ToString()])
                     messageContent = _blobStorageHelper.DownloadByteArray(Microsoft.CFS.Approvals.Contracts.Constants.PrimaryMessageContainer, System.Text.Encoding.UTF8.GetString(message.Body)).Result;
                 else
-                    messageContent = message.Body;
+                    messageContent = message.Body.ToArray();
 
                 var arConverterAdaptor = _aRConverterFactory.GetARConverter();
                 var requestExpressions = arConverterAdaptor.GetAR(messageContent, message, new ApprovalTenantInfo());
@@ -163,7 +186,7 @@ public class ServiceBusHelper : IServiceBusHelper
     /// <param name="message"></param>
     /// <param name="messageType"></param>
     /// <param name="result"></param>
-    public void GenerateResponse(ApprovalRequestExpression approvalRequestExpressions, Message message, string messageType, ref Dictionary<string, ArrayList> result)
+    public void GenerateResponse(ApprovalRequestExpression approvalRequestExpressions, ServiceBusReceivedMessage message, string messageType, ref Dictionary<string, ArrayList> result)
     {
         Enum.TryParse(messageType, out ServiceBusMessageType msgType);
         if (msgType == ServiceBusMessageType.DeadLetter)
@@ -181,8 +204,8 @@ public class ServiceBusHelper : IServiceBusHelper
                      approvalRequestExpressions?.ApprovalIdentifier?.DisplayDocumentNumber,
                     approvalRequestExpressions?.SummaryData?.Submitter?.Alias,
                     (approvalRequestExpressions?.Approvers != null ? string.Join(",", approvalRequestExpressions?.Approvers?.Select(s => s.Alias)) : ""),
-                    message?.UserProperties["DeadLetterReason"]?.ToString(),
-                    message?.UserProperties["DeadLetterErrorDescription"]?.ToString()
+                    message?.ApplicationProperties["DeadLetterReason"]?.ToString(),
+                    message?.ApplicationProperties["DeadLetterErrorDescription"]?.ToString()
                 });
 
         }

@@ -92,14 +92,16 @@ public class DocumentPreviewController : BaseApiController
                    sessionId,
                    tcv,
                    xcv,
-                   Alias,
-                   LoggedInAlias,
-                   Host,
-                   GetTokenOrCookie());
+                   OnBehalfUser.MailNickname,
+                   SignedInUser,
+                   ClientDevice,
+                   GetTokenOrCookie(),
+                   OnBehalfUser.Id,
+                   DomainName);
             string response = "";
             if (officeDocType != OfficeDocumentType.NONE)
             {
-                string fileName = _officeDocumentCreator.GetDocumentURL(httpResponseMessage, displayDocumentNumber, attachmentName, LoggedInAlias, sessionId);
+                string fileName = _officeDocumentCreator.GetDocumentURL(httpResponseMessage, displayDocumentNumber, attachmentName, SignedInUser.MailNickname, sessionId);
                 response = (@"{""filename"": """ + fileName + @"""}");
                 return File(response, "application/octet-stream");
             }

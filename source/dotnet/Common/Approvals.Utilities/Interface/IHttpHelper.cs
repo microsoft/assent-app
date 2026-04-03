@@ -18,8 +18,9 @@ public interface IHttpHelper
     /// <param name="authority"></param>
     /// <param name="resourceUri"></param>
     /// <param name="targetUri"></param>
-    /// <param name="content"></param>
     /// <param name="headers"></param>
+    /// <param name="content"></param>
+    /// <param name="isMITokenEnabled"></param>
     /// <returns></returns>
     Task<HttpResponseMessage> SendRequestAsync(
         HttpMethod method,
@@ -29,7 +30,8 @@ public interface IHttpHelper
         string resourceUri,
         string targetUri,
         Dictionary<string, string> headers = null,
-        string content = "");
+        string content = "",
+        bool isMITokenEnabled = false);
 
     /// <summary>
     /// Send Request to REST endpoint

@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
@@ -38,6 +39,8 @@ public class SaveEditableDetailsHelper : ISaveEditableDetailsHelper
     /// </summary>
     private readonly ITableHelper _tableHelper;
 
+    private readonly IDelegationHelper _delegationHelper;
+
     /// <summary>
     /// Constructor of SaveEditableDetailsHelper
     /// </summary>
@@ -47,31 +50,39 @@ public class SaveEditableDetailsHelper : ISaveEditableDetailsHelper
     public SaveEditableDetailsHelper(
         IApprovalDetailProvider approvalDetailProvider,
         IApprovalTenantInfoHelper approvalTenantInfoHelper,
-        ITableHelper tableHelper)
+        ITableHelper tableHelper,
+        IDelegationHelper delegationHelper)
     {
         _approvalDetailProvider = approvalDetailProvider;
         _approvalTenantInfoHelper = approvalTenantInfoHelper;
         _tableHelper = tableHelper;
+        _delegationHelper = delegationHelper;
     }
 
     /// <summary>
     /// Method to check whether to enable Edit Details functionality for given user and tenant
     /// </summary>
+    /// <param name="signedInUser"></param>
+    /// <param name="onBehalfUser"></param>
+    /// <param name="oauth2UserToken"></param>
+    /// <param name="host"></param>
+    /// <param name="Xcv"></param>
+    /// <param name="Tcv"></param>
     /// <param name="tenantId"></param>
     /// <param name="documentNumber"></param>
-    /// <param name="userAlias"></param>
     /// <returns></returns>
-    public bool CheckUserAuthorizationForEdit(int tenantId, string documentNumber, string userAlias)
+    public async Task<bool> CheckUserAuthorizationForEdit(User signedInUser, User onBehalfUser, string oauth2UserToken, string host, string Xcv, string Tcv, int tenantId, string documentNumber)
     {
+        await _delegationHelper.CheckUserAuthorization(signedInUser, onBehalfUser, oauth2UserToken, host, Tcv, Xcv, Tcv);
         ApprovalTenantInfo tenantInfo = _approvalTenantInfoHelper.GetTenantInfo(tenantId);
-        var approverEntity = _approvalDetailProvider.GetApprovalsDetails(tenantId, documentNumber, Constants.CurrentApprover);
+        var approverEntity = _approvalDetailProvider.GetApprovalsDetails(tenantId, documentNumber, Constants.CurrentApprover, tenantInfo?.DocTypeId);
         bool editEnabledForCurrentUser = false;
         if (approverEntity != null)
         {
             var approvers = JsonConvert.DeserializeObject<List<Approver>>(approverEntity.JSONData);
             foreach (var approver in approvers)
             {
-                if (approver.Alias == userAlias)
+                if (approver.Alias == onBehalfUser.MailNickname)
                 {
                     if (approver.CanEdit == true)
                     {
@@ -88,17 +99,22 @@ public class SaveEditableDetailsHelper : ISaveEditableDetailsHelper
     /// <summary>
     /// Method to save the edited details into ApprovalDetails table
     /// </summary>
+    /// <param name="signedInUser">logged in user</param>
+    /// <param name="onBehalfUser">on-behalf user</param>
+    /// <param name="oauth2UserToken">oauth2 user token</param>
+    /// <param name="clientDevice">client device</param>
     /// <param name="detailsString">details string</param>
     /// <param name="tenantId">teanat</param>
-    /// <param name="userAlias">user alias</param>
+    /// <param name="sessionId">session id</param>
     /// <param name="Xcv">cross corelational vector</param>
     /// <param name="Tcv">transactional vector</param>
-    /// <param name="loggedInUser">logged in user</param>
     /// <returns></returns>
-    public List<string> SaveEditedDetails(string detailsString, int tenantId, string userAlias, string Xcv, string Tcv, string loggedInUser)
+    public async Task<List<string>> SaveEditedDetails(User signedInUser, User onBehalfUser, string oauth2UserToken, string clientDevice, string detailsString, int tenantId, string sessionId, string Xcv, string Tcv)
     {
-        var detailsDataObj = detailsString.ToJToken();
+        await _delegationHelper.CheckUserAuthorization(signedInUser, onBehalfUser, oauth2UserToken, clientDevice, sessionId, Xcv, Tcv);
 
+        var detailsDataObj = detailsString.ToJToken();
+        
         #region Validate the edited fields
 
         bool isValid = false;
@@ -122,10 +138,16 @@ public class SaveEditableDetailsHelper : ISaveEditableDetailsHelper
             // Check to assure usage of Document Number for RowKey
             string documentNumber = approvalIdentifier.GetDocNumber(tenantInfo);
 
+            // Get all approval details data and check if it has row key = EditedDetails|MailNickname or EditedDetails|MailNickname|doctypeid
+            var allApprovalDetails = await _approvalDetailProvider.GetAllApprovalDetailsByTenantAndDocumentNumber(tenantInfo.TenantId, documentNumber);
+            var editedDetailsOperationRowFromDetails = allApprovalDetails?.FirstOrDefault(detail =>
+                detail.RowKey.Equals(Constants.EditedDetailsOperationType + "|" + onBehalfUser.MailNickname, StringComparison.InvariantCultureIgnoreCase) ||
+                detail.RowKey.Equals(Constants.EditedDetailsOperationType + "|" + onBehalfUser.MailNickname + "|" + tenantInfo.DocTypeId, StringComparison.InvariantCultureIgnoreCase));
+
             ApprovalDetailsEntity approvalDetails = new ApprovalDetailsEntity()
             {
                 PartitionKey = documentNumber,
-                RowKey = Constants.EditedDetailsOperationType + '|' + userAlias,
+                RowKey = editedDetailsOperationRowFromDetails?.RowKey ?? Constants.EditedDetailsOperationType + '|' + onBehalfUser.MailNickname + '|' + tenantInfo.DocTypeId,
                 JSONData = JsonConvert.SerializeObject(detailsDataObj),
                 TenantID = tenantId
             };
@@ -136,7 +158,7 @@ public class SaveEditableDetailsHelper : ISaveEditableDetailsHelper
                 BusinessProcessName = string.Format(tenantInfo.BusinessProcessName, Constants.BusinessProcessNameSaveEditedDetails, Constants.BusinessProcessNameUserTriggered)
             };
 
-            _approvalDetailProvider.SaveEditedDataInApprovalDetails(approvalDetails, telemetry);
+            await _approvalDetailProvider.SaveEditedDataInApprovalDetails(approvalDetails, telemetry);
 
             #region Save Audit trail for editable field
 
@@ -145,13 +167,13 @@ public class SaveEditableDetailsHelper : ISaveEditableDetailsHelper
             {
                 ClientType = Constants.WebClient,
                 EditableFieldJSON = JsonConvert.SerializeObject(editableFieldJSON),
-                EditorAlias = userAlias,
+                EditorAlias = onBehalfUser.MailNickname,
                 PartitionKey = documentNumber,
                 RowKey = Guid.NewGuid().ToString(),
-                LoggedInUser = loggedInUser
+                LoggedInUser = signedInUser.MailNickname
             };
 
-            _tableHelper.InsertOrReplace(Constants.EditableFieldAuditLogs, auditEntity);
+            await _tableHelper.InsertOrReplace(Constants.EditableFieldAuditLogs, auditEntity);
 
             #endregion Save Audit trail for editable field
         }

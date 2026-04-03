@@ -3,9 +3,10 @@
 
 namespace Microsoft.CFS.Approvals.PrimaryProcessor.BL.Interface;
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
+using global::Azure.Messaging.ServiceBus;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Domain.BL.Interface;
 using Microsoft.CFS.Approvals.Model;
@@ -18,11 +19,48 @@ public interface IApprovalPresenter
 
     #endregion Public Properties
 
-    Task<List<ApprovalRequestExpressionExt>> ProcessApprovalRequestExpressions(List<ApprovalRequestExpressionExt> approvalRequests, Message message);
+    /// <summary>
+    /// Process approval request expressions
+    /// </summary>
+    /// <param name="approvalRequests"></param>
+    /// <param name="message"></param>
+    /// <returns>List of approval request expressions</returns>
+    Task<List<ApprovalRequestExpressionExt>> ProcessApprovalRequestExpressions(List<ApprovalRequestExpressionExt> approvalRequests, ServiceBusReceivedMessage message);
 
-    Task<bool> AddApprovalDetailsToAzureTable(ApprovalRequestDetails approvalRequest, Message message);
+    /// <summary>
+    /// Add approval details to azure table
+    /// </summary>
+    /// <param name="approvalRequest"></param>
+    /// <param name="message"></param>
+    /// <returns></returns>
+    Task<bool> AddApprovalDetailsToAzureTable(ApprovalRequestDetails approvalRequest, ServiceBusReceivedMessage message);
 
-    Task<bool> DownloadAndStoreAttachments(ApprovalRequestDetails approvalRequest, string activityId, ITenant tenant);
+    /// <summary>
+    /// Download and store attachments
+    /// </summary>
+    /// <param name="approvalRequest"></param>
+    /// <param name="activityId"></param>
+    /// <param name="tenant"></param>
+    /// <returns></returns>
+    Task<Tuple<bool, List<Attachment>>> DownloadAndStoreAttachments(ApprovalRequestDetails approvalRequest, string activityId, ITenant tenant);
 
-    Task MoveMessageToNotificationTopic(ApprovalRequestExpressionExt approvalRequest, Message message, List<ApprovalSummaryRow> summaryRows, DeviceNotificationInfo notification = null, bool detailsLoadSuccess = false);
+    /// <summary>
+    /// Creates a new Brokered ServiceBusMessage and pushes it to Notification Topic
+    /// The messages which will reach this topic will be processed separately
+    /// </summary>
+    /// <param name="approvalRequest"></param>
+    /// <param name="message"
+    /// <param name="summaryRows"></param>
+    /// <param name="notification"></param>
+    /// <param name="detailsLoadSuccess"></param>
+    /// <returns></returns>
+    Task MoveMessageToNotificationTopic(ApprovalRequestExpressionExt approvalRequest, ServiceBusReceivedMessage message, List<ApprovalSummaryRow> summaryRows, DeviceNotificationInfo notification = null, bool detailsLoadSuccess = false);
+
+    /// <summary>
+    /// Creates a new Brokered ServiceBusMessage and pushes it to secondary queue
+    /// </summary>
+    /// <param name="approvalRequest"></param>
+    /// <param name="message"
+    /// <returns></returns>
+    Task MoveMessageToSecondaryQueue(ApprovalRequestExpressionExt approvalRequest, ServiceBusReceivedMessage message);
 }

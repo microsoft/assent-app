@@ -3,28 +3,38 @@
 
 namespace Microsoft.CFS.Approvals.Core.BL.Interface;
 
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 public interface ISaveEditableDetailsHelper
 {
     /// <summary>
-    /// Check if user is authorization for edit
+    /// Method to check whether to enable Edit Details functionality for given user and tenant
     /// </summary>
-    /// <param name="tenantId"></param>
-    /// <param name="documentNumber"></param>
-    /// <param name="userAlias"></param>
-    /// <returns></returns>
-    bool CheckUserAuthorizationForEdit(int tenantId, string documentNumber, string userAlias);
-
-    /// <summary>
-    /// Save edited details
-    /// </summary>
-    /// <param name="detailsString"></param>
-    /// <param name="tenantId"></param>
-    /// <param name="userAlias"></param>
+    /// <param name="signedInUser"></param>
+    /// <param name="onBehalfUser"></param>
+    /// <param name="oauth2UserToken"></param>
+    /// <param name="host"></param>
     /// <param name="Xcv"></param>
     /// <param name="Tcv"></param>
-    /// <param name="loggedInUser"></param>
+    /// <param name="tenantId"></param>
+    /// <param name="documentNumber"></param>
     /// <returns></returns>
-    List<string> SaveEditedDetails(string detailsString, int tenantId, string userAlias, string Xcv, string Tcv, string loggedInUser);
+    Task<bool> CheckUserAuthorizationForEdit(User signedInUser, User onBehalfUser, string oauth2UserToken, string clientDevice , string Xcv, string Tcv, int tenantId, string documentNumber);
+
+    /// <summary>
+    /// Method to save the edited details into ApprovalDetails table
+    /// </summary>
+    /// <param name="signedInUser">logged in user</param>
+    /// <param name="onBehalfUser">on-behalf user</param>
+    /// <param name="oauth2UserToken">oauth2 user token</param>
+    /// <param name="clientDevice">client device</param>
+    /// <param name="detailsString">details string</param>
+    /// <param name="tenantId">teanat</param>
+    /// <param name="sessionId">session id</param>
+    /// <param name="Xcv">cross corelational vector</param>
+    /// <param name="Tcv">transactional vector</param>
+    /// <returns></returns>
+    Task<List<string>> SaveEditedDetails(User signedInUser, User onBehalfUser, string oauth2UserToken, string clientDevice, string detailsString, int tenantId, string sessionId, string Xcv, string Tcv);
 }

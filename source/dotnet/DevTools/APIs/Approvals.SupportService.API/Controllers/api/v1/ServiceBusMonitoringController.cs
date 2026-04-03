@@ -7,8 +7,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
-using Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper;
 
 /// <summary>
 /// The Service Bus Monitoring Controller
@@ -57,7 +57,7 @@ public class ServiceBusMonitoringController : ControllerBase
     [Route("GetTopic/{env}")]
     public List<string> Get()
     {
-        List<string> topicCollection = _serviceBusHelper.GetTopics().Where(t => _configurationHelper.appSettings[_environment]["ServiceBusTopics"].Contains(t)).ToList();
+        List<string> topicCollection = _serviceBusHelper.GetTopicsAsync().GetAwaiter().GetResult().Where(t => _configurationHelper.appSettings[_environment]["ServiceBusTopics"].Contains(t)).ToList();
         return topicCollection;
     }
 
@@ -72,7 +72,7 @@ public class ServiceBusMonitoringController : ControllerBase
     public List<string> Get(string TopicName)
     {
 
-        List<string> subscriptionCollection = _serviceBusHelper.GetSubscriptions(TopicName);
+        List<string> subscriptionCollection = _serviceBusHelper.GetSubscriptionsAsync(TopicName).GetAwaiter().GetResult();
         return subscriptionCollection;
     }
 }

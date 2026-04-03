@@ -1,15 +1,14 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Microsoft.CFS.Approvals.Data.Azure.Storage</AssemblyName>
     <RootNamespace>Microsoft.CFS.Approvals.Data.Azure.Storage</RootNamespace>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="Azure.Data.Tables" Version="12.8.0" />
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.13.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.15" />
-    <PackageReference Include="System.Text.Encodings.Web" Version="4.7.2" />
+    <PackageReference Include="Azure.Core" />
+    <PackageReference Include="Azure.Data.Tables" />
+    <PackageReference Include="Azure.Storage.Blobs" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Features" />
+    <PackageReference Include="System.Text.Encodings.Web" />
   </ItemGroup>
 </Project>

@@ -15,10 +15,12 @@ public interface IHistoryStorageProvider
     /// <param name="actionDate">The action date.</param>
     /// <param name="documentNumber">The document number.</param>
     /// <param name="actionTaken">The action taken.</param>
+    /// <param name="domain">Approver domain</param>
+    /// <param name="approverId">Approver Object Id</param>
     /// <returns>
     /// List of transaction history
     /// </returns>
-    Task<List<TransactionHistory>> GetHistoryDataAsync(string alias, string actionDate, string documentNumber, string actionTaken);
+    Task<List<TransactionHistory>> GetHistoryDataAsync(string alias, string actionDate, string documentNumber, string actionTaken, string domain, string approverId);
 
     /// <summary>
     /// Saves TransactionHistory data
@@ -57,12 +59,13 @@ public interface IHistoryStorageProvider
     Task<List<TransactionHistory>> GetHistoryDataAsync(string tenantId, string documentNumber, string approver);
 
     /// <summary>
-    ///  Returns history based on tenantid, documentnumber, and approver
+    /// Get list of TransactionHistory data within an interval
     /// </summary>
     /// <param name="alias"></param>
-    /// <param name="timePeriod"></param>
-    /// <returns>
-    /// List of transaction history
-    /// </returns>
-    Task<List<TransactionHistory>> GetHistoryDataAsync(string alias, int timePeriod);
+    /// <param name="approverDomain">Approver Domain</param>
+    /// <param name="approverId">Approver Object Id</param>
+    /// <param name="startTimePeriod"></param>
+    /// <param name="endTimePeriod"></param>
+    /// <returns></returns>
+    Task<List<TransactionHistory>> GetHistoryDataAsync(string alias, string approverDomain, string approverId, int startTimePeriod, int endTimePeriod = 0);
 }

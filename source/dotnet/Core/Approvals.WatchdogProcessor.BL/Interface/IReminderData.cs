@@ -5,6 +5,7 @@ namespace Microsoft.CFS.Approvals.WatchdogProcessor.BL.Interface;
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.CFS.Approvals.Model;
 
 public interface IReminderData
@@ -22,5 +23,5 @@ public interface IReminderData
     /// </summary>
     /// <param name="approvalTenantInfo"
     /// <param name="summaryToUpdate">summary row to be updated</param>
-    void UpdateReminderInfo(ApprovalTenantInfo approvalTenantInfo, ApprovalSummaryRow summaryToUpdate);
+    Task UpdateReminderInfo(ApprovalTenantInfo approvalTenantInfo, ApprovalSummaryRow summaryToUpdate);
 }

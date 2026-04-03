@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
+using global::Azure.Messaging.ServiceBus;
 using Microsoft.CFS.Approvals.Common.BL.Interface;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
@@ -91,7 +91,7 @@ public class NotificationReceiver : IApprovalsTopicReceiver
     /// </summary>
     /// <param name="blobId"></param>
     /// <param name="message"></param>
-    public virtual async Task OnMainMessageReceived(string blobId, Message message)
+    public virtual async Task OnMainMessageReceived(string blobId, ServiceBusReceivedMessage message)
     {
         if (!string.IsNullOrWhiteSpace(blobId))
         {
@@ -108,7 +108,7 @@ public class NotificationReceiver : IApprovalsTopicReceiver
     /// <param name="blobId"></param>
     /// <param name="message"></param>
     /// <returns></returns>
-    public Task OnRetryMessageRecieved(string blobId, Message message)
+    public Task OnRetryMessageRecieved(string blobId, ServiceBusReceivedMessage message)
     {
         throw new NotImplementedException();
     }
@@ -119,7 +119,7 @@ public class NotificationReceiver : IApprovalsTopicReceiver
     /// <param name="blobId"></param>
     /// <param name="serviceBusMessage"></param>
     /// <returns></returns>
-    private async Task ProcessMessageOnTaskAndAwait(string blobId, Message serviceBusMessage)
+    private async Task ProcessMessageOnTaskAndAwait(string blobId, ServiceBusReceivedMessage serviceBusMessage)
     {
         #region Logging
 
@@ -138,13 +138,13 @@ public class NotificationReceiver : IApprovalsTopicReceiver
                 logData.Add(LogDataKey.SubscriptionName, _config[ConfigurationKey.SubscriptionNameNotification.ToString()]);
 
                 byte[] message;
-                if (serviceBusMessage.UserProperties.ContainsKey("ApprovalNotificationRequestVersion") && serviceBusMessage.UserProperties["ApprovalNotificationRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
+                if (serviceBusMessage.ApplicationProperties.ContainsKey("ApprovalNotificationRequestVersion") && serviceBusMessage.ApplicationProperties["ApprovalNotificationRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
                 {
                     message = await _blobStorageHelper.DownloadByteArray(Constants.NotificationMessageContainer, blobId);
                 }
                 else
                 {
-                    message = serviceBusMessage.Body;
+                    message = serviceBusMessage.Body.ToArray();
                 }
                 var numberOfRetries = int.Parse(_config[ConfigurationKey.MainTopicFailCountThreshold.ToString()]);
                 Stream stream = new MemoryStream(message);
@@ -154,8 +154,8 @@ public class NotificationReceiver : IApprovalsTopicReceiver
                 var messageBody = streamReader.ReadToEnd();
                 messageBody = messageBody.Replace("MS.IT.CFE.FIN.Approvals.Model", "Microsoft.CFS.Approvals.Model");
                 stream.Position = 0;
-                if (serviceBusMessage.UserProperties.ContainsKey("ApprovalNotificationDetails") &&
-                    serviceBusMessage.UserProperties["ApprovalNotificationDetails"].ToString().ToLower() == "true")
+                if (serviceBusMessage.ApplicationProperties.ContainsKey("ApprovalNotificationDetails") &&
+                    serviceBusMessage.ApplicationProperties["ApprovalNotificationDetails"].ToString().ToLower() == "true")
                 {
                     var approvalNotificationDetails = messageBody.FromJson<ApprovalNotificationDetails>();
                     var jobject = JsonConvert.SerializeObject(approvalNotificationDetails);
@@ -176,8 +176,6 @@ public class NotificationReceiver : IApprovalsTopicReceiver
                     logData.Add(LogDataKey.TenantName, approvalNotificationDetails?.ApprovalTenantInfo?.AppName);
                     logData.Add(LogDataKey.Approver, approvalNotificationDetails?.DeviceNotificationInfo?.Approver);
                     logData.Add(LogDataKey.NotificationTemplateKey, approvalNotificationDetails?.DeviceNotificationInfo?.NotificationTemplateKey);
-                    logData[LogDataKey.EventId] = TrackingEvent.ARXReceivedByNotificationWorker;
-                    logData[LogDataKey.EventName] = TrackingEvent.ARXReceivedByNotificationWorker.ToString();
                     _logProvider.LogInformation(TrackingEvent.ARXReceivedByNotificationWorker, logData);
 
                     #endregion Logging
@@ -186,9 +184,9 @@ public class NotificationReceiver : IApprovalsTopicReceiver
                     await ProcessMainApproval(approvalNotificationDetails, blobId, numberOfRetries, serviceBusMessage);
                 }
             }
-            catch (MessageLockLostException lockLostException)
+            catch (ServiceBusException ex)
             {
-                _logProvider.LogError(TrackingEvent.ARXFailedByNotificationWorker, lockLostException, logData);
+                _logProvider.LogError(TrackingEvent.ARXFailedByNotificationWorker, ex, logData);
             }
             catch (Exception ex)
             {
@@ -206,7 +204,7 @@ public class NotificationReceiver : IApprovalsTopicReceiver
     /// <param name="blobId"></param>
     /// <param name="numberOfRetries"></param>
     /// <param name="sbMessage">service bus message</param>
-    private async Task ProcessMainApproval(ApprovalNotificationDetails requestExpressions, string blobId, int numberOfRetries, Message sbMessage)
+    private async Task ProcessMainApproval(ApprovalNotificationDetails requestExpressions, string blobId, int numberOfRetries, ServiceBusReceivedMessage sbMessage)
     {
         using (var perfTracer = _performanceLogger.StartPerformanceLogger("PerfLog", "NotificationWorker", string.Format(Constants.PerfLogAction, requestExpressions.ApprovalTenantInfo.AppName, "Processes received Brokered Message")
                , new Dictionary<LogDataKey, object>())) // TODO: log message ID here.
@@ -221,7 +219,7 @@ public class NotificationReceiver : IApprovalsTopicReceiver
                 }
                 else
                 {
-                    if (sbMessage.UserProperties.ContainsKey("ApprovalNotificationRequestVersion") && sbMessage.UserProperties["ApprovalNotificationRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
+                    if (sbMessage.ApplicationProperties.ContainsKey("ApprovalNotificationRequestVersion") && sbMessage.ApplicationProperties["ApprovalNotificationRequestVersion"].ToString() == _config[ConfigurationKey.ApprovalRequestVersion.ToString()])
                     {
                         if (await _blobStorageHelper.DoesExist(Constants.NotificationMessageContainer, blobId))
                         {

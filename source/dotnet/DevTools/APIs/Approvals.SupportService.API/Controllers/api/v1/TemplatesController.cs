@@ -7,12 +7,11 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
-using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.DevTools.Model.Models;
 using Microsoft.CFS.Approvals.SupportServices.Helper.ExtensionMethods;
-using Microsoft.CFS.Approvals.SupportServices.Helper.ServiceHelper;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -44,7 +43,7 @@ public class TemplatesController : ControllerBase
     /// <param name="configurationHelper"></param>
     /// <param name="actionContextAccessor"></param>
     public TemplatesController(Func<string, IBlobStorageHelper> blobStorageHelper,
-        Func<string, string, ITableHelper> azureTableStorageHelper,
+        Func<string, ITableHelper> azureTableStorageHelper,
         ConfigurationHelper configurationHelper,
         IActionContextAccessor actionContextAccessor)
     {
@@ -52,8 +51,7 @@ public class TemplatesController : ControllerBase
         _blobStorageHelper = blobStorageHelper(configurationHelper.appSettings[_environment]["StorageAccountName"]);
         _configurationHelper = configurationHelper;
         _azureTableStorageHelper = azureTableStorageHelper(
-            configurationHelper.appSettings[_environment]["StorageAccountName"],
-            configurationHelper.appSettings[_environment]["StorageAccountKey"]);
+            configurationHelper.appSettings[_environment]["StorageAccountName"]);
     }
 
     /// <summary>

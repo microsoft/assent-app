@@ -57,7 +57,7 @@ public class AutoRefreshController : BaseApiController
             var tenantInfo = _approvalTenantInfoHelper.GetTenantInfo(tenantId);
             var submissionType = (ActionSubmissionType)tenantInfo.ActionSubmissionType;
 
-            return await _clientActionHelper.ClientAutoRefresh(tenantId, Request, Constants.OutlookClient, Alias, LoggedInAlias, Tcv, sessionId, Xcv);
+            return await _clientActionHelper.ClientAutoRefresh(SignedInUser, OnBehalfUser, GetTokenOrCookie(), tenantId, Request, Constants.OutlookClient, MessageId, sessionId, Xcv, DomainName);
         }
         catch (Exception exception)
         {

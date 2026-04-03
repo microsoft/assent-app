@@ -104,9 +104,11 @@ public class AdaptiveDetailsHelper : IAdaptiveDetailsHelper
     /// <param name="xcv">X-correlation ID</param>
     /// <param name="tcv">T-Correlation ID</param>
     /// <param name="templateType">Template Type</param>
+    /// <param name="objectId">Alias's ObjectId</param>
+    /// <param name="domain">Alias's Domain</param>
     /// <returns>Adaptive Card Payload JObject</returns>
     public async Task<Dictionary<string, JObject>> GetAdaptiveTemplate(int tenantId, string userAlias, string loggedInAlias, string clientDevice, string oauth2UserToken,
-                                                                        string sessionId, string xcv, string tcv, int templateType)
+                                                                        string sessionId, string xcv, string tcv, int templateType, string objectId, string domain)
     {
         #region Logging Prep
 
@@ -157,109 +159,97 @@ public class AdaptiveDetailsHelper : IAdaptiveDetailsHelper
 
             using (_performanceLogger.StartPerformanceLogger("PerfLog", string.IsNullOrWhiteSpace(clientDevice) ? Constants.WebClient : clientDevice, string.Format(Constants.PerfLogAction, "AdaptiveDetail", "Get Adaptive Templates for the tenant"), logData))
             {
-                var isModernAdaptiveUI = tenantInfo.EnableModernAdaptiveUI switch
+                #region Get Tenant Type
+
+                ITenant tenantAdaptor = null;
+                tenantAdaptor = _tenantFactory.GetTenant(
+                        tenantInfo,
+                        userAlias,
+                        clientDevice,
+                        oauth2UserToken,
+                        objectId,
+                        domain);
+
+                #endregion Get Tenant Type
+
+                #region Get Template List
+
+                var templateList = new Dictionary<string, string>();
+                await GetAllIconsFromBlob(templateList);
+                await GetBlobTemplateByFileName(tenantInfo, clientDevice, templateList, templateType);
+
+                #endregion Get Template List
+
+                Dictionary<string, JObject> adaptiveTemplates = new Dictionary<string, JObject>();
+                JArray bodyArray = new JArray();
+
+                switch (templateType)
                 {
-                    (int)EnableModernAdaptiveUI.DisableForAll => false,
-                    (int)EnableModernAdaptiveUI.EnableForFlightedUsers => _flightingDataProvider.IsFeatureEnabledForUser(userAlias, (int)FlightingFeatureName.ModernAdaptiveDetailsUI),
-                    (int)EnableModernAdaptiveUI.EnableForAll => true,
-                    _ => false,
-                };
-                if (isModernAdaptiveUI)
-                {
-                    #region Get Tenant Type
+                    case (int)TemplateType.Summary:
+                        var summaryTemplate = JObject.Parse(tenantAdaptor.GetSummaryAdaptiveTemplate(templateList));
+                        bodyArray = MoveBodyInsideContainer(summaryTemplate, clientDevice);
+                        summaryTemplate["body"] = bodyArray;
+                        adaptiveTemplates.Add("SUM", summaryTemplate);
+                        break;
 
-                    ITenant tenantAdaptor = null;
-                    tenantAdaptor = _tenantFactory.GetTenant(
-                            tenantInfo,
-                            userAlias,
-                            clientDevice,
-                            oauth2UserToken);
+                    case (int)TemplateType.Details:
+                        var detailTemplate = GetDetailTemplate(clientDevice, templateList);
+                        bodyArray = MoveBodyInsideContainer(detailTemplate, clientDevice);
+                        detailTemplate["body"] = bodyArray;
+                        adaptiveTemplates.Add("DTL", detailTemplate);
+                        break;
 
-                    #endregion Get Tenant Type
+                    case (int)TemplateType.Action:
+                        adaptiveTemplates.Add("ACT", GetActionTemplate(clientDevice, templateList));
+                        break;
 
-                    #region Get Template List
+                    case (int)TemplateType.Footer:
+                        adaptiveTemplates.Add("FOOTER", GetFooterTemplate(clientDevice, templateList));
+                        break;
 
-                    var templateList = new Dictionary<string, string>();
-                    await GetAllIconsFromBlob(templateList);
-                    await GetBlobTemplateByFileName(tenantInfo, clientDevice, templateList, templateType);
+                    case (int)TemplateType.All:
+                        adaptiveTemplates.Add("SUM", JObject.Parse(tenantAdaptor.GetSummaryAdaptiveTemplate(templateList)));
+                        adaptiveTemplates.Add("DTL", GetDetailTemplate(clientDevice, templateList));
+                        adaptiveTemplates.Add("ACT", GetActionTemplate(clientDevice, templateList));
+                        adaptiveTemplates.Add("FOOTER", GetFooterTemplate(clientDevice, templateList));
+                        break;
 
-                    #endregion Get Template List
+                    case (int)TemplateType.Full:
+                        var fullTemplate = tenantAdaptor.GetAdaptiveTemplate(templateList);
+                        bodyArray = MoveBodyInsideContainer(fullTemplate, clientDevice);
+                        fullTemplate["body"] = bodyArray;
+                        adaptiveTemplates.Add("FULL", fullTemplate);
+                        break;
 
-                    Dictionary<string, JObject> adaptiveTemplates = new Dictionary<string, JObject>();
-                    JArray bodyArray = new JArray();
-
-                    switch (templateType)
-                    {
-                        case (int)TemplateType.Summary:
-                            var summaryTemplate = JObject.Parse(tenantAdaptor.GetSummaryAdaptiveTemplate(templateList));
-                            bodyArray = MoveBodyInsideContainer(summaryTemplate, clientDevice);
-                            summaryTemplate["body"] = bodyArray;
-                            adaptiveTemplates.Add("SUM", summaryTemplate);
-                            break;
-
-                        case (int)TemplateType.Details:
-                            var detailTemplate = GetDetailTemplate(clientDevice, templateList);
-                            bodyArray = MoveBodyInsideContainer(detailTemplate, clientDevice);
-                            detailTemplate["body"] = bodyArray;
-                            adaptiveTemplates.Add("DTL", detailTemplate);
-                            break;
-
-                        case (int)TemplateType.Action:
-                            adaptiveTemplates.Add("ACT", GetActionTemplate(clientDevice, templateList));
-                            break;
-
-                        case (int)TemplateType.Footer:
-                            adaptiveTemplates.Add("FOOTER", GetFooterTemplate(clientDevice, templateList));
-                            break;
-
-                        case (int)TemplateType.All:
-                            adaptiveTemplates.Add("SUM", JObject.Parse(tenantAdaptor.GetSummaryAdaptiveTemplate(templateList)));
-                            adaptiveTemplates.Add("DTL", GetDetailTemplate(clientDevice, templateList));
-                            adaptiveTemplates.Add("ACT", GetActionTemplate(clientDevice, templateList));
-                            adaptiveTemplates.Add("FOOTER", GetFooterTemplate(clientDevice, templateList));
-                            break;
-
-                        case (int)TemplateType.Full:
-                            var fullTemplate = tenantAdaptor.GetAdaptiveTemplate(templateList);
-                            bodyArray = MoveBodyInsideContainer(fullTemplate, clientDevice);
-                            fullTemplate["body"] = bodyArray;
-                            adaptiveTemplates.Add("FULL", fullTemplate);
-                            break;
-
-                        default:
-                            break;
-                    }
-
-                    List<string> keys = new List<string>(adaptiveTemplates.Keys);
-                    foreach (var key in keys)
-                    {
-                        var adaptiveTemplateJson = adaptiveTemplates[key].ToJson();
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#MSApprovalsCoreServiceURL#", _config[ConfigurationKey.ApprovalsCoreServicesURL.ToString()]);
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#MSApprovalsBaseUrl#", _config[ConfigurationKey.ApprovalsBaseUrl.ToString()]);
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#ExpenseImg#", await GetIconUrl(templateList, "money-icon.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#approveIcon#", await GetIconUrl(templateList, "greenTick.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#pendingIcon#", await GetIconUrl(templateList, "refresh.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#rejectIcon#", await GetIconUrl(templateList, "error.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#attachmentIcon#", await GetIconUrl(templateList, "attachment.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#ImageIcon#", await GetIconUrl(templateList, "image-icon.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#upIcon#", await GetIconUrl(templateList, "up.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#downIcon#", await GetIconUrl(templateList, "down.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#receiptIcon#", await GetIconUrl(templateList, "receipt.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#policyIcon#", await GetIconUrl(templateList, "policy.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#car-sideIcon#", await GetIconUrl(templateList, "car-side.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#airplaneIcon#", await GetIconUrl(templateList, "airplane.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#downloadIcon#", await GetIconUrl(templateList, "download.png"));
-                        adaptiveTemplateJson = adaptiveTemplateJson.Replace("#previewIcon#", await GetIconUrl(templateList, "preview.png"));
-                        adaptiveTemplates[key] = JObject.Parse(adaptiveTemplateJson);
-                    }
-                    logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
-                    _logProvider.LogInformation(TrackingEvent.AdaptiveTemplateFetchSuccess, logData);
-                    return adaptiveTemplates;
+                    default:
+                        break;
                 }
-                else
+
+                List<string> keys = new List<string>(adaptiveTemplates.Keys);
+                foreach (var key in keys)
                 {
-                    throw new InvalidOperationException(Constants.NotFlightedMornUIErrorMessage);
+                    var adaptiveTemplateJson = adaptiveTemplates[key].ToJson();
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#MSApprovalsCoreServiceURL#", _config[ConfigurationKey.ApprovalsCoreServicesURL.ToString()]);
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#MSApprovalsBaseUrl#", _config[ConfigurationKey.ApprovalsBaseUrl.ToString()]);
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#ExpenseImg#", await GetIconUrl(templateList, "money-icon.png"));
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#approveIcon#", await GetIconUrl(templateList, "greenTick.png"));
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#pendingIcon#", await GetIconUrl(templateList, "refresh.png"));
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#rejectIcon#", await GetIconUrl(templateList, "error.png"));
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#attachmentIcon#", await GetIconUrl(templateList, "attachment.png"));
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#ImageIcon#", await GetIconUrl(templateList, "image-icon.png"));
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#upIcon#", await GetIconUrl(templateList, "up.png"));
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#downIcon#", await GetIconUrl(templateList, "down.png"));
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#receiptIcon#", await GetIconUrl(templateList, "receipt.png"));
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#policyIcon#", await GetIconUrl(templateList, "policy.png"));
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#car-sideIcon#", await GetIconUrl(templateList, "car-side.png"));
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#airplaneIcon#", await GetIconUrl(templateList, "airplane.png"));
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#downloadIcon#", await GetIconUrl(templateList, "download.png"));
+                    adaptiveTemplateJson = adaptiveTemplateJson.Replace("#previewIcon#", await GetIconUrl(templateList, "preview.png"));
+                    adaptiveTemplates[key] = JObject.Parse(adaptiveTemplateJson);
                 }
+                logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
+                _logProvider.LogInformation(TrackingEvent.AdaptiveTemplateFetchSuccess, logData);
+                return adaptiveTemplates;
             }
         }
         catch (Exception ex)
@@ -369,6 +359,27 @@ public class AdaptiveDetailsHelper : IAdaptiveDetailsHelper
                 {
                     var htmlTemplate = await _blobStorageHelper.DownloadText(Constants.OutlookDynamicTemplates, blobItemName);
                     templateList[alteredBlobName] = htmlTemplate;
+                }
+            }
+
+            // Fallback: for FinanceAssistant client, load missing templates from Teams versions
+            if (clientDevice == Constants.FinanceAssistantClient)
+            {
+                string[] templateBases = { Constants.SUMMARYBODYTEMPLATE, Constants.ATTACHMENTSTEMPLATE, Constants.ACTIONTEMPLATE, Constants.BODYTEMPLATE, Constants.FOOTERTEMPLATE };
+                foreach (var templateBase in templateBases)
+                {
+                    string expectedKey = templateBase + clientDevice + ".json";
+                    if (!templateList.ContainsKey(expectedKey))
+                    {
+                        string teamsFileName = templateBase + Constants.TeamsClient + ".json";
+                        var fallbackBlob = listBlobs.FirstOrDefault(b => b.Name.Equals(directoryName + "/" + teamsFileName))
+                            ?? listCommonBlobs.FirstOrDefault(b => b.Name.Equals(Constants.CommonTemplates + "/" + teamsFileName));
+                        if (fallbackBlob != null)
+                        {
+                            var content = await _blobStorageHelper.DownloadText(Constants.OutlookDynamicTemplates, fallbackBlob.Name);
+                            templateList[expectedKey] = content;
+                        }
+                    }
                 }
             }
         }

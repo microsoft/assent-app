@@ -8,8 +8,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.DevTools.Model.Models;
+using Microsoft.CFS.Approvals.Extensions;
+using Microsoft.CFS.Approvals.Model.Flighting;
 using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
 using Microsoft.CFS.Approvals.Utilities.Interface;
 using Newtonsoft.Json.Linq;
@@ -46,15 +49,14 @@ public class SubscribeFeaturesHelper : ISubscribeFeaturesHelper
     /// <param name="actionContextAccessor"></param>
     public SubscribeFeaturesHelper(
         Func<string, INameResolutionHelper> nameResolutionHelper,
-        Func<string, string, ITableHelper> azureTableStorageHelper,
+        Func<string, ITableHelper> azureTableStorageHelper,
         ConfigurationHelper configurationHelper,
         IActionContextAccessor actionContextAccessor)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _nameResolutionHelper = nameResolutionHelper(_environment);
         _azureTableStorageHelper = azureTableStorageHelper(
-            configurationHelper.appSettings[_environment]["StorageAccountName"],
-            configurationHelper.appSettings[_environment]["StorageAccountKey"]);
+            configurationHelper.appSettings[_environment]["StorageAccountName"]);
     }
 
     /// <summary>
@@ -128,6 +130,14 @@ public class SubscribeFeaturesHelper : ISubscribeFeaturesHelper
             if (await _azureTableStorageHelper.InsertOrReplace<FlightingEntity>("Flighting", flighting))
             {
                 subscribedAlias.Add(alias);
+                FlightingUsersHistoryEntity flightingUsersHistory = new FlightingUsersHistoryEntity
+                {
+                    PartitionKey = alias,
+                    RowKey = Guid.NewGuid().ToString(),
+                    FeatureID = flighting.FeatureID,
+                    IsFeatureEnabled = true
+                };
+                await _azureTableStorageHelper.InsertOrReplace<FlightingUsersHistoryEntity>("FlightingUsersHistory", flightingUsersHistory);
             }
             else
             {
@@ -150,9 +160,23 @@ public class SubscribeFeaturesHelper : ISubscribeFeaturesHelper
         else
         {
             var flighting = _azureTableStorageHelper.GetTableEntityListByPartitionKey<FlightingEntity>("Flighting", alias).Where(s => s.FeatureID == featureID).FirstOrDefault();
+            if (flighting == null && alias.IsUpn())
+            {
+                flighting = _azureTableStorageHelper.GetTableEntityListByPartitionKey<FlightingEntity>("Flighting", alias.GetAliasFromUPN()).Where(s => s.FeatureID == featureID).FirstOrDefault();
+                if (flighting != null)
+                    flighting.PartitionKey = alias.GetAliasFromUPN();
+            }
             if (flighting != null && await _azureTableStorageHelper.DeleteRow<FlightingEntity>("Flighting", flighting))
             {
                 unSubcribedAlias.Add(alias);
+                FlightingUsersHistoryEntity flightingUsersHistory = new FlightingUsersHistoryEntity
+                {
+                    PartitionKey = alias,
+                    RowKey = Guid.NewGuid().ToString(),
+                    FeatureID = flighting.FeatureID,
+                    IsFeatureEnabled = false
+                };
+                await _azureTableStorageHelper.InsertOrReplace<FlightingUsersHistoryEntity>("FlightingUsersHistory", flightingUsersHistory);
             }
             else
             {
@@ -183,6 +207,11 @@ public class SubscribeFeaturesHelper : ISubscribeFeaturesHelper
             case FlightingFeatureStatus.InFlighting:
                 var Flighting = _azureTableStorageHelper.GetTableEntity<FlightingEntity>("Flighting").Where(s =>
                    s.PartitionKey == alias.Trim().ToLower() && s.FeatureID == featureID && DateTime.UtcNow > s.FlightingStartDate).FirstOrDefault();
+                if (Flighting == null && alias.IsUpn())
+                {
+                    Flighting = _azureTableStorageHelper.GetTableEntity<FlightingEntity>("Flighting").Where(s =>
+                      s.PartitionKey == alias.Trim().ToLower().GetAliasFromUPN() && s.FeatureID == featureID && DateTime.UtcNow > s.FlightingStartDate).FirstOrDefault();
+                }
                 isEnabled = Flighting != null;
                 break;
 
@@ -203,7 +232,7 @@ public class SubscribeFeaturesHelper : ISubscribeFeaturesHelper
     {
         try
         {
-            return await _nameResolutionHelper.IsValidUser(alias.Trim().ToLower());
+            return (await _nameResolutionHelper.IsValidUser(alias.Trim().ToLower())).Item1;
         }
         catch
         {

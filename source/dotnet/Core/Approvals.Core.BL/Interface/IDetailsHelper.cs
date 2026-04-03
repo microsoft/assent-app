@@ -6,6 +6,7 @@ namespace Microsoft.CFS.Approvals.Core.BL.Interface;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.CFS.Approvals.Common.BL.Interface;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Domain.BL.Interface;
@@ -38,6 +39,10 @@ public interface IDetailsHelper
     /// <param name="sectionType">section type. eg. Summary Details</param>
     /// <param name="clientDevice">Client Device</param>
     /// <param name="oauth2UserToken">The OAuth 2.0 User Token</param>
+    /// <param name="objectId">Alias's objectId</param>
+    /// <param name="domain">Alias's domain</param>
+    /// <param name="previousApprovers">ApprovalDetils data of previous approvers</param>
+    /// <param name="source">Source of details call e.g. Details, Notification</param>
     /// <returns>Details data as JObject</returns>
     Task<JObject> AuthSum
         (
@@ -51,7 +56,7 @@ public interface IDetailsHelper
             string documentNumber,
             string operation,
             string alias,
-            string loggedInAlias,
+            string loggedInUpn,
             string sessionId,
             string fiscalYear,
             int page,
@@ -60,7 +65,11 @@ public interface IDetailsHelper
             bool isWorkerTriggered,
             int sectionType,
             string clientDevice,
-            string oauth2UserToken
+            string oauth2UserToken,
+            string objectId,
+            string domain,
+            ApprovalDetailsEntity previousApprovers,
+            string source
         );
 
     /// <summary>
@@ -137,11 +146,15 @@ public interface IDetailsHelper
     /// <param name="tcv">GUID transaction correlation vector for telemetry and logging</param>
     /// <param name="xcv">Cross system correlation vector for telemetry and logging</param>
     /// <param name="userAlias">Alias of the Approver of this request</param>
-    /// <param name="loggedInAlias">Logged in User Alias</param>
+    /// <param name="loggedInUpn">Logged in User Alias</param>
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
     /// <param name="oauth2UserToken">The OAuth 2.0 user token</param>
     /// <param name="isWorkerTriggered">To understand if Worker role has triggered the details fetch</param>
     /// <param name="sectionType">section type. eg. Summary Details</param>
+    /// <param name="pageType">This the page calling the Details API e.g. Detail, History</param>
+    /// <param name="source">Source for Details call eg. Summary, Notification</param>
+    /// <param name="objectId">Alias's objectId</param>
+    /// <param name="domain">Alias's Domain</param>
     /// <returns>Details of the request as a Task of JObject</returns>
     Task<JObject> GetDetails
         (
@@ -154,46 +167,48 @@ public interface IDetailsHelper
             string tcv,
             string xcv,
             string userAlias,
-            string loggedInAlias,
+            string loggedInUpn,
             string clientDevice,
             string oauth2UserToken,
             bool isWorkerTriggered,
             int sectionType,
             string pageType,
-            string source
+            string source,
+            string objectId,
+            string domain
         );
 
     /// <summary>
     /// This method gets the Attachment content
     /// </summary>
     /// <param name="tenantId">Tenant Id of the tenant (1/2/3..)</param>
-    /// <param name="documentNumber">Document Number of the request</param>
-    /// <param name="displayDocumentNumber">Display Document Number of the request</param>
-    /// <param name="fiscalYear">Fiscal year of the request</param>
+    /// <param name="approvalIdentifier">Approval Identifier</param>
     /// <param name="attachmentId">Attachment ID of the Document to be downloaded</param>
     /// <param name="IsPreAttached">Specifies the type of the attachment if the attachment is pre attached from tenant or post attached from ui.</param>
     /// <param name="sessionId">GUID session id</param>
     /// <param name="tcv">GUID transaction correlation vector for telemetry and logging</param>
     /// <param name="xcv">Cross system correlation vector for telemetry and logging</param>
     /// <param name="userAlias">Alias of the Approver of this request</param>
-    /// <param name="loggedInAlias">Logged in User Alias</param>
+    /// <param name="signedInUser">sogned in user entity</param>
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
     /// <param name="oauth2UserToken">The OAuth 2.0 user token</param>
+    /// <param name="objectId">Alias's ObjectId</param>
+    /// <param name="domain">Alias's Domain</param>
     /// <returns>HttpResponseMessage with Stream data of the attachment</returns>
     Task<byte[]> GetDocuments(
             int tenantId,
-            string documentNumber,
-            string displayDocumentNumber,
-            string fiscalYear,
+            ApprovalIdentifier approvalIdentifier,
             string attachmentId,
             bool IsPreAttached,
             string sessionId,
             string tcv,
             string xcv,
             string userAlias,
-            string loggedInAlias,
+            User signedInUser,
             string clientDevice,
-            string oauth2UserToken);
+            string oauth2UserToken,
+            string objectId,
+            string domain);
 
     /// <summary>
     /// This method gets all the Attachment content for a request
@@ -207,13 +222,15 @@ public interface IDetailsHelper
     /// <param name="tcv">GUID transaction correlation vector for telemetry and logging</param>
     /// <param name="xcv">Cross system correlation vector for telemetry and logging</param>
     /// <param name="userAlias">Alias of the Approver of this request</param>
-    /// <param name="loggedInAlias">Logged in User Alias</param>
+    /// <param name="signedInUser">Signed in user entity</param>
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
     /// <param name="oauth2UserToken">The OAuth 2.0 user token</param>
+    /// <param name="objectId">Alias's ObjectId</param>
+    /// <param name="domain">Alias's Domain</param>
     /// <returns>HttpResponseMessage with Stream data of the attachment</returns>
     Task<byte[]> GetAllDocumentsZipped(int tenantId, string documentNumber, string displayDocumentNumber,
-       string fiscalYear, IRequestAttachment[] attachments, string sessionId, string tcv, string xcv, string userAlias, string loggedInAlias,
-       string clientDevice, string oauth2UserToken);
+       string fiscalYear, IRequestAttachment[] attachments, string sessionId, string tcv, string xcv, string userAlias, User signedInUser,
+       string clientDevice, string oauth2UserToken, string objectId, string domain);
 
     /// <summary>
     /// Bulk Attachment Download : Gets the attachments from the LOB application for the selected requests
@@ -226,6 +243,8 @@ public interface IDetailsHelper
     /// <param name="loggedInAlias">Logged in User Alias</param>
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
     /// <param name="authorizationToken">Authorization Token</param>
+    /// <param name="objectId">Alias's ObjectId</param>
+    /// <param name="domain">Alias's Domain</param>
     /// <returns>HttpResponseMessage with Stream data of all the attachments</returns>
     Task<byte[]> GetAllAttachmentsInBulk(
             int tenantId,
@@ -235,7 +254,9 @@ public interface IDetailsHelper
             string userAlias,
             string loggedInAlias,
             string clientDevice,
-            string authorizationToken);
+            string authorizationToken,
+            string objectId,
+            string domain);
 
     /// <summary>
     /// This method gets the Attachment content for preview
@@ -249,9 +270,14 @@ public interface IDetailsHelper
     /// <param name="sessionId">GUID session id</param>
     /// <param name="tcv">GUID transaction correlation vector for telemetry and logging</param>
     /// <param name="xcv">Cross system correlation vector for telemetry and logging</param>
-    /// <param name="loggedInAlias">Logged in User Alias</param>
+    /// <param name="alias">User Alias</param>
+    /// <param name="signedInUser">signed in user entity</param>
+    /// <param name="v1"></param>
+    /// <param name="v2"></param>
+    /// <param name="objectId">Alias's ObjectId</param>
+    /// <param name="domain">Alias's Domain</param>
     /// <returns>HttpResponseMessage with Stream data of the attachment</returns>
-    Task<byte[]> GetDocumentPreview(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, string attachmentId, bool isPreAttached, string sessionId, string tcv, string xcv, string alias, string loggedInAlias, string v1, string v2);
+    Task<byte[]> GetDocumentPreview(int tenantId, string documentNumber, string displayDocumentNumber, string fiscalYear, string attachmentId, bool isPreAttached, string sessionId, string tcv, string xcv, string alias, User signedInUser, string v1, string v2, string objectId, string domain);
 
     /// <summary>
     /// This method will prepare base64 image of the alias
@@ -262,4 +288,28 @@ public interface IDetailsHelper
     /// <param name="logData">Log Data</param>
     /// <returns>Returns base64 string</returns>
     Task<string> GetUserImage(string alias, string sessionId, string clientDevice, Dictionary<LogDataKey, object> logData);
+
+    /// <summary>
+    /// Upload the attachments.
+    /// </summary>
+    /// <param name="signedInUser"></param>
+    /// <param name="onBehalfUser"></param>
+    /// <param name="clientDevice"></param>
+    /// <param name="oauth2UserToken"></param>
+    /// <param name="attachmentUploadInfo">List of Uploaded Attachment Details.</param>
+    /// <param name="files">Uploaded File Collection</param>
+    /// <param name="tenantId">Tenant Id.</param>
+    /// <param name="approvalIdentifier">Approval Identifier</param>
+    /// <param name="sessionId">Session id for the upload attachment.</param>
+    /// <param name="tcv">Transaction Id for the attachment.</param>
+    /// <param name="xcv">Document number for the approval request.</param>
+    /// <returns>Attachment Upload Status <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task<List<AttachmentUploadStatus>> UploadAttachments(User signedInUser, User onBehalfUser, string clientDevice, string oauth2UserToken, List<AttachmentUploadInfo> attachmentUploadInfo, IFormFileCollection files, int tenantId, ApprovalIdentifier approvalIdentifier, string sessionId, string tcv, string xcv);
+
+    /// <summary>
+    /// Get the active managers of a user
+    /// </summary>
+    /// <param name="userObjectId"></param>
+    /// <returns></returns>
+    Task<List<Graph.Models.User>> GetActiveManagersofUser(string userObjectId);
 }

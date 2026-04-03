@@ -6,7 +6,7 @@ namespace Microsoft.CFS.Approvals.AuditProcessor.DL;
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.ServiceBus;
+using global::Azure.Messaging.ServiceBus;
 using Microsoft.CFS.Approvals.AuditProcessor.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
@@ -14,6 +14,8 @@ using Microsoft.CFS.Approvals.Data.Azure.CosmosDb.Interface;
 using Microsoft.CFS.Approvals.LogManager.Model;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.Extensions.Configuration;
+using Microsoft.CFS.Approvals.Extensions;
+using Newtonsoft.Json;
 
 public class AuditAgentDataProvider : IAuditAgentDataProvider
 {
@@ -68,14 +70,14 @@ public class AuditAgentDataProvider : IAuditAgentDataProvider
     /// <param name="exceptionMessage">The exception message.</param>
     /// <param name="stackTrace">The stack trace.</param>
     /// <returns></returns>
-    public void InsertInToDocumentDB(ApprovalRequestExpressionExt approvalRequestExpressionExt, string rawArJson, Message brokeredMessage,
+    public void InsertInToDocumentDB(ApprovalRequestExpressionExt approvalRequestExpressionExt, string rawArJson, ServiceBusReceivedMessage brokeredMessage,
         string exceptionMessage = "", string stackTrace = "")
     {
         DateTime dateTime;
         // Added try catch if EnqueuedTimeUtc throws an error.
         try
         {
-            dateTime = brokeredMessage.SystemProperties.EnqueuedTimeUtc;
+            dateTime = brokeredMessage.EnqueuedTime.DateTime;
         }
         catch
         {
@@ -85,15 +87,15 @@ public class AuditAgentDataProvider : IAuditAgentDataProvider
         try
         {
             var applicationId = "";
-            if (brokeredMessage.UserProperties.ContainsKey("ApplicationId"))
-                applicationId = brokeredMessage.UserProperties["ApplicationId"].ToString();
+            if (brokeredMessage.ApplicationProperties.ContainsKey("ApplicationId"))
+                applicationId = brokeredMessage.ApplicationProperties["ApplicationId"].ToString();
 
             dynamic auditDataObject = new
             {
                 BrokeredMsgId = Guid.Parse(brokeredMessage.MessageId),
-                ApprovalRequest = approvalRequestExpressionExt,
+                ApprovalRequest = approvalRequestExpressionExt.ToJson(new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }).ToJObject(),
                 Raw_AR = rawArJson,
-                BrokeredMessageProperty = brokeredMessage.UserProperties,
+                BrokeredMessageProperty = brokeredMessage.ApplicationProperties,
                 EnqueuedTimeUtc = dateTime,
                 ExceptionMessage = exceptionMessage,
                 ExceptionStackTrace = stackTrace,

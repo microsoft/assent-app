@@ -1,15 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Microsoft.CFS.Approvals.AuditProcessor.BL</AssemblyName>
     <RootNamespace>Microsoft.CFS.Approvals.AuditProcessor.BL</RootNamespace>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-  </ItemGroup>
-  
   <ItemGroup>
     <ProjectReference Include="..\..\..\Common\Approvals.Extensions\Approvals.Extensions.csproj" />
     <ProjectReference Include="..\..\..\Contract\Approvals.Contracts\Approvals.Contracts.csproj" />
@@ -17,11 +11,12 @@
     <ProjectReference Include="..\..\..\Core\Approvals.Core.BL\Approvals.Core.BL.csproj" />
     <ProjectReference Include="..\Approvals.AuditProcessor.DL\Approvals.AuditProcessor.DL.csproj" />
   </ItemGroup>
-  
   <ItemGroup>
     <Reference Include="Contracts">
       <HintPath>..\..\..\Domain\Contracts\Contracts.Old.dll</HintPath>
-    </Reference>    
+    </Reference>
   </ItemGroup>
-
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" />
+  </ItemGroup>
 </Project>

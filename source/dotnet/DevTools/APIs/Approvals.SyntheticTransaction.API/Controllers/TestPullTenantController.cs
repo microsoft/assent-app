@@ -10,11 +10,11 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Models;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.ExtensionMethods;
-using Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Helpers;
 
 /// <summary>
 /// The Pull Tenant Controller
@@ -40,17 +40,16 @@ public class TestPullTenantController : ControllerBase
     /// </summary>
     /// <param name="azureStorageHelper"></param>
     /// <param name="actionContextAccessor"></param>
-    /// <param name="configurationSetting"></param>
+    /// <param name="configurationHelper"></param>
     /// <param name="logProvider"></param>
-    public TestPullTenantController(Func<string, string, ITableHelper> azureStorageHelper,
+    public TestPullTenantController(Func<string, ITableHelper> azureStorageHelper,
         IActionContextAccessor actionContextAccessor,
-        ConfigurationSetting configurationSetting,
+        ConfigurationHelper configurationHelper,
         ILogProvider logProvider)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _azureStorageHelper = azureStorageHelper(
-            configurationSetting.appSettings[_environment].StorageAccountName,
-            configurationSetting.appSettings[_environment].StorageAccountKey);
+            configurationHelper.appSettings[_environment]["StorageAccountName"]);
         _logProvider = logProvider;
     }
 
@@ -67,6 +66,8 @@ public class TestPullTenantController : ControllerBase
         Dictionary<LogDataKey, object> logData = new Dictionary<LogDataKey, object>();
         logData.Add(LogDataKey.Xcv, tcv);
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.Environment, _environment);
         logData.Add(LogDataKey.UserAlias, alias);
         logData.Add(LogDataKey.TenantId, tenantId);
@@ -95,7 +96,6 @@ public class TestPullTenantController : ControllerBase
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "PullTenantSummaryFailure");
             _logProvider.LogError(TrackingEvent.PullTenantSummaryFailure, ex, logData);
             return BadRequest(ex.Message);
         }

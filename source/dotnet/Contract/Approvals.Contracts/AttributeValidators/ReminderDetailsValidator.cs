@@ -26,8 +26,10 @@ namespace Microsoft.CFS.Approvals.Contracts.AttributeValidators
 
             if (reminderDetails.ReminderDates == null || reminderDetails.ReminderDates.Count == 0)
             {
-                if (reminderDetails.Frequency <= 0 || reminderDetails.Expiration <= DateTime.Now)
-                    results.Add(new ValidationResult(Constants.ReminderDetailFrequencyMessage, new List<string> { "ApprovalRequestExpression.NotificationDetail.ReminderDetail.Frequency", "ApprovalRequestExpression.NotificationDetail.ReminderDetail.Expiration" }));
+                if (reminderDetails.Frequency <= 0)
+                    results.Add(new ValidationResult(Constants.ReminderDetailFrequencyMessage, new List<string> { "ApprovalRequestExpression.NotificationDetail.ReminderDetail.Frequency" }));
+                if(reminderDetails.Expiration <= DateTime.Now)
+                    results.Add(new ValidationResult(Constants.ReminderDetailExpirationMessage, new List<string> { "ApprovalRequestExpression.NotificationDetail.ReminderDetail.Expiration" }));
             }
 
             return results;

@@ -41,7 +41,7 @@ public class PullTenantSummaryCountController : BaseApiController
     {
         try
         {
-            var result = await _pullTenantHelper.GetSummaryCountAsync(operationType, LoggedInAlias, Alias, sessionId, Xcv, Tcv, Host);
+            var result = await _pullTenantHelper.GetSummaryCountAsync(SignedInUser, OnBehalfUser, GetTokenOrCookie(), operationType, sessionId, Xcv, MessageId, ClientDevice);
             return Ok(result);
         }
         catch (Exception ex)

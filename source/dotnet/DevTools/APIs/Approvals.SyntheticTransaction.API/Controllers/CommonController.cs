@@ -9,6 +9,7 @@ using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
+using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.Model;
@@ -50,20 +51,19 @@ public class CommonController : ControllerBase
     /// <param name="configuration"></param>
     /// <param name="azureStorageHelper"></param>
     /// <param name="actionContextAccessor"></param>
-    /// <param name="configurationSetting"></param>
+    /// <param name="configurationHelper"></param>
     /// <param name="logProvider"></param>
     public CommonController(
         IConfiguration configuration,
-        Func<string, string, ITableHelper> azureStorageHelper,
+        Func<string, ITableHelper> azureStorageHelper,
         IActionContextAccessor actionContextAccessor,
-        ConfigurationSetting configurationSetting,
+        ConfigurationHelper configurationHelper,
         ILogProvider logProvider)
     {
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString() ?? string.Empty;
         _configuration = configuration;
         _azureStorageHelper = azureStorageHelper(
-            (configurationSetting.appSettings.ContainsKey(_environment) ? configurationSetting?.appSettings[_environment]?.StorageAccountName : string.Empty),
-            (configurationSetting.appSettings.ContainsKey(_environment) ? configurationSetting?.appSettings[_environment]?.StorageAccountKey : string.Empty));
+            (configurationHelper.appSettings.ContainsKey(_environment) ? configurationHelper?.appSettings[_environment]?["StorageAccountName"] : string.Empty));
         _logProvider = logProvider;
     }
 
@@ -99,6 +99,8 @@ public class CommonController : ControllerBase
         var tcv = Guid.NewGuid().ToString();
         logData.Add(LogDataKey.Xcv, tcv);
         logData.Add(LogDataKey.Tcv, tcv);
+        logData.Add(LogDataKey.ComponentName, "API");
+        logData.Add(LogDataKey.MSAComponentName, "TestHarness");
         logData.Add(LogDataKey.Environment, _environment);
 
         try
@@ -111,7 +113,6 @@ public class CommonController : ControllerBase
         }
         catch (Exception ex)
         {
-            logData.Add(LogDataKey.EventName, "TenantAndApproverFetchFailure");
             logData.Add(LogDataKey.Operation, "Failed to fetch Tenants and Approver");
             _logProvider.LogError(TrackingEvent.TenantAndApproverFetchFailure, ex, logData);
             return BadRequest(ex.Message);

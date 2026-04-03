@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
+using Newtonsoft.Json.Linq;
 using Swashbuckle.AspNetCore.Annotations;
 
 /// <summary>
@@ -51,7 +52,11 @@ public class OutOfSyncSummaryController : BaseApiController
     {
         try
         {
-            return Ok(await _summaryHelper.GetOtherSummaryRequests(LoggedInAlias, Alias, Host, Constants.OutOfSyncAction, sessionId, id));
+            return Ok(await _summaryHelper.GetOtherSummaryRequests(SignedInUser, OnBehalfUser, ClientDevice, Constants.OutOfSyncAction, sessionId, OnBehalfUser.Id, DomainName, GetTokenOrCookie(), id));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Ok(new JArray() { JObject.FromObject(new { Message = ex.Message }) });
         }
         catch (Exception ex)
         {

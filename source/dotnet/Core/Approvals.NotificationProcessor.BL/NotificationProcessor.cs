@@ -22,6 +22,7 @@ using Microsoft.CFS.Approvals.Utilities.Extension;
 using Microsoft.CFS.Approvals.Utilities.Interface;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 /// <summary>
 /// The Notification Processor class
@@ -36,7 +37,7 @@ public class NotificationProcessor : INotificationProcessor
     /// <summary>
     /// The Approval Summary Provider
     /// </summary>
-    private readonly IApprovalSummaryHelper _approvalSummaryHelper;
+    private readonly ISummaryHelper _summaryHelper;
 
     /// <summary>
     /// The Email Helper
@@ -59,14 +60,9 @@ public class NotificationProcessor : INotificationProcessor
     private readonly INameResolutionHelper _nameResolutionHelper;
 
     /// <summary>
-    /// Gets or Sets the Authentication Helper.
-    /// </summary>
-    private IAuthenticationHelper _authenticationHelper { get; set; }
-
-    /// <summary>
     /// Gets or Sets the Http Helper.
     /// </summary>
-    protected IHttpHelper _httpHelper { get; set; }
+    protected IHttpHelper _httpHelper;
 
     /// <summary>
     /// Constructor of NotificationProcessor
@@ -77,7 +73,7 @@ public class NotificationProcessor : INotificationProcessor
     public NotificationProcessor(
         IConfiguration config,
         ILogProvider logProvider,
-        IApprovalSummaryHelper approvalSummaryHelper,
+        ISummaryHelper summaryHelper,
         IEmailHelper emailHelper,
         IFlightingDataProvider flightingDataProvider,
         INameResolutionHelper nameResolutionHelper,
@@ -87,11 +83,10 @@ public class NotificationProcessor : INotificationProcessor
     {
         _config = config;
         _logProvider = logProvider;
-        _approvalSummaryHelper = approvalSummaryHelper;
+        _summaryHelper = summaryHelper;
         _emailHelper = emailHelper;
         _flightingDataProvider = flightingDataProvider;
         _nameResolutionHelper = nameResolutionHelper;
-        _authenticationHelper = authenticationHelper;
         _httpHelper = httpHelper;
     }
 
@@ -186,39 +181,14 @@ public class NotificationProcessor : INotificationProcessor
     /// Sends teams notifications.
     /// </summary>
     /// <param name="requestExpressions">The request expressions.</param>
-    /// <param name="tenant">The tenant.</param>
     /// <returns>returns a boolean value</returns>
-    /// <exception cref="System.Exception"></exception>
+    /// <exception cref="Exception"></exception>
     public async Task<bool> SendTeamsNotifications(ApprovalNotificationDetails requestExpressions)
     {
         bool enableMSTeamsNotification = false;
         List<string> approvers = new List<string>();
-        switch (requestExpressions.ApprovalTenantInfo.NotifyTeams)
-        {
-            case (int)EnableMSTeamsNotification.DisableForAll:
-                enableMSTeamsNotification = false;
-                break;
 
-            case (int)EnableMSTeamsNotification.EnableForFlightedUsers:
-                foreach (var approver in requestExpressions.SummaryRows.Select(s => s.Approver).ToList())
-                {
-                    if (_flightingDataProvider.IsFeatureEnabledForUser(approver, (int)FlightingFeatureName.MSTeamNotification))
-                    {
-                        approvers.Add(approver);
-                        enableMSTeamsNotification = true;
-                    }
-                }
-                break;
-
-            case (int)EnableMSTeamsNotification.EnableForAll:
-                enableMSTeamsNotification = true;
-                break;
-
-            default:
-                enableMSTeamsNotification = false;
-                break;
-        }
-
+        enableMSTeamsNotification = Convert.ToBoolean(requestExpressions.ApprovalTenantInfo.NotifyTeams);
         if (enableMSTeamsNotification && requestExpressions.DeviceNotificationInfo.Operation != ApprovalRequestOperation.Delete)
         {
             string postUrl = _config[ConfigurationKey.TeamsEndpointUrl.ToString()];
@@ -241,7 +211,7 @@ public class NotificationProcessor : INotificationProcessor
 
             try
             {
-                if (String.IsNullOrEmpty(postUrl))
+                if (string.IsNullOrEmpty(postUrl))
                 {
                     throw new UriFormatException(_config[ConfigurationKey.Message_URLNotDefined.ToString()]);
                 }
@@ -285,14 +255,18 @@ public class NotificationProcessor : INotificationProcessor
 
                 logData.Add(LogDataKey.TeamsNotificationJson, JsonConvert.SerializeObject(teamsNotificationInput));
 
+                var isMITokenEnabled = Convert.ToBoolean(_config[ConfigurationKey.TeamsNotificationMITokenEnabled.ToString()]);
+                var clientId = isMITokenEnabled == false ? _config[ConfigurationKey.TeamsClientId.ToString()] : _config[ConfigurationKey.ManagedIdentityClientId.ToString()];
+
                 var lobResponse = await _httpHelper.SendRequestAsync(HttpMethod.Post,
-                    _config[ConfigurationKey.TeamsClientId.ToString()],
+                    clientId,
                     _config[ConfigurationKey.TeamsAppKey.ToString()],
                     _config[ConfigurationKey.Authority.ToString()],
                     _config[ConfigurationKey.TeamsResourceUrl.ToString()],
                     postUrl,
                     new Dictionary<string, string>() { { Constants.TeamsNotificationCorrelationHeader, teamsNotificationCorrelationId } },
-                    JsonConvert.SerializeObject(teamsNotificationInput)
+                    JsonConvert.SerializeObject(teamsNotificationInput),
+                    isMITokenEnabled
                     );
 
                 if (lobResponse.IsSuccessStatusCode)

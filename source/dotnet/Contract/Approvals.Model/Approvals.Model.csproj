@@ -1,19 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>Microsoft.CFS.Approvals.Model</RootNamespace>
     <AssemblyName>Microsoft.CFS.Approvals.Model</AssemblyName>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="Azure.Data.Tables" Version="12.8.0" />
-    <PackageReference Include="NCrontab.Signed" Version="3.3.2" />
+    <PackageReference Include="AutoMapper" />
+    <PackageReference Include="Azure.AI.OpenAI" />
+    <PackageReference Include="Azure.Data.Tables" />
+    <PackageReference Include="NCrontab.Signed" />
+    <PackageReference Include="Newtonsoft.Json" />
+	<PackageReference Include="Microsoft.Graph" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Approvals.Contracts\Approvals.Contracts.csproj" />
     <ProjectReference Include="..\..\Common\Approvals.Extensions\Approvals.Extensions.csproj" />
   </ItemGroup>
-
 </Project>

@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.ServiceBus;
+using global::Azure.Messaging.ServiceBus;
 using Microsoft.CFS.Approvals.AuditProcessor.BL.Interface;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
@@ -46,10 +46,9 @@ public class AuditAgentLoggingHelper : IAuditAgentLoggingHelper
     /// </summary>
     /// <param name="trackingEvent"></param>
     /// <param name="brokeredMessage"></param>
-    public async Task Log(TrackingEvent trackingEvent, Message brokeredMessage, DateTime loggingTime, List<ApprovalRequestExpressionExt> approvalNotificationARXObj = null)
+    public async Task Log(TrackingEvent trackingEvent, ServiceBusReceivedMessage brokeredMessage, DateTime loggingTime, List<ApprovalRequestExpressionExt> approvalNotificationARXObj = null)
     {
-        Message newBrokeredMessage = brokeredMessage.Clone();
-        string brokeredMessageID = newBrokeredMessage.MessageId;
+        string brokeredMessageID = brokeredMessage.MessageId;
         if (approvalNotificationARXObj != null)
         {
             ApprovalTenantInfo tenant = (await _approvalTenantInfoHelper.GetTenants(false)).Where(t => t.DocTypeId.Equals(approvalNotificationARXObj.FirstOrDefault().DocumentTypeId.ToString(), StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
@@ -67,7 +66,7 @@ public class AuditAgentLoggingHelper : IAuditAgentLoggingHelper
             #region Populate logData
 
             logData[LogDataKey._ActivityId] = brokeredMessageID;
-            logData[LogDataKey.BrokerMessage] = newBrokeredMessage.UserProperties;
+            logData[LogDataKey.BrokerMessage] = brokeredMessage.ApplicationProperties;
             logData[LogDataKey.LocalTime] = loggingTime;
 
             #endregion Populate logData
@@ -90,7 +89,7 @@ public class AuditAgentLoggingHelper : IAuditAgentLoggingHelper
 
         #region Data Validation / Formatting
 
-        JToken fiscalYear = approvalRequest["ApprovalIdentifier"]["FiscalYear"].HasValues ? approvalRequest["ApprovalIdentifier"]["FiscalYear"] : "";
+        JToken fiscalYear = approvalRequest["ApprovalIdentifier"]["FiscalYear"] != null && approvalRequest["ApprovalIdentifier"]["FiscalYear"].HasValues ? approvalRequest["ApprovalIdentifier"]["FiscalYear"] : "";
 
         string operationType = string.Empty;
         switch ((int)approvalRequest["Operation"])
@@ -143,8 +142,8 @@ public class AuditAgentLoggingHelper : IAuditAgentLoggingHelper
             { LogDataKey.OperationType,  operationType },
             { LogDataKey.Approver,  approverList.ToString() },
             { LogDataKey.FailureData,  failureData },
-            { LogDataKey.Xcv,  approvalRequest["Telemetry"]["Xcv"].ToString() },
-            { LogDataKey.Tcv,  approvalRequest["Telemetry"]["Tcv"].ToString() },
+            { LogDataKey.Xcv,  approvalRequest["Telemetry"]["Xcv"]?.ToString() },
+            { LogDataKey.Tcv,  approvalRequest["Telemetry"]["Tcv"]?.ToString() },
             { LogDataKey.DXcv,  approvalRequest["ApprovalIdentifier"]["DocumentNumber"].ToString() }
         };
 
