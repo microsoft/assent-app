@@ -40,7 +40,11 @@ public class TelemetryHelper : ITelemetryHelper
         _environment = actionContextAccessor?.ActionContext?.RouteData?.Values["env"]?.ToString();
         _configurationHelper = configurationHelper;
         _httpHelper = httpHelper;
-        _tokenCredential = tokenCredential ?? new DefaultAzureCredential();
+        #if DEBUG
+            _tokenCredential = tokenCredential ?? new DefaultAzureCredential(); // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
+        #else
+            _tokenCredential = tokenCredential ?? new ManagedIdentityCredential();
+        #endif
     }
 
     /// <summary>
