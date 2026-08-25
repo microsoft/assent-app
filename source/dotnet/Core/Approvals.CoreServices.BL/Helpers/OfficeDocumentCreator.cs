@@ -3,6 +3,7 @@
 
 namespace Microsoft.CFS.Approvals.CoreServices.BL.Helpers;
 
+using System;
 using System.IO;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.CFS.Approvals.CoreServices.BL.Interface;
@@ -37,20 +38,58 @@ public class OfficeDocumentCreator : IOfficeDocumentCreator
     /// <returns></returns>
     public string GetDocumentURL(byte[] officeDocumentContent, string displayDocumentNumber, string attachmentName, string loggedInAlias, string sessionId)
     {
-        string filePath = _hostingEnvironment.WebRootPath + @"\PreviewDocuments";
+        string filePath = Path.Combine(_hostingEnvironment.WebRootPath, "PreviewDocuments");
+        
         DirectoryInfo dirInfo = new DirectoryInfo(filePath);
         if (!dirInfo.Exists)
         {
             dirInfo.Create();
         }
-        string filename = displayDocumentNumber + "_" + loggedInAlias + "_" + attachmentName;
 
-        // CodeQL [SM00395] False Positive: Path is not controlled by user inputs
-        if (!File.Exists(filePath + @"\" + filename))
+        string safeDisplayDocumentNumber = SanitizePathSegment(displayDocumentNumber, nameof(displayDocumentNumber));
+        string safeAttachmentName = SanitizePathSegment(attachmentName, nameof(attachmentName));
+        string safeLoggedInAlias = SanitizePathSegment(loggedInAlias, nameof(loggedInAlias));
+
+        string fileName = safeDisplayDocumentNumber + "_" + safeLoggedInAlias + "_" + safeAttachmentName;
+        string candidatePath = Path.Combine(filePath, fileName);
+
+        string canonicalBasePath = Path.GetFullPath(filePath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        string canonicalCandidatePath = Path.GetFullPath(candidatePath);
+
+        if (!canonicalCandidatePath.StartsWith(canonicalBasePath, StringComparison.OrdinalIgnoreCase))
         {
-            // CodeQL [SM00395] False Positive: Path is not controlled by user inputs
-            File.WriteAllBytes(filePath + @"\" + filename, officeDocumentContent);
+            throw new UnauthorizedAccessException("Invalid path: the target file path is outside the preview directory.");
         }
-        return filename;
+
+        if (!File.Exists(canonicalCandidatePath))
+        {
+            File.WriteAllBytes(canonicalCandidatePath, officeDocumentContent);
+        }
+
+        return fileName;
+    }
+
+    private static string SanitizePathSegment(string value, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new ArgumentException("Value cannot be null or empty.", parameterName);
+        }
+
+        if (value.IndexOf("..", StringComparison.Ordinal) >= 0 ||
+            value.IndexOf(Path.DirectorySeparatorChar) >= 0 ||
+            value.IndexOf(Path.AltDirectorySeparatorChar) >= 0)
+        {
+            throw new ArgumentException("Path traversal characters are not allowed.", parameterName);
+        }
+
+        string fileNameOnly = Path.GetFileName(value);
+
+        if (!string.Equals(fileNameOnly, value, StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Only file name segments are allowed.", parameterName);
+        }
+
+        return fileNameOnly;
     }
 }

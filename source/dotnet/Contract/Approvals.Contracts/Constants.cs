@@ -396,6 +396,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string QuickTourAPIErrorMessage = "Failed to fetch Quick tour features";
 
         public const string DownloadAllAttachmentsFile = "AllAttachments.zip";
+        public const string DocumentPreviewErrorMessage = "Not able to preview the document at this time. Please try again later or contact support.";
 
         public const string AdaptiveTemplateVersion = "1.0";
 
