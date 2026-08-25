@@ -43,7 +43,7 @@ public class AuthorizationMiddleware : IMiddleware
                     claims.Add(new Claim(claimObj["typ"]?.ToString(), claimObj["val"]?.ToString()));
                 }
             }
-            context.User = new ClaimsPrincipal(new ClaimsIdentity(claims));
+            context.User = new ClaimsPrincipal(new ClaimsIdentity(claims, "EasyAuth"));
 
             #region Check for Valid AppID
 

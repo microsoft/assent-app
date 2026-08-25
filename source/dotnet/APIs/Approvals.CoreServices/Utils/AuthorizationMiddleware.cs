@@ -12,11 +12,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.CFS.Approvals.Contracts;
-using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Extensions;
-using Microsoft.CFS.Approvals.Model;
-using Microsoft.CFS.Approvals.Utilities.Interface;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -27,22 +24,15 @@ using Newtonsoft.Json.Linq;
 /// </summary>
 public class AuthorizationMiddleware : IMiddleware
 {
-    private readonly IDelegationHelper _delegationHelper;
     private readonly IApprovalTenantInfoHelper _approvalTenantInfoHelper;
-    private readonly INameResolutionHelper _nameResolutionHelper;
     private readonly IConfiguration _configuration;
-    private static readonly string XMsClientPrincipalIdp = "X-MS-CLIENT-PRINCIPAL-IDP";
-    private static readonly string XMsClientPrincipalId = "X-MS-CLIENT-PRINCIPAL-ID";
-    private static readonly string XMsClientPrincipal = "X-MS-CLIENT-PRINCIPAL";
 
     /// <summary>
     /// Constructor
     /// </summary>
-    public AuthorizationMiddleware(IApprovalTenantInfoHelper approvalTenantInfoHelper, IDelegationHelper delegationHelper, INameResolutionHelper nameResolutionHelper, IConfiguration configuration)
+    public AuthorizationMiddleware(IApprovalTenantInfoHelper approvalTenantInfoHelper, IConfiguration configuration)
     {
-        _delegationHelper = delegationHelper;
         _approvalTenantInfoHelper = approvalTenantInfoHelper;
-        _nameResolutionHelper = nameResolutionHelper;
         _configuration = configuration;
     }
 
@@ -54,16 +44,53 @@ public class AuthorizationMiddleware : IMiddleware
     /// <returns></returns>
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
-        var claims = new List<Claim>();
-        var userAlias = string.Empty;
-        var userPrincipalName = string.Empty;
-        string currentDomain = string.Empty;
-        List<UserDelegationSetting> currentUserDelegation = null;
-
-        // Get UserPrincipalName /alias from Header
-        if (context.Request.Headers.Keys.Contains("X-MS-CLIENT-PRINCIPAL-NAME"))
+        // Always strip reserved headers injected by clients.
+        if (context.Request.Headers.ContainsKey(Constants.LoggedInUserAlias))
         {
-            userPrincipalName = context.Request.Headers["X-MS-CLIENT-PRINCIPAL-NAME"].ToString();
+            context.Request.Headers.Remove(Constants.LoggedInUserAlias);
+        }
+
+        // SECURITY: Reject requests that bypass EasyAuth (App Service Authentication)
+        if (!EasyAuthPrincipalHelper.TryBuildPrincipal(context.Request.Headers, nameof(AuthorizationMiddleware), out var principal, out _))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await context.Response.WriteAsync("Unauthorized request");
+            return;
+        }
+
+        context.User = principal;
+
+        if (context.User != null)
+        {
+
+            #region Check for Valid AppID
+
+            // Get list of AppIds
+            var validAppIds = Environment.GetEnvironmentVariable("ValidAppIds");
+            var listOfValidAppIds = validAppIds.Split(';');
+
+
+            // Check azp (user-delegated tokens) first, then appid (app-only tokens)
+            // SECURITY: Do NOT fallback to aud claim as it represents the API's own client ID
+            var clientAppId = GetClaimValue(context.User, "azp", "appid");
+
+            // if clientAppId is null or not in the Valid AppId list then return UnAuthorized Response
+            if (string.IsNullOrWhiteSpace(clientAppId) || !listOfValidAppIds.Any(id => id.Equals(clientAppId, StringComparison.InvariantCultureIgnoreCase)))
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await context.Response.WriteAsync("Unauthorized request - invalid client application");
+                return;
+            }
+            else
+            {
+                context.Request.Headers.Add(Constants.AppClientId, clientAppId);
+            }
+
+            #endregion Check for Valid AppID
+
+            var userAlias = string.Empty;
+            var currentDomain = string.Empty;
+            var userPrincipalName = GetClaimValue(context.User, ClaimTypes.Upn, "upn", "preferred_username");
             var whitelistedDomains = _configuration[Constants.WhitelistedDomains]?.Split(";").ToList();
             whitelistedDomains.ForEach(domain =>
             {
@@ -74,79 +101,14 @@ public class AuthorizationMiddleware : IMiddleware
                 }
             });
 
-            context.Request.Headers.Add(Constants.LoggedInUserUpn, userPrincipalName);
-        }
-
-        // Authorize after the user has been authenticated by App Service Authentication Service
-        if (context.Request.Headers.ContainsKey(XMsClientPrincipalIdp))
-        {
-            if (context.Request.Headers.ContainsKey(XMsClientPrincipal))
-            {
-                var clientPrincipal = JsonConvert.DeserializeObject<JObject>(
-                    Encoding.UTF8.GetString(Convert.FromBase64String(context.Request.Headers[XMsClientPrincipal].FirstOrDefault())));
-                foreach (var claimObj in clientPrincipal["claims"]?.ToObject<JObject[]>())
-                {
-                    claims.Add(new Claim(claimObj["typ"]?.ToString(), claimObj["val"]?.ToString()));
-                }
-            }
-            context.User = new ClaimsPrincipal(new ClaimsIdentity(claims));
-
-            #region Check for Valid AppID
-
-            // Get list of AppIds
-            var validAppIds = Environment.GetEnvironmentVariable("ValidAppIds");
-            var listOfValidAppIds = validAppIds.Split(';');
-
-            if (context.User != null)
-            {
-                var appid = context.User.Claims.FirstOrDefault(c => c.Type.Equals("appid")) ?? context.User.Claims.FirstOrDefault(c => c.Type.Equals("aud"));
-
-                // if AppId is null or the AppId fetched from claims is different from the Valid AppId list value then return UnAuthorized Response
-                if (appid == null || !listOfValidAppIds.Any(id => id.Equals(appid.Value, StringComparison.InvariantCultureIgnoreCase)))
-                {
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                    await context.Response.WriteAsync("Unauthorized request");
-                    return;
-                }
-            }
-
-            #endregion Check for Valid AppID
-
-            #region Check for Reserved Headers
-
-            if (context.Request.Headers.ContainsKey(Constants.LoggedInUserAlias))
-            {
-                // Logging the details of LoggedInUserAliasHeader header and actual logged in alias details
-                var loggedInUserAliasHeaderValue = context.Request.Headers.FirstOrDefault(x => x.Key.ToLower().Equals(Constants.LoggedInUserAlias.ToLower())).Value.FirstOrDefault();
-
-                // Throwing back a bad request so that this message is not processed
-                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                await context.Response.WriteAsync("Forbidden: You are not allowed to send a reserved httpHeader value under LoggedInUserAliasHeader. This is an invalid request and will not be processed.");
-                return;
-            }
-            else
-            {
-                context.Request.Headers.Add(Constants.LoggedInUserAlias, userAlias);
-                if (context.Request.Headers.ContainsKey(Constants.LoggedInUserUpn))
-                    context.Request.Headers[Constants.LoggedInUserUpn] = userPrincipalName;
-                else
-                    context.Request.Headers.Add(Constants.LoggedInUserUpn, userPrincipalName);
-            }
-
-            #endregion Check for Reserved Headers
+            context.Request.Headers[Constants.LoggedInUserAlias] = userAlias;
+            context.Request.Headers[Constants.LoggedInUserUpn] = userPrincipalName;
 
             #region Check for Delegation Headers
 
             if (!string.IsNullOrWhiteSpace(currentDomain))
             {
-                if (context.Request.Headers.ContainsKey(Constants.Domain))
-                {
-                    context.Request.Headers[Constants.Domain] = currentDomain;
-                }
-                else
-                {
-                    context.Request.Headers.Add(Constants.Domain, currentDomain);
-                }
+                context.Request.Headers[Constants.Domain] = currentDomain;
             }
             if (!string.IsNullOrWhiteSpace(userAlias))
             {
@@ -180,7 +142,7 @@ public class AuthorizationMiddleware : IMiddleware
                 }
                 else if (!context.Request.Headers.ContainsKey(Constants.UserAlias))
                 {
-                    context.Request.Headers.Add(Constants.UserAlias, userAlias);
+                    context.Request.Headers[Constants.UserAlias] = userAlias;
                 }
                 else
                 {
@@ -190,7 +152,26 @@ public class AuthorizationMiddleware : IMiddleware
 
             #endregion Check for Delegation Headers
         }
-
         await next(context);
+    }
+
+    /// <summary>
+    /// Gets the claim value from the claims principal based on the provided claim types.
+    /// </summary>
+    /// <param name="principal">The claims principal.</param>
+    /// <param name="claimTypes">The claim types to search for.</param>
+    /// <returns>The claim value if found; otherwise, an empty string.</returns>
+    private static string GetClaimValue(ClaimsPrincipal principal, params string[] claimTypes)
+    {
+        foreach (var claimType in claimTypes)
+        {
+            var value = principal.Claims.FirstOrDefault(c => c.Type.Equals(claimType, StringComparison.InvariantCultureIgnoreCase))?.Value;
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return string.Empty;
     }
 }

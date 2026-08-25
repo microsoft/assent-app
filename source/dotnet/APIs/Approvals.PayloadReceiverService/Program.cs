@@ -129,6 +129,7 @@ builder.Services.AddScoped<IApprovalRequestExpressionHelper, ApprovalRequestExpr
 builder.Services.AddScoped<IPayloadReceiverManager, PayloadReceiverManager>();
 builder.Services.AddScoped<IApprovalDetailProvider, ApprovalDetailProvider>();
 builder.Services.AddScoped<IApprovalSummaryProvider, ApprovalSummaryProvider>();
+builder.Services.AddScoped<IUserDelegationProvider, UserDelegationProvider>();
 builder.Services.AddScoped<IDelegationHelper, DelegationHelper>();
 builder.Services.AddScoped<ISummaryHelper, SummaryHelper>();
 builder.Services.AddScoped<AuthorizationMiddleware, AuthorizationMiddleware>();
@@ -167,6 +168,8 @@ app.UseHttpsRedirection();
 app.UseRouting();
 
 app.UseMiddleware<AuthorizationMiddleware>();
+
+app.UseAuthorization();
 
 app.UseEndpoints(endpoints =>
 {

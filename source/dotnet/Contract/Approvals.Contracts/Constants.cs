@@ -302,6 +302,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string ContentTypeJson = "application/json";
         public const string AdditionalData = "AdditionalData";
         public const string AuthenticationType = "AuthenticationType";
+        public const string EasyAuthScheme = "EasyAuth";
         public const string AuthorizationHeaderScheme = "Bearer";
         public const string ClientDeviceHeader = "ClientDevice";
         public const string FilterParameters = "FilterParameters";
@@ -311,6 +312,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string OnBehalfUserUpn = "OnBehalfUserUpn";
         public const string OnBehalfUserId = "OnBehalfUserId";
         public const string LoggedInUserAlias = "LoggedInUserAlias";
+        public const string AppClientId = "AppClientId";
         public const string Tenants = "Tenants";
         public const string LoggedInUserUpn = "LoggedInUserUpn";
         public const string DelegatedUserAlias = "DelegatedUserAlias";

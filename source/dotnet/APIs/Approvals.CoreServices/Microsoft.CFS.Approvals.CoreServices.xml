@@ -172,14 +172,17 @@
             </summary>
             <param name="approvalTenantInfoHelper">approvalTenantInfoHelper</param>
             <param name="tenantFactory">tenantFactory</param>
+            <param name="detailsHelper">tenantFactory</param>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController.Post(Microsoft.AspNetCore.Http.IFormCollection,System.Int32,System.String,System.String,System.String,System.String)">
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.AttachmentUploadController.Post(Microsoft.AspNetCore.Http.IFormCollection,System.Int32,System.String,System.String,System.String,System.String,System.String,System.String)">
             <summary>
             Post method for uploading the attachments.
             </summary>
             <param name="attachments"> List of files to be uploaded into the blob storage.</param>
             <param name="tenantId">Tenant id.</param>
             <param name="documentNumber">Document number.</param>
+            <param name="displayDocumentNumber">Display Document number.</param>
+            <param name="fiscalYear">Fiscal year.</param>
             <param name="sessionId">GUID SessionId. Unique for each user session</param>
             <param name="tcv">GUID Transaction Id. Unique for each transaction</param>
             <param name="xcv">GUID Cross Correlation Vector. Unique for each request across system boundaries</param>
@@ -504,6 +507,45 @@
             </para>
             </remarks>
         </member>
+        <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.FeedbackController">
+            <summary>
+            Class FeedbackController.
+            </summary>
+            <seealso cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.BaseApiController" />
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.FeedbackController._feedbackHelper">
+            <summary>
+            The feedback helper
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.FeedbackController._logProvider">
+            <summary>
+            The log provider
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.FeedbackController.#ctor(Microsoft.CFS.Approvals.Common.DL.Interface.IFeedbackHelper,Microsoft.CFS.Approvals.LogManager.Provider.Interface.ILogProvider)">
+            <summary>
+            Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.FeedbackController"/> class.
+            </summary>
+            <param name="feedbackHelper">The feedback helper.</param>
+            <param name="logProvider"></param>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.FeedbackController.Post(Microsoft.CFS.Approvals.Model.UserFeedback)">
+            <summary>
+            Submits user feedback to be stored in the system
+            </summary>
+            <param name="feedback">The feedback data</param>
+            <returns>
+            This method returns an OK HttpResponse if the action is successful;
+            else returns a Bad Response along with the Error Message specifying the reason for failure
+            </returns>
+            <remarks>
+            <para>
+            e.g.
+            HTTP POST api/Feedback
+            </para>
+            </remarks>
+        </member>
         <member name="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.FlightingController">
             <summary>
             FlightingController
@@ -696,12 +738,13 @@
             The log provider
             </summary>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.IntelligenceController.#ctor(Microsoft.Extensions.Configuration.IConfiguration,Microsoft.CFS.Approvals.Core.BL.Interface.IIntelligenceHelper,Microsoft.CFS.Approvals.LogManager.Provider.Interface.ILogProvider)">
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.IntelligenceController.#ctor(Microsoft.Extensions.Configuration.IConfiguration,Microsoft.CFS.Approvals.Core.BL.Interface.IAIAssistedSearchHelper,Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalsPluginHelper,Microsoft.CFS.Approvals.LogManager.Provider.Interface.ILogProvider)">
             <summary>
             Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.IntelligenceController"/> class.
             </summary>
             <param name="config">The configuration</param>
-            <param name="intelligenceHelper">The OpenAI helper.</param>
+            <param name="aiAssistedSearchHelper">The AI-assisted search helper.</param>
+            <param name="approvalsPlugin"></param>
             <param name="logProvider"></param>
         </member>
         <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.IntelligenceController.GetChatCompletionAsync(Microsoft.CFS.Approvals.Model.PluginChatRequest)">
@@ -710,6 +753,13 @@
             </summary>
             <param name="chatRequest">Question from user.</param>
             <returns>Answer from GPT models through Azure AI.</returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.IntelligenceController.GetAIAssistedSearchResults(System.String)">
+            <summary>
+            Gets AI-assisted search results using the new method in IntelligenceHelper.
+            </summary>
+            <param name="query">The user's search query.</param>
+            <returns>List of search results or error message.</returns>
         </member>
         <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.IntelligenceController.AIPlugin">
             <summary>
@@ -967,18 +1017,31 @@
             The summary helper/
             </summary>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.ISummaryHelper)">
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController._performanceLogger">
+            <summary>
+            The performance logger
+            </summary>
+        </member>
+        <member name="F:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController._logProvider">
+            <summary>
+            The log provider
+            </summary>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.ISummaryHelper,Microsoft.CFS.Approvals.Common.DL.Interface.IPerformanceLogger,Microsoft.CFS.Approvals.LogManager.Provider.Interface.ILogProvider)">
             <summary>
             Initializes a new instance of the <see cref="T:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController"/> class.
             </summary>
             <param name="summaryHelper">The summary helper.</param>
+            <param name="performanceLogger">The performance logger.</param>
+            <param name="logProvider">The log provider.</param>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController.Get(System.String,System.String)">
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Controllers.api.v1.SummaryController.Get(System.String,System.String,System.Boolean)">
             <summary>
             Get summary for the current user sorted/ filtered by tenant from azure table storage given Document Type ID (optional).
             </summary>
             <param name="Id">GUID DocumentTypeId of the Tenant</param>
             <param name="SessionId">GUID SessionId. Unique for each user session</param>
+            <param name="isSubmittedRequest"></param>
             <returns>
             This method returns a JSON for all the Pending approval requests for the given user and Tenant combination.
             This contains only summary data (i.e. no details) to be displayed on the home page.
@@ -1312,7 +1375,7 @@
             Custom Authorization Middleware class which takes care of additional security checks
             </summary>
         </member>
-        <member name="M:Microsoft.CFS.Approvals.CoreServices.Utils.AuthorizationMiddleware.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalTenantInfoHelper,Microsoft.CFS.Approvals.Core.BL.Interface.IDelegationHelper,Microsoft.CFS.Approvals.Utilities.Interface.INameResolutionHelper,Microsoft.Extensions.Configuration.IConfiguration)">
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Utils.AuthorizationMiddleware.#ctor(Microsoft.CFS.Approvals.Core.BL.Interface.IApprovalTenantInfoHelper,Microsoft.Extensions.Configuration.IConfiguration)">
             <summary>
             Constructor
             </summary>
@@ -1324,6 +1387,14 @@
             <param name="context"></param>
             <param name="next"></param>
             <returns></returns>
+        </member>
+        <member name="M:Microsoft.CFS.Approvals.CoreServices.Utils.AuthorizationMiddleware.GetClaimValue(System.Security.Claims.ClaimsPrincipal,System.String[])">
+            <summary>
+            Gets the claim value from the claims principal based on the provided claim types.
+            </summary>
+            <param name="principal">The claims principal.</param>
+            <param name="claimTypes">The claim types to search for.</param>
+            <returns>The claim value if found; otherwise, an empty string.</returns>
         </member>
     </members>
 </doc>
