@@ -110,7 +110,7 @@ public class SecondaryStartup : FunctionsStartup
         builder.Services.AddSingleton<ITableHelper, TableHelper>((provider) => { return new TableHelper(config[Constants.StorageAccountName], azureCredential); });
         builder.Services
             .AddHttpClient<IHttpHelper, HttpHelper>()
-            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
+            .ConfigurePrimaryHttpMessageHandler(SsrfProtection.CreateHandler)
             .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
             .AddPolicyHandler(GetRetryPolicy());
         builder.Services.AddScoped<INameResolutionHelper, NameResolutionHelper>();

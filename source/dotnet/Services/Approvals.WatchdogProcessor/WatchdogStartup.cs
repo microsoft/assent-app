@@ -124,7 +124,7 @@ public class WatchdogStartup : FunctionsStartup
 
         builder.Services
             .AddHttpClient<IHttpHelper, HttpHelper>()
-            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
+            .ConfigurePrimaryHttpMessageHandler(SsrfProtection.CreateHandler)
             .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
             .AddPolicyHandler(GetRetryPolicy());
     }

@@ -200,7 +200,7 @@ builder.Services.AddScoped<AuthorizationMiddleware, AuthorizationMiddleware>();
 
 builder.Services
     .AddHttpClient<IHttpHelper, HttpHelper>()
-    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
+    .ConfigurePrimaryHttpMessageHandler(SsrfProtection.CreateHandler)
     .SetHandlerLifetime(TimeSpan.FromMinutes(5)) // Set lifetime to five minutes
     .AddPolicyHandler(HttpPolicyExtensions
                 .HandleTransientHttpError()
