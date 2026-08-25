@@ -5,8 +5,10 @@ namespace Microsoft.CFS.Approvals.PayloadReceiverService.Controllers.api.v1;
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
@@ -18,6 +20,7 @@ using Swashbuckle.AspNetCore.Annotations;
 /// </summary>
 [Route("api/v1/[controller]")]
 [ApiController]
+[Authorize]
 public class PayloadReceiverController : ControllerBase
 {
     /// <summary>
@@ -58,11 +61,22 @@ public class PayloadReceiverController : ControllerBase
         try
         {
             string payload = string.Empty;
+            string callerAppId = User?.Claims?.FirstOrDefault(c => c.Type.Equals("azp", StringComparison.InvariantCultureIgnoreCase) || c.Type.Equals("appid", StringComparison.InvariantCultureIgnoreCase))?.Value;
+
             using (StreamReader reader = new StreamReader(Request.Body, Encoding.UTF8))
             {
                 payload = await reader.ReadToEndAsync();
             }
-            return Ok(await _payloadReceiverManager.ManagePost(tenantId, payload));
+
+            return Ok(await _payloadReceiverManager.ManagePost(tenantId, payload, callerAppId));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status401Unauthorized, ex.Message);
+        }
+        catch (InvalidDataException ex)
+        {
+            return BadRequest(ex.Message);
         }
         catch (Exception ex)
         {

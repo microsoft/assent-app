@@ -6,6 +6,7 @@ namespace Microsoft.CFS.Approvals.SyntheticTransaction.API.Controllers;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
@@ -16,6 +17,7 @@ using Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Interface;
 /// </summary>
 [Route("api/v1/BulkDelete")]
 [ApiController]
+[Authorize]
 public class BulkDeleteController : ControllerBase
 {
     private readonly IBulkDeleteHelper _bulkDeleteHelper;

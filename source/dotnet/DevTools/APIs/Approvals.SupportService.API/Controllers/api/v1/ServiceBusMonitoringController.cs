@@ -5,6 +5,7 @@ namespace Microsoft.CFS.Approvals.SupportService.API.Controllers.api.v1;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
@@ -15,6 +16,7 @@ using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
 /// </summary>
 [Route("api/v1/ServiceBusMonitoring")]
 [ApiController]
+[Authorize]
 public class ServiceBusMonitoringController : ControllerBase
 {
     /// <summary>

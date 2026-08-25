@@ -6,6 +6,7 @@ namespace Microsoft.CFS.Approvals.SyntheticTransaction.API.Controllers;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
@@ -20,6 +21,7 @@ using Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Helpers;
 [Route("Attachment/{env}")]
 [ApiController]
 [Produces("text/html")]
+[Authorize]
 public class AttachmentController : ControllerBase
 {
     private readonly IBlobStorageHelper _blobStorageHelper;

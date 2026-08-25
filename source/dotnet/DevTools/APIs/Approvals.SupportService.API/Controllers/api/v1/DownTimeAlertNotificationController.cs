@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
@@ -19,6 +20,7 @@ using Microsoft.CFS.Approvals.DevTools.Model.Models;
 /// </summary>
 [Route("api/v1/DownTimeAlertNotification/{env}")]
 [ApiController]
+[Authorize]
 public class DownTimeAlertNotificationController : ControllerBase
 {
     /// <summary>

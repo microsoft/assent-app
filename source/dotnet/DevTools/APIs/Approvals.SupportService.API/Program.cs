@@ -7,10 +7,12 @@ using Azure.Core;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus.Administration;
 using Azure.Storage.Blobs;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Common.BL;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
+using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Core.BL.Factory;
 using Microsoft.CFS.Approvals.Core.BL.Interface;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Helpers;
@@ -46,6 +48,13 @@ builder.Services.AddControllers(options =>
     options.Filters.Add(new Microsoft.AspNetCore.Mvc.TypeFilterAttribute(
         typeof(Microsoft.CFS.Approvals.SupportService.API.Filters.AuthorizationFilter)));
 }).AddNewtonsoftJson();
+
+builder.Services
+    .AddAuthentication(Constants.EasyAuthScheme)
+    .AddScheme<AuthenticationSchemeOptions, EasyAuthAuthenticationHandler>(Constants.EasyAuthScheme, options =>
+    {
+    });
+
 builder.Services.AddAuthorization();
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 var appSettings = new ApplicationSettingsHelper(builder.Configuration).GetSettings();
@@ -148,6 +157,7 @@ else
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors(MyAllowSpecificOrigins);
+app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<AuthorizationMiddleware>();
 

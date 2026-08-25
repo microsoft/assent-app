@@ -4,6 +4,7 @@
 namespace Microsoft.CFS.Approvals.SupportService.API.Controllers.api.v1;
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
 using Microsoft.CFS.Approvals.SupportServices.Helper.ModelBinder;
@@ -14,6 +15,7 @@ using Newtonsoft.Json.Linq;
 /// </summary>
 [Route("api/v1/TenantOnBoarding")]
 [ApiController]
+[Authorize]
 public class TenantOnBoardingController : ControllerBase
 {
     /// <summary>

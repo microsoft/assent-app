@@ -58,6 +58,11 @@ public class ApprovalTenantInfo : BaseTableEntity
     public string RegisteredClients { get; set; }
 
     /// <summary>
+    /// Gets or sets the registered client identifier.
+    /// </summary>
+    public string RegisteredClientId { get; set; }
+
+    /// <summary>
     /// Gets or sets the Actionable NotificationTemplate Keys
     /// </summary>
     public string ActionableNotificationTemplateKeys { get; set; }

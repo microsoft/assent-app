@@ -8,6 +8,7 @@ using System.Net.Http;
 using Azure.AI.OpenAI;
 using Azure.Identity;
 using Azure.Storage.Blobs;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Azure.Cosmos;
 using Microsoft.CFS.Approvals.Common.BL;
@@ -87,6 +88,14 @@ builder.Services.AddControllers().AddNewtonsoftJson(options =>
 });
 
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
+
+builder.Services
+    .AddAuthentication("EasyAuth")
+    .AddScheme<AuthenticationSchemeOptions, EasyAuthAuthenticationHandler>("EasyAuth", options =>
+    {
+    });
+
+builder.Services.AddAuthorization();
 
 // Register the Swagger generator, defining one or more Swagger documents
 builder.Services.AddSwaggerGen(c =>
@@ -253,6 +262,10 @@ app.UseSwagger(c =>
 app.UseHttpsRedirection();
 
 app.UseRouting();
+
+app.UseAuthentication();
+
+app.UseAuthorization();
 
 app.UseMiddleware<AuthorizationMiddleware>();
 

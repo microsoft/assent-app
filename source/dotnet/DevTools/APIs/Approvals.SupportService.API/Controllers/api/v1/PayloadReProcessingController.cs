@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
@@ -20,6 +21,7 @@ using Newtonsoft.Json.Linq;
 /// </summary>
 [Route("api/v1/PayloadReProcessing/{env}")]
 [ApiController]
+[Authorize]
 public class PayloadReProcessingController : ControllerBase
 {
     private readonly ConfigurationHelper _configurationHelper;

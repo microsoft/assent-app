@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
 using Microsoft.CFS.Approvals.SupportServices.Helper.ModelBinder;
@@ -16,6 +17,7 @@ using Newtonsoft.Json.Linq;
 /// </summary>
 [Route("api/v1/MarkRequestOutOfSync/{env}")]
 [ApiController]
+[Authorize]
 public class MarkRequestOutOfSyncController : ControllerBase
 {
     /// <summary>

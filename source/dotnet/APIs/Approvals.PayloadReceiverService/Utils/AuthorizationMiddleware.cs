@@ -31,6 +31,13 @@ public class AuthorizationMiddleware : IMiddleware
     {
         var claims = new List<Claim>();
 
+        if (!context.Request.Headers.ContainsKey(XMsClientPrincipalIdp) || !context.Request.Headers.ContainsKey(XMsClientPrincipal))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await context.Response.WriteAsync("Unauthorized request");
+            return;
+        }
+
         // Authorize after the user has been authenticated by App Service Authentication Service
         if (context.Request.Headers.ContainsKey(XMsClientPrincipalIdp))
         {
@@ -47,16 +54,20 @@ public class AuthorizationMiddleware : IMiddleware
 
             #region Check for Valid AppID
 
-            // Get list of AppIds
-            var validAppIds = Environment.GetEnvironmentVariable("ValidAppIds");
-            var listOfValidAppIds = validAppIds.Split(';');
-
             if (context.User != null)
             {
-                var appid = context.User.Claims.FirstOrDefault(c => c.Type.Equals("appid")) ?? context.User.Claims.FirstOrDefault(c => c.Type.Equals("aud"));
+                var clientAppId = GetClaimValue(context.User, "azp", "appid");
+                if (string.IsNullOrWhiteSpace(clientAppId))
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    await context.Response.WriteAsync("Unauthorized request");
+                    return;
+                }
 
-                // if AppId is null or the AppId fetched from claims is different from the Valid AppId list value then return UnAuthorized Response
-                if (appid == null || !listOfValidAppIds.Any(id => id.Equals(appid.Value, StringComparison.InvariantCultureIgnoreCase)))
+                var validAppIds = Environment.GetEnvironmentVariable("ValidAppIds");
+                var listOfValidAppIds = validAppIds?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? Array.Empty<string>();
+
+                if (!listOfValidAppIds.Any(id => id.Equals(clientAppId, StringComparison.InvariantCultureIgnoreCase)))
                 {
                     context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                     await context.Response.WriteAsync("Unauthorized request");
@@ -68,5 +79,25 @@ public class AuthorizationMiddleware : IMiddleware
         }
 
         await next(context);
+    }
+
+    /// <summary>
+    /// Gets the claim value from the claims principal based on the provided claim types.
+    /// </summary>
+    /// <param name="principal">The claims principal.</param>
+    /// <param name="claimTypes">The claim types to search for.</param>
+    /// <returns>The claim value if found; otherwise, an empty string.</returns>
+    private static string GetClaimValue(ClaimsPrincipal principal, params string[] claimTypes)
+    {
+        foreach (var claimType in claimTypes)
+        {
+            var value = principal.Claims.FirstOrDefault(c => c.Type.Equals(claimType, StringComparison.InvariantCultureIgnoreCase))?.Value;
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return string.Empty;
     }
 }

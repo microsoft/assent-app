@@ -4,6 +4,7 @@
 namespace Microsoft.CFS.Approvals.SupportService.API.Controllers;
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Model;
@@ -17,6 +18,7 @@ using System.Net.Mail;
 /// </summary>
 [Route("api/v1/UserDelegation")]
 [ApiController]
+[Authorize]
 public class UserDelegationController : ControllerBase
 {
     /// <summary>

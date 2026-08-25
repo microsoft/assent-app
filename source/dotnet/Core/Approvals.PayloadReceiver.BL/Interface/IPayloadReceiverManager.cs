@@ -13,6 +13,7 @@ public interface IPayloadReceiverManager
     /// </summary>
     /// <param name="documentTypeId">Unique TenantId (GUID) specifying a particular Tenant for which the Payload is received</param>
     /// <param name="payload">Data payload</param>
+    /// <param name="callerAppId">Caller application id from azp/appid claim.</param>
     /// <returns>Http Response Message</returns>
-    Task<JObject> ManagePost(string documentTypeId, string payload);
+    Task<JObject> ManagePost(string documentTypeId, string payload, string callerAppId = "");
 }
