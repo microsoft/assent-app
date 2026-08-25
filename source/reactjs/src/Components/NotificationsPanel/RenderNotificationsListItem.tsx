@@ -4,15 +4,19 @@ import { Icon } from '@fluentui/react/lib/Icon';
 import * as notificationStyled from './NotificationsPanelStyling';
 import { NProps } from './NotificationsPanel.types';
 
-export function RenderListItem(props: NProps): React.ReactElement {
-    const { item, status } = props;
-    const [messageTigger, setMessageTrigger] = React.useState(false);
-    const sanitizeMessageBodyText = sanitizeHtml(item.messageBodyText, {
+export function sanitizeNotificationMessage(message: string): string {
+    return sanitizeHtml(message, {
         allowedTags: ['a', 'p', 'strong'],
         allowedAttributes: {
             a: ['href', 'target'],
         },
     });
+}
+
+export function RenderListItem(props: NProps): React.ReactElement {
+    const { item, status } = props;
+    const [messageTigger, setMessageTrigger] = React.useState(false);
+    const sanitizeMessageBodyText = sanitizeNotificationMessage(item.messageBodyText);
 
     React.useEffect(() => {
         if (status === 'unread') {
