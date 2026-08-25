@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
 using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Models;
-using Microsoft.CFS.Approvals.SupportService.API.Filters;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -18,7 +17,6 @@ using Newtonsoft.Json.Linq;
 /// </summary>
 [Route("api/v1/TenantInfo")]
 [ApiController]
-[TypeFilter(typeof(AuthorizationFilter))]
 public class TenantInfoController : ControllerBase
 {
     /// <summary>

@@ -97,6 +97,19 @@ public class CommonController : ControllerBase
     [Route("CheckUserRole/{env}")]
     public IActionResult CheckUserRole()
     {
-        return Ok(_configurationHelper.appSettings[Request.RouteValues["env"].ToString()]["AdminUserList"].Contains(Request.Headers["useralias"]));
+        var loggedInAlias = Request.Headers[Microsoft.CFS.Approvals.Contracts.Constants.LoggedInUserAlias].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(loggedInAlias))
+            return Ok(false);
+
+        var env = Request.RouteValues["env"]?.ToString();
+        if (string.IsNullOrWhiteSpace(env) || !_configurationHelper.appSettings.ContainsKey(env))
+            return Ok(false);
+
+        var adminListValue = _configurationHelper.appSettings[env]["AdminUserList"] ?? string.Empty;
+        var adminSet = new HashSet<string>(
+            adminListValue.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            StringComparer.OrdinalIgnoreCase);
+
+        return Ok(adminSet.Contains(loggedInAlias));
     }
 }

@@ -41,7 +41,12 @@ builder.Services.AddCors(options =>
         });
 });
 
-builder.Services.AddControllers().AddNewtonsoftJson();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add(new Microsoft.AspNetCore.Mvc.TypeFilterAttribute(
+        typeof(Microsoft.CFS.Approvals.SupportService.API.Filters.AuthorizationFilter)));
+}).AddNewtonsoftJson();
+builder.Services.AddAuthorization();
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 var appSettings = new ApplicationSettingsHelper(builder.Configuration).GetSettings();
 builder.Services.AddScoped<IServiceBusHelper, ServiceBusHelper>();
