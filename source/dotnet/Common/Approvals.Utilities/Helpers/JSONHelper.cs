@@ -50,7 +50,8 @@ public static class JSONHelper
         valueWithPlaceholder,
         placeholderStart + "(.+?)" + placeholderEnd,
         match => parameters.ContainsKey(match.Groups[1].Value.Replace(placeholderStart, string.Empty).Replace(placeholderEnd, string.Empty)) ?
-            parameters[match.Groups[1].Value].ToString() : string.Empty);
+            Uri.EscapeDataString(parameters[match.Groups[1].Value]?.ToString() ?? match.Value) :
+            string.Empty);
     }
 
     /// <summary>

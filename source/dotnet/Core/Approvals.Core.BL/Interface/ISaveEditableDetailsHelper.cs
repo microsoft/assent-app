@@ -3,9 +3,10 @@
 
 namespace Microsoft.CFS.Approvals.Core.BL.Interface;
 
-using Microsoft.CFS.Approvals.Contracts.DataContracts;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.CFS.Approvals.Contracts.DataContracts;
+using Microsoft.CFS.Approvals.Model;
 
 public interface ISaveEditableDetailsHelper
 {
@@ -20,8 +21,9 @@ public interface ISaveEditableDetailsHelper
     /// <param name="Tcv"></param>
     /// <param name="tenantId"></param>
     /// <param name="documentNumber"></param>
+    /// <param name="currentApproverEntity"></param>
     /// <returns></returns>
-    Task<bool> CheckUserAuthorizationForEdit(User signedInUser, User onBehalfUser, string oauth2UserToken, string clientDevice , string Xcv, string Tcv, int tenantId, string documentNumber);
+    Task<bool> CheckUserAuthorizationForEdit(User signedInUser, User onBehalfUser, string oauth2UserToken, string clientDevice , string Xcv, string Tcv, int tenantId, string documentNumber, ApprovalDetailsEntity currentApproverEntity = null);
 
     /// <summary>
     /// Method to save the edited details into ApprovalDetails table

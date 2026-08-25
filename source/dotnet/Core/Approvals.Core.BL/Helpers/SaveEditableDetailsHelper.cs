@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.Azure.Amqp.Framing;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
@@ -70,16 +71,21 @@ public class SaveEditableDetailsHelper : ISaveEditableDetailsHelper
     /// <param name="Tcv"></param>
     /// <param name="tenantId"></param>
     /// <param name="documentNumber"></param>
+    /// <param name="currentApproverEntity"></param>
     /// <returns></returns>
-    public async Task<bool> CheckUserAuthorizationForEdit(User signedInUser, User onBehalfUser, string oauth2UserToken, string host, string Xcv, string Tcv, int tenantId, string documentNumber)
+    public async Task<bool> CheckUserAuthorizationForEdit(User signedInUser, User onBehalfUser, string oauth2UserToken, string host, string Xcv, string Tcv, int tenantId, string documentNumber, ApprovalDetailsEntity currentApproverEntity = null)
     {
         await _delegationHelper.CheckUserAuthorization(signedInUser, onBehalfUser, oauth2UserToken, host, Tcv, Xcv, Tcv);
         ApprovalTenantInfo tenantInfo = _approvalTenantInfoHelper.GetTenantInfo(tenantId);
-        var approverEntity = _approvalDetailProvider.GetApprovalsDetails(tenantId, documentNumber, Constants.CurrentApprover, tenantInfo?.DocTypeId);
-        bool editEnabledForCurrentUser = false;
-        if (approverEntity != null)
+        if(currentApproverEntity == null)
         {
-            var approvers = JsonConvert.DeserializeObject<List<Approver>>(approverEntity.JSONData);
+            currentApproverEntity = _approvalDetailProvider.GetApprovalsDetails(tenantId, documentNumber, Constants.CurrentApprover, tenantInfo?.DocTypeId);
+        }
+        
+        bool editEnabledForCurrentUser = false;
+        if (currentApproverEntity != null)
+        {
+            var approvers = JsonConvert.DeserializeObject<List<Approver>>(currentApproverEntity.JSONData);
             foreach (var approver in approvers)
             {
                 if (approver.Alias == onBehalfUser.MailNickname)
@@ -111,10 +117,80 @@ public class SaveEditableDetailsHelper : ISaveEditableDetailsHelper
     /// <returns></returns>
     public async Task<List<string>> SaveEditedDetails(User signedInUser, User onBehalfUser, string oauth2UserToken, string clientDevice, string detailsString, int tenantId, string sessionId, string Xcv, string Tcv)
     {
-        await _delegationHelper.CheckUserAuthorization(signedInUser, onBehalfUser, oauth2UserToken, clientDevice, sessionId, Xcv, Tcv);
-
         var detailsDataObj = detailsString.ToJToken();
+        ApprovalTenantInfo tenantInfo = _approvalTenantInfoHelper.GetTenantInfo(tenantId);
+        ApprovalIdentifier approvalIdentifier = detailsDataObj["ApprovalIdentifier"].ToString().FromJson<ApprovalIdentifier>();
+        // Check to assure usage of Document Number for RowKey
+        string documentNumber = approvalIdentifier.GetDocNumber(tenantInfo);
         
+        var allApprovalDetails = await _approvalDetailProvider.GetAllApprovalDetailsByTenantAndDocumentNumber(tenantInfo.TenantId, documentNumber);
+        var currentApproverEntity = allApprovalDetails != null && allApprovalDetails.Count > 0
+                                    ? allApprovalDetails?.FirstOrDefault(detail =>
+                                        detail.RowKey.Equals(Constants.CurrentApprover, StringComparison.InvariantCultureIgnoreCase) ||
+                                        detail.RowKey.Equals(Constants.CurrentApprover + "|" + tenantInfo.DocTypeId, StringComparison.InvariantCultureIgnoreCase))
+                                    : null;
+
+        bool isAuthorized = await CheckUserAuthorizationForEdit(signedInUser, onBehalfUser, oauth2UserToken, clientDevice, Xcv, Tcv, tenantId, documentNumber, currentApproverEntity);
+        if (!isAuthorized)
+        {
+            throw new UnauthorizedAccessException($"User {onBehalfUser.MailNickname} is not authorized to edit details for document {documentNumber}. Either tenant does not allow edits, user is not a current approver, or CanEdit flag is false.");
+        }
+
+        #region Get jsonSchema for the document from ApprovalDetails table
+
+        JToken jsonSchemaObj = null;
+        foreach (var detail in allApprovalDetails)
+        {
+            var detailsToken = JToken.Parse(detail.JSONData);
+            if (detailsToken is JObject)
+            {
+                var detailsObj = JObject.Parse(detail.JSONData);
+                if (detailsObj["jsonSchema"] != null)
+                {
+                    jsonSchemaObj = detailsObj["jsonSchema"].ToJToken();
+                    break;
+                }
+                else if(detailsObj["LineItems"] != null)
+                {
+                    var lineItems = JArray.Parse(detailsObj["LineItems"].ToString());
+                    foreach (JObject lineItem in lineItems)
+                    {
+                        if (lineItem["jsonSchema"] != null)
+                        {
+                            jsonSchemaObj = lineItem["jsonSchema"].ToJToken();
+                            break;
+                        }
+                    }
+                }
+            }
+            else if(detailsToken is JArray)
+            {
+                var detailsArray = JArray.Parse(detail.JSONData);
+                foreach (JObject detailObj in detailsArray)
+                {
+                    if (detailObj["jsonSchema"] != null)
+                    {
+                        jsonSchemaObj = detailObj["jsonSchema"];
+                        break;
+                    }
+                }
+            }
+        }
+
+        detailsDataObj["jsonSchema"] = detailsDataObj["jsonSchema"] != null && jsonSchemaObj != null ? jsonSchemaObj : detailsDataObj["jsonSchema"];
+        if (detailsDataObj["LineItems"] != null)
+        {
+            foreach (JObject lineItem in detailsDataObj["LineItems"])
+            {
+                if(lineItem["jsonSchema"] != null && jsonSchemaObj != null)
+                {
+                    lineItem["jsonSchema"] = jsonSchemaObj;
+                }
+            }
+        }
+
+        #endregion Get jsonSchema for the document from ApprovalDetails table
+
         #region Validate the edited fields
 
         bool isValid = false;
@@ -133,13 +209,7 @@ public class SaveEditableDetailsHelper : ISaveEditableDetailsHelper
 
         if (isValid)
         {
-            ApprovalTenantInfo tenantInfo = _approvalTenantInfoHelper.GetTenantInfo(tenantId);
-            ApprovalIdentifier approvalIdentifier = detailsDataObj["ApprovalIdentifier"].ToString().FromJson<ApprovalIdentifier>();
-            // Check to assure usage of Document Number for RowKey
-            string documentNumber = approvalIdentifier.GetDocNumber(tenantInfo);
-
             // Get all approval details data and check if it has row key = EditedDetails|MailNickname or EditedDetails|MailNickname|doctypeid
-            var allApprovalDetails = await _approvalDetailProvider.GetAllApprovalDetailsByTenantAndDocumentNumber(tenantInfo.TenantId, documentNumber);
             var editedDetailsOperationRowFromDetails = allApprovalDetails?.FirstOrDefault(detail =>
                 detail.RowKey.Equals(Constants.EditedDetailsOperationType + "|" + onBehalfUser.MailNickname, StringComparison.InvariantCultureIgnoreCase) ||
                 detail.RowKey.Equals(Constants.EditedDetailsOperationType + "|" + onBehalfUser.MailNickname + "|" + tenantInfo.DocTypeId, StringComparison.InvariantCultureIgnoreCase));
@@ -211,6 +281,9 @@ public class SaveEditableDetailsHelper : ISaveEditableDetailsHelper
     private List<string> ValidateEditableFields(JArray editableFields)
     {
         List<string> validationFailMessages = new List<string>();
+        // Regex timeout to prevent ReDoS attacks (CWE-1333, CWE-400)
+        TimeSpan regexTimeout = TimeSpan.FromMilliseconds(200);
+
         foreach (var editedField in editableFields)
         {
             var jsonSchema = JObject.Parse(editedField["jsonSchema"].ToString());
@@ -254,9 +327,22 @@ public class SaveEditableDetailsHelper : ISaveEditableDetailsHelper
                         var tokenPattern = properties["pattern"];
                         if (tokenPattern != null && !string.IsNullOrEmpty(tokenPattern.ToString()))
                         {
-                            Regex regEx = new Regex(tokenPattern.ToString());
+                            try
+                            {
+                                Regex regEx = new Regex(tokenPattern.ToString(), RegexOptions.None, regexTimeout);
                             if (!regEx.IsMatch(newValue))
                                 validationFailMessages.Add(key + " field value must match pattern: " + tokenPattern.ToString());
+                            }
+                            catch (RegexMatchTimeoutException)
+                            {
+                                // Pattern took too long - likely a catastrophic backtracking attack
+                                validationFailMessages.Add(key + " field validation pattern is too complex or input is too long.");
+                            }
+                            catch (ArgumentException ex)
+                            {
+                                // Invalid regex pattern from client
+                                validationFailMessages.Add(key + " field validation pattern is invalid: " + ex.Message);
+                            }
                         }
                         break;
 

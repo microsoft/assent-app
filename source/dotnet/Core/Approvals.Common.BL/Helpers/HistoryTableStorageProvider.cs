@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using global::Azure.Data.Tables;
 using Microsoft.CFS.Approvals.Common.DL.Interface;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
@@ -147,7 +148,7 @@ public class HistoryTableStorageProvider : IHistoryStorageProvider
     /// <returns></returns>
     public async Task<List<TransactionHistory>> GetHistoryDataAsync(string alias, string actionDate, string documentNumber, string actionTaken, string domain, string approverId)
     {
-        string query = "PartitionKey eq '" + documentNumber + "' and Approver eq '" + alias + "' and ActionTaken eq '" + actionTaken + "'";
+        string query = TableClient.CreateQueryFilter($"PartitionKey eq {documentNumber} and Approver eq {alias} and ActionTaken eq {actionTaken}");
         var historyList = _tableHelper.GetDataCollectionByTableQuery<TransactionHistory>(Constants.TransactionHistoryTableName, query);
         historyList = (List<TransactionHistory>)historyList.GetUpdatedObject(_config[Constants.OldWhitelistedDomains], domain, approverId);
         return await GetSummaryFromBlobIfAny(historyList);
@@ -169,7 +170,7 @@ public class HistoryTableStorageProvider : IHistoryStorageProvider
         }
         else
         {
-            string query = "PartitionKey eq '" + documentNumber + "' and TenantId eq '" + tenantId + "'";
+            string query = TableClient.CreateQueryFilter($"PartitionKey eq {documentNumber} and TenantId eq {tenantId}");
             dtTransactionHistory = _tableHelper.GetDataCollectionByTableQuery<TransactionHistory>(Constants.TransactionHistoryTableName, query).OrderBy(t => t.ActionDate).ToList(); ;
         }
 
@@ -185,7 +186,7 @@ public class HistoryTableStorageProvider : IHistoryStorageProvider
     /// <returns></returns>
     public async Task<List<TransactionHistory>> GetHistoryDataAsync(string tenantId, string documentNumber, string approver)
     {
-        string query = "PartitionKey eq '" + documentNumber + "' and TenantId eq '" + tenantId + "' and Approver eq '" + approver.ToLowerInvariant() + "'";
+        string query = TableClient.CreateQueryFilter($"PartitionKey eq {documentNumber} and TenantId eq {tenantId} and Approver eq {approver.ToLowerInvariant()}");
         var historyList = _tableHelper.GetDataCollectionByTableQuery<TransactionHistory>(Constants.TransactionHistoryTableName, query);
 
         return await GetSummaryFromBlobIfAny(historyList);
@@ -201,10 +202,16 @@ public class HistoryTableStorageProvider : IHistoryStorageProvider
     /// <returns></returns>
     public async Task<List<TransactionHistory>> GetHistoryDataAsync(string alias, string approverDomain, string approverId, int timePeriod, int endTimePeriod = 0)
     {
-        string query = "Approver eq '" + alias.ToLowerInvariant() + "' and ActionDate ge datetime'" + DateTime.Now.AddMonths(timePeriod * -1).ToString("yyyy-MM-ddTHH:mm:ssZ") + "'";
+        var startDate = DateTime.Now.AddMonths(timePeriod * -1);
+        string query;
         if (endTimePeriod > 0)
         {
-            query += " and ActionDate lt datetime'" + DateTime.Now.AddMonths(endTimePeriod * -1).ToString("yyyy-MM-ddTHH:mm:ssZ") + "'";
+            var endDate = DateTime.Now.AddMonths(endTimePeriod * -1);
+            query = TableClient.CreateQueryFilter($"Approver eq {alias.ToLowerInvariant()} and ActionDate ge {startDate:O} and ActionDate lt {endDate:O}");
+        }
+        else
+        {
+            query = TableClient.CreateQueryFilter($"Approver eq {alias.ToLowerInvariant()} and ActionDate ge {startDate:O}");
         }
         var historyList = _tableHelper.GetDataCollectionByTableQuery<TransactionHistory>(Constants.TransactionHistoryTableName, query);
         historyList = (List<TransactionHistory>)historyList.GetUpdatedObject(_config[Constants.OldWhitelistedDomains], approverDomain, approverId);

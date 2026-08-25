@@ -108,8 +108,7 @@ public class SaveEditableDetailsController : BaseApiController
     /// <param name="tcv"></param>
     /// <returns></returns>
     [SwaggerOperation(Tags = new[] { "Details" })]
-    [HttpPost]
-    [Route("api/v1/[controller]/{tenantId}")]
+    [HttpPost("{tenantId}")]
     public async Task<IActionResult> Post(int tenantId, string sessionId = "", string xcv = "", string tcv = "")
     {
         #region Logging

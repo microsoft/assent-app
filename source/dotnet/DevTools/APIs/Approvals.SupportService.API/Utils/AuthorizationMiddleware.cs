@@ -37,6 +37,14 @@ public class AuthorizationMiddleware : IMiddleware
     /// <returns></returns>
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
+        // SECURITY: Reject requests that bypass EasyAuth (App Service Authentication)
+        if (!EasyAuthPrincipalHelper.TryBuildPrincipal(context.Request.Headers, Constants.EasyAuthScheme, out var principal, out _))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await context.Response.WriteAsync("Unauthorized request");
+            return;
+        }
+
         var userAlias = string.Empty;
         string environment = context?.Request?.RouteValues["env"]?.ToString();
         if (string.IsNullOrWhiteSpace(environment))
@@ -66,13 +74,6 @@ public class AuthorizationMiddleware : IMiddleware
                     userAlias = new MailAddress(userAlias).User;
                 }
             });
-
-            if (!EasyAuthPrincipalHelper.TryBuildPrincipal(context.Request.Headers, Constants.EasyAuthScheme, out var principal, out _))
-            {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsync("Unauthorized request");
-                return;
-            }
 
             context.User = principal;
 

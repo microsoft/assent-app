@@ -373,4 +373,20 @@ public static class Extension
         }
         return null; // Input contains disallowed characters
     }
+
+    /// <summary>
+    /// Validates an identifier (for example, a user alias from an HTTP header) and OData-escapes it for safe interpolation into an Azure AI Search filter string literal such as <c>a eq '{value}'</c>. Rejects whitespace, parentheses, and control characters; escapes embedded single quotes (<c>'</c> to <c>''</c>). Returns <c>null</c> on rejection — callers MUST treat that as a hard failure.
+    /// </summary>
+    /// <param name="input">The identifier to validate and escape.</param>
+    /// <returns>The OData-escaped value on success; <c>null</c> if <paramref name="input"/> is null, empty, or contains disallowed characters.</returns>
+    public static string SanitizeODataLiteral(string input)
+    {
+        // Allow any non-empty sequence with no whitespace, no parentheses, and no control characters
+        var allowedPattern = @"^[^\s()\p{Cc}]+$";
+        if (input != null && System.Text.RegularExpressions.Regex.IsMatch(input, allowedPattern))
+        {
+            return input.Replace("'", "''"); // OData v4: an embedded ' inside a string literal is doubled.
+        }
+        return null; // Input is null or contains disallowed characters
+    }
 }

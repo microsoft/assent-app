@@ -269,10 +269,10 @@ public class DelegationHelper : IDelegationHelper
 
                 var tenantAdapter = _tenantFactory.GetTenant(tenant);
 
-                Dictionary<string, object> parameters = new Dictionary<string, object> { { "alias", onBehalfUser.MailNickname } };
+                Dictionary<string, object> parameters = new Dictionary<string, object> { { "alias", signedInUser.MailNickname } };
 
                 // Get the details of an approval request from tenant system.
-                var httpResponseMessage = await tenantAdapter.GetUsersDelegatedToAsync(onBehalfUser, parameters, clientDevice, xcv, tcv, sessionId);
+                var httpResponseMessage = await tenantAdapter.GetUsersDelegatedToAsync(signedInUser, parameters, clientDevice, xcv, tcv, sessionId);
                 logData.Add(LogDataKey.EndDateTime, DateTime.UtcNow);
                 var responseString = await httpResponseMessage.Content.ReadAsStringAsync();
 

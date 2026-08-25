@@ -45,20 +45,27 @@ public class AdobeWebhookHelper : IWebhookHelper
     public bool ValidateRequestHeader(string receivedHandshakeCode, string expectedHandshakeCode)
     {
         // Prepare log data for diagnostics
-        var logData = new Dictionary<string, object>
-        {
-            { "ReceivedHandshakeCode", receivedHandshakeCode },
-            { "ExpectedHandshakeCode", expectedHandshakeCode }
-        };
+        var logData = new Dictionary<string, object>();
 
-        // Check for null/empty or mismatch
-        if (string.IsNullOrEmpty(receivedHandshakeCode) || string.IsNullOrEmpty(expectedHandshakeCode) || receivedHandshakeCode != expectedHandshakeCode)
+        // Validate not null/empty
+        if (string.IsNullOrEmpty(receivedHandshakeCode) || string.IsNullOrEmpty(expectedHandshakeCode))
         {
-            logData.Add(LogDataKey.PayloadValidationResult.ToString(), $"Unauthorized: Missing Required Header or Code ({receivedHandshakeCode}) invalid");
-            // Log error for invalid handshake code
+            logData.Add(LogDataKey.PayloadValidationResult.ToString(), "Unauthorized: Missing Required Header");
             _logProvider.LogError<TrackingEvent, LogDataKey>(TrackingEvent.PayloadValidationFailure, new Exception(TrackingEvent.PayloadValidationFailure.ToString()), null, logData);
             return false;
         }
+
+        // Constant-time comparison to prevent timing attacks
+        var receivedBytes = System.Text.Encoding.UTF8.GetBytes(receivedHandshakeCode);
+        var expectedBytes = System.Text.Encoding.UTF8.GetBytes(expectedHandshakeCode);
+
+        if (!System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(receivedBytes, expectedBytes))
+        {
+            logData.Add(LogDataKey.PayloadValidationResult.ToString(), "Unauthorized: Invalid Handshake Code");
+            _logProvider.LogError<TrackingEvent, LogDataKey>(TrackingEvent.PayloadValidationFailure, new Exception(TrackingEvent.PayloadValidationFailure.ToString()), null, logData);
+            return false;
+        }
+
         return true;
     }
 
