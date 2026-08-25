@@ -90,7 +90,7 @@ module.exports = (env) => {
                 port: 9000,
                 historyApiFallback: true,
                 //writeToDisk: true,
-                https: true,
+                server: 'https',
                 devMiddleware: {
                     writeToDisk: true,
                 },
