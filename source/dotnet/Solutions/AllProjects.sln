@@ -159,6 +159,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "skills", "skills", "{7D708B
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Approvals.Functions.Middleware", "..\Common\Approvals.Functions.Middleware\Approvals.Functions.Middleware.csproj", "{62311A4D-4455-FB52-A268-D09F659CB3A7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Approvals.Security.UnitTests", "..\UnitTests\Approvals.Security.UnitTests\Approvals.Security.UnitTests.csproj", "{3D1A7C69-AC54-4990-99EA-D6E2F09E52F3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -353,6 +355,10 @@ Global
 		{62311A4D-4455-FB52-A268-D09F659CB3A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{62311A4D-4455-FB52-A268-D09F659CB3A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{62311A4D-4455-FB52-A268-D09F659CB3A7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D1A7C69-AC54-4990-99EA-D6E2F09E52F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D1A7C69-AC54-4990-99EA-D6E2F09E52F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D1A7C69-AC54-4990-99EA-D6E2F09E52F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D1A7C69-AC54-4990-99EA-D6E2F09E52F3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -412,6 +418,7 @@ Global
 		{79520902-2189-49B6-B1B7-0D7F1B9A26DB} = {A0541991-6256-4036-B448-5A78FA43EA4A}
 		{7D708BBF-DC82-44CD-881E-5101B5581C73} = {8D86485D-8577-4293-8A88-1D7A90EECEEA}
 		{62311A4D-4455-FB52-A268-D09F659CB3A7} = {065E3963-AC62-4D3D-BACB-C7A1D11F1D3F}
+		{3D1A7C69-AC54-4990-99EA-D6E2F09E52F3} = {65F7E814-63E1-470C-B7E4-6CA2038242E1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BD0C76BF-430F-423A-BE2F-A837D1FAB9C0}
