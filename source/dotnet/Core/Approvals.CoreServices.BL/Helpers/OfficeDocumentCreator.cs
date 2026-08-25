@@ -39,7 +39,7 @@ public class OfficeDocumentCreator : IOfficeDocumentCreator
     public string GetDocumentURL(byte[] officeDocumentContent, string displayDocumentNumber, string attachmentName, string loggedInAlias, string sessionId)
     {
         string filePath = Path.Combine(_hostingEnvironment.WebRootPath, "PreviewDocuments");
-        
+
         DirectoryInfo dirInfo = new DirectoryInfo(filePath);
         if (!dirInfo.Exists)
         {
