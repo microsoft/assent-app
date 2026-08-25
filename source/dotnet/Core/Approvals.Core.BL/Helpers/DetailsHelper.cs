@@ -966,13 +966,13 @@ public class DetailsHelper : IDetailsHelper
     /// <param name="tcv">GUID transaction correlation vector for telemetry and logging</param>
     /// <param name="requestContent">Request body which is sent to the LoB application as part of the content in the Http call</param>
     /// <param name="userAlias">Alias of the Approver of this request</param>
-    /// <param name="loggedInAlias">Logged in User Alias</param>
+    /// <param name="signedInUser">Authenticated caller; used to re-verify the delegation grant.</param>
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
     /// <param name="authorizationToken">Authorization Token</param>
     /// <param name="objectId">Alias's ObjectId</param>
     /// <param name="domain">Alias's Domain</param>
     /// <returns>HttpResponseMessage with Stream data of all the attachments</returns>
-    public async Task<byte[]> GetAllAttachmentsInBulk(int tenantId, string sessionId, string tcv, string requestContent, string userAlias, string loggedInAlias, string clientDevice, string authorizationToken, string objectId, string domain)
+    public async Task<byte[]> GetAllAttachmentsInBulk(int tenantId, string sessionId, string tcv, string requestContent, string userAlias, User signedInUser, string clientDevice, string authorizationToken, string objectId, string domain)
     {
         #region Logging Prep
 
@@ -990,7 +990,7 @@ public class DetailsHelper : IDetailsHelper
         {
             { LogDataKey.Tcv, tcv },
             { LogDataKey.SessionId, sessionId },
-            { LogDataKey.UserRoleName, loggedInAlias },
+            { LogDataKey.UserRoleName, signedInUser?.MailNickname },
             { LogDataKey.TenantId, tenantId },
             { LogDataKey.UserAlias, userAlias },
             { LogDataKey.StartDateTime, DateTime.UtcNow },
@@ -1008,6 +1008,13 @@ public class DetailsHelper : IDetailsHelper
             logData.Add(LogDataKey.BusinessProcessName, string.Format(tenantInfo.BusinessProcessName, Constants.BusinessProcessNameGetDocuments, Constants.BusinessProcessNameUserTriggered));
 
             #endregion Getting the Tenant ID
+
+            // SECURITY: Re-validate the delegation grant server-side (userAlias is client-supplied);
+            // throws UnauthorizedAccessException (=> HTTP 403) if the caller isn't the owner/a delegate.
+            await _delegationHelper.CheckUserAuthorization(
+                signedInUser,
+                new User { MailNickname = userAlias, UserPrincipalName = userAlias + domain, Id = objectId },
+                authorizationToken, clientDevice, sessionId, tcv, tcv);
 
             #region Forh the list of Approval Identifiers
 
@@ -1045,7 +1052,7 @@ public class DetailsHelper : IDetailsHelper
 
             using (var docDownloadTracer = _performanceLogger.StartPerformanceLogger("PerfLog", string.IsNullOrWhiteSpace(clientDevice) ? Constants.WebClient : clientDevice, string.Format(Constants.PerfLogAction, tenantInfo.AppName, "Bulk Document Download"), logData))
             {
-                var response = await tenantAdaptor.BulkDownloadDocumentAsync(approvalRequests, loggedInAlias, sessionId, clientDevice);
+                var response = await tenantAdaptor.BulkDownloadDocumentAsync(approvalRequests, signedInUser?.MailNickname, sessionId, clientDevice);
 
                 if (response != null)
                 {
@@ -1059,6 +1066,14 @@ public class DetailsHelper : IDetailsHelper
                 _logProvider.LogInformation(TrackingEvent.WebApiBulkDocumentDownloadSuccess, logData);
                 return response;
             }
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            // Authorization / delegation failure must surface distinctly (HTTP 403) and not be
+            // masked as a generic internal error.
+            logData.Modify(LogDataKey.EndDateTime, DateTime.UtcNow);
+            _logProvider.LogError(TrackingEvent.WebApiBulkDocumentDownloadFail, ex, logData);
+            throw;
         }
         catch (Exception ex)
         {

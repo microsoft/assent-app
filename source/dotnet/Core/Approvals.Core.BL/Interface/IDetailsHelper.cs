@@ -240,7 +240,7 @@ public interface IDetailsHelper
     /// <param name="tcv">GUID transaction correlation vector for telemetry and logging</param>
     /// <param name="requestContent">Request body which is sent to the LoB application as part of the content in the Http call</param>
     /// <param name="userAlias">Alias of the Approver of this request</param>
-    /// <param name="loggedInAlias">Logged in User Alias</param>
+    /// <param name="signedInUser">Authenticated caller; used to re-verify the delegation grant.</param>
     /// <param name="clientDevice">Client Device (Web/WP8..)</param>
     /// <param name="authorizationToken">Authorization Token</param>
     /// <param name="objectId">Alias's ObjectId</param>
@@ -252,7 +252,7 @@ public interface IDetailsHelper
             string tcv,
             string requestContent,
             string userAlias,
-            string loggedInAlias,
+            User signedInUser,
             string clientDevice,
             string authorizationToken,
             string objectId,

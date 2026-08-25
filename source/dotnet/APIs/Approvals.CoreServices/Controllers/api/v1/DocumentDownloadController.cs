@@ -101,6 +101,10 @@ public class DocumentDownloadController : BaseApiController
 
             return File(httpResponseMessage, "application/octet-stream");
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, ex.Message);
+        }
         catch (Exception ex)
         {
             return BadRequest(ex.Message);
@@ -137,13 +141,18 @@ public class DocumentDownloadController : BaseApiController
                    tcv,
                    requestBody,
                    OnBehalfUser.MailNickname,
-                   SignedInUser.MailNickname,
+                   SignedInUser,
                    ClientDevice,
                    GetTokenOrCookie(),
                    OnBehalfUser.Id,
                    DomainName);
 
             return File(httpResponseMessage, "application/octet-stream");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            // Caller is not the approver and holds no delegation grant for the requested alias.
+            return StatusCode(403, ex.Message);
         }
         catch (Exception ex)
         {
