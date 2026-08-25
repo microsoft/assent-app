@@ -81,7 +81,6 @@ public class SaveEditableDetailsHelper : ISaveEditableDetailsHelper
         {
             currentApproverEntity = _approvalDetailProvider.GetApprovalsDetails(tenantId, documentNumber, Constants.CurrentApprover, tenantInfo?.DocTypeId);
         }
-        
         bool editEnabledForCurrentUser = false;
         if (currentApproverEntity != null)
         {

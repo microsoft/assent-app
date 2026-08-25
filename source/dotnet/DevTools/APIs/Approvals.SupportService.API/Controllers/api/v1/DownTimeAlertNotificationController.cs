@@ -12,7 +12,6 @@ using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
 using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.DevTools.Model.Models;
-using Microsoft.CFS.Approvals.SupportService.API.Filters;
 
 
 /// <summary>
@@ -20,7 +19,6 @@ using Microsoft.CFS.Approvals.SupportService.API.Filters;
 /// </summary>
 [Route("api/v1/DownTimeAlertNotification/{env}")]
 [ApiController]
-[TypeFilter(typeof(AuthorizationFilter))]
 public class DownTimeAlertNotificationController : ControllerBase
 {
     /// <summary>

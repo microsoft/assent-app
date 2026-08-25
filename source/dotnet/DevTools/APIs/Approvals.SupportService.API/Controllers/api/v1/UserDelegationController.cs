@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Model;
 using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
-using Microsoft.CFS.Approvals.SupportService.API.Filters;
 using Microsoft.CFS.Approvals.Utilities.Interface;
 using Newtonsoft.Json.Linq;
 using System.Net.Mail;
@@ -18,7 +17,6 @@ using System.Net.Mail;
 /// </summary>
 [Route("api/v1/UserDelegation")]
 [ApiController]
-[TypeFilter(typeof(AuthorizationFilter))]
 public class UserDelegationController : ControllerBase
 {
     /// <summary>
