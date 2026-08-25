@@ -54,8 +54,11 @@ import { accessibilityReducer, accessibilityReducerName } from './Components/Acc
 import { FeedbackRegistry, IFeedback } from './Components/Feedback/IFeedback';
 import CacheBuster from 'react-cache-buster';
 import { version } from '../package.json';
+import { SessionExpiryDialog } from './Components/Shared/Components/SessionExpiryDialog';
+import useAuthClient from './Helpers/AuthClientV2/useAuthClient';
 
 export function App(): React.ReactElement {
+    useAuthClient();
     useLoginOnStartup(true, { scopes: ['https://graph.microsoft.com/.default'] });
     initializeIcons();
     // See: https://developer.microsoft.com/en-us/fluentui#/styles/web/file-type-icons
@@ -192,6 +195,7 @@ export function App(): React.ReactElement {
             } //If not passed, nothing appears at the time of new version check.
         >
             <div>
+                <SessionExpiryDialog />
                 <AccessibilityPanel />
                 <HelpPanel />
                 <UserSettingsPanel />

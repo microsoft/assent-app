@@ -28,7 +28,7 @@
         "coverage": "jest --coverage --coverageReporters=cobertura"
     },
     "dependencies": {
-        "@azure/msal-browser": "^2.22.1",
+        "@azure/msal-browser": "5.5.0",
         "@fluentui/date-time-utilities": "^8.5.0",
         "@fluentui/react": "^8.67.3",
         "@fluentui/react-file-type-icons": "^8.6.7",
