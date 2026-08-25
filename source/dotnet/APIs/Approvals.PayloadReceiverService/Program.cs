@@ -168,6 +168,8 @@ app.UseRouting();
 
 app.UseMiddleware<AuthorizationMiddleware>();
 
+app.UseAuthorization();
+
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllers();

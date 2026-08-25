@@ -222,11 +222,10 @@ public class PayloadReceiverManager : IPayloadReceiverManager
     private static void ValidateTenantRegisteredClient(string callerAppId, ApprovalTenantInfo tenantInfo)
     {
         bool hasRegisteredClientId = !string.IsNullOrWhiteSpace(tenantInfo?.RegisteredClientId);
-        bool hasAllowedClientList = tenantInfo?.RegisteredClientsList?.Any() == true;
 
         // Backward compatibility: do not enforce tenant-specific client checks
         // until tenant caller IDs are configured.
-        if (!hasRegisteredClientId && !hasAllowedClientList)
+        if (!hasRegisteredClientId)
         {
             return;
         }
@@ -236,13 +235,7 @@ public class PayloadReceiverManager : IPayloadReceiverManager
             throw new UnauthorizedAccessException("Caller app id (azp/appid) is missing.");
         }
 
-        bool isRegisteredClientIdMatch = hasRegisteredClientId
-            && tenantInfo.RegisteredClientId.Equals(callerAppId, StringComparison.InvariantCultureIgnoreCase);
-
-        bool isAllowedByTenantList = hasAllowedClientList
-            && tenantInfo.RegisteredClientsList.Any(id => id.Equals(callerAppId, StringComparison.InvariantCultureIgnoreCase));
-
-        if (!isRegisteredClientIdMatch && !isAllowedByTenantList)
+        if (!tenantInfo.RegisteredClientId.Equals(callerAppId, StringComparison.InvariantCultureIgnoreCase))
         {
             throw new UnauthorizedAccessException("Caller app id is not registered for the tenant.");
         }
