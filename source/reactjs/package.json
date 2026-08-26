@@ -70,7 +70,7 @@
         "reselect": "^4.0.0",
         "roosterjs-editor-api": "^8.28.1",
         "roosterjs-editor-dom": "^8.28.1",
-        "sanitize-html": "^2.7.1",
+        "sanitize-html": "^2.17.5",
         "styled-components": "^5.3.3",
         "tslib": "^2.3.1",
         "ua-parser-js": "^0.7.33",
