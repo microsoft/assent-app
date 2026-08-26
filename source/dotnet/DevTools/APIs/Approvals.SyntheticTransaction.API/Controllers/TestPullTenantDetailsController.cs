@@ -7,6 +7,7 @@ namespace Microsoft.CFS.Approvals.SyntheticTransaction.API.Controllers;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
@@ -21,6 +22,7 @@ using Newtonsoft.Json.Linq;
 /// </summary>
 [Route("api/TestPullTenantDetails")]
 [ApiController]
+[Authorize]
 public class TestPullTenantDetailsController : ControllerBase
 {
     /// <summary>

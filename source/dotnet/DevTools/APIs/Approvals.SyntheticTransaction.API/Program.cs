@@ -5,6 +5,7 @@ using System;
 using System.Net.Http;
 using AutoMapper;
 using Azure.Identity;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Common.BL;
@@ -16,6 +17,7 @@ using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.LogManager;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
 using Microsoft.CFS.Approvals.SyntheticTransaction.API.Services;
+using Microsoft.CFS.Approvals.SyntheticTransaction.API.Utils;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Helper;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Common.Interface;
 using Microsoft.CFS.Approvals.SyntheticTransaction.Helpers.Helpers;
@@ -45,6 +47,14 @@ builder.Services.AddCors(options =>
 var appSettings = new ApplicationSettingsHelper(builder.Configuration).GetSettings();
 
 builder.Services.AddControllers().AddNewtonsoftJson();
+
+builder.Services
+    .AddAuthentication(Constants.EasyAuthScheme)
+    .AddScheme<AuthenticationSchemeOptions, EasyAuthAuthenticationHandler>(Constants.EasyAuthScheme, options =>
+    {
+    });
+
+builder.Services.AddAuthorization();
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 builder.Services.AddMemoryCache();
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
@@ -61,6 +71,7 @@ builder.Services.AddScoped<IAuthenticationHelper, AuthenticationHelper>();
 builder.Services.AddScoped<IPayloadReceiverHelper, PayloadReceiverHelper>();
 builder.Services.AddScoped<IBulkDeleteHelper, BulkDeleteHelper>();
 builder.Services.AddScoped<ILoadGeneratorHelper, LoadGeneratorHelper>();
+builder.Services.AddScoped<AuthorizationMiddleware>();
 // Secure credential selection for Azure resources
 #if DEBUG
     var azureCredential = new DefaultAzureCredential();  // CodeQL [SM05137] Suppress CodeQL issue since we only use DefaultAzureCredential in development environments.
@@ -106,7 +117,9 @@ else
 
 app.UseRouting();
 app.UseCors(MyAllowSpecificOrigins);
+app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<AuthorizationMiddleware>();
 
 app.UseEndpoints(endpoints =>
 {

@@ -102,7 +102,7 @@ public class DocumentActionHelper : IDocumentActionHelper
     /// <summary>
     /// Delegation helper
     /// </summary>
-    private readonly IDelegationHelper _delegationHelper;
+    protected readonly IDelegationHelper _delegationHelper;
 
     #endregion Variables
 

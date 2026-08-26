@@ -112,7 +112,7 @@ public class DocumentPreviewController : BaseApiController
         }
         catch (Exception ex)
         {
-            return BadRequest(ex.Message);
+            return BadRequest(Constants.DocumentPreviewErrorMessage);
         }
     }
 

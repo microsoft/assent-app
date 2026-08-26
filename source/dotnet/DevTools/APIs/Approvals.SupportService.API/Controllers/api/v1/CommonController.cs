@@ -5,6 +5,7 @@ namespace Microsoft.CFS.Approvals.SupportService.API.Controllers.api.v1;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
@@ -17,6 +18,7 @@ using Microsoft.Extensions.Configuration;
 /// </summary>
 [Route("api/v1/Common")]
 [ApiController]
+[Authorize]
 public class CommonController : ControllerBase
 {
     /// <summary>
@@ -97,6 +99,19 @@ public class CommonController : ControllerBase
     [Route("CheckUserRole/{env}")]
     public IActionResult CheckUserRole()
     {
-        return Ok(_configurationHelper.appSettings[Request.RouteValues["env"].ToString()]["AdminUserList"].Contains(Request.Headers["useralias"]));
+        var loggedInAlias = Request.Headers[Microsoft.CFS.Approvals.Contracts.Constants.LoggedInUserAlias].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(loggedInAlias))
+            return Ok(false);
+
+        var env = Request.RouteValues["env"]?.ToString();
+        if (string.IsNullOrWhiteSpace(env) || !_configurationHelper.appSettings.ContainsKey(env))
+            return Ok(false);
+
+        var adminListValue = _configurationHelper.appSettings[env]["AdminUserList"] ?? string.Empty;
+        var adminSet = new HashSet<string>(
+            adminListValue.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            StringComparer.OrdinalIgnoreCase);
+
+        return Ok(adminSet.Contains(loggedInAlias));
     }
 }

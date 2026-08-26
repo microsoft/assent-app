@@ -4,6 +4,7 @@
 namespace Microsoft.CFS.Approvals.SupportService.API.Controllers.api.v1;
 using System;
 using System.Linq;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
@@ -17,6 +18,7 @@ using Newtonsoft.Json.Linq;
 /// </summary>
 [Route("api/v1/SchemaDefination")]
 [ApiController]
+[Authorize]
 public class SchemaDefinationController : ControllerBase
 {
     /// <summary>

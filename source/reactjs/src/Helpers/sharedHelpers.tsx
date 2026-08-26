@@ -73,6 +73,120 @@ export const flattenObject = (ob: any): any => {
     return toReturn;
 };
 
+const formatConditionValue = (value: any): string => {
+    if (value !== null && value !== undefined && value !== '' && !isNaN(Number(value))) {
+        return String(Number(value));
+    }
+    return JSON.stringify(value) ?? 'null';
+};
+
+// Binary operators supported by the tenant condition DSL (precedence, evaluator).
+const CONDITION_OPS: { [op: string]: [number, (l: any, r: any) => any] } = {
+    '||': [1, (l, r) => l || r],
+    '&&': [2, (l, r) => l && r],
+    '==': [3, (l, r) => l == r], // eslint-disable-line eqeqeq
+    '===': [3, (l, r) => l === r],
+    '!=': [3, (l, r) => l != r], // eslint-disable-line eqeqeq
+    '!==': [3, (l, r) => l !== r],
+    '<': [4, (l, r) => l < r],
+    '<=': [4, (l, r) => l <= r],
+    '>': [4, (l, r) => l > r],
+    '>=': [4, (l, r) => l >= r],
+};
+
+// Eval-free replacement for `new Function('return ' + condition)()`: evaluates only literals + allowed operators, else throws.
+const evaluateConditionExpression = (condition: string): boolean => {
+    const tokens =
+        condition.match(
+            /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|-?\d+\.?\d*|===|!==|[=!<>]=|&&|\|\||[<>!().,]|[A-Za-z_$][\w$]*/g
+        ) || [];
+    let pos = 0;
+
+    const primary = (): any => {
+        const t = tokens[pos++];
+        if (t === '(') {
+            const v = binary(0);
+            if (tokens[pos++] !== ')') throw new Error('Invalid condition');
+            return v;
+        }
+        if (t === 'true') return true;
+        if (t === 'false') return false;
+        if (t === 'null') return null;
+        if (t === 'undefined') return undefined;
+        if (t && t[0] === '"') return JSON.parse(t);
+        if (t && t[0] === "'") return t.slice(1, -1).replace(/\\(.)/g, '$1');
+        if (t && /^-?\d/.test(t)) return Number(t);
+        throw new Error('Invalid condition token: ' + t);
+    };
+
+    const postfix = (): any => {
+        let value = primary();
+        while (tokens[pos] === '.') {
+            pos++;
+            const name = tokens[pos++];
+            if (!name || !/^[A-Za-z_$][\w$]*$/.test(name)) throw new Error('Invalid condition');
+            if (tokens[pos] === '(') {
+                pos++;
+                const args: any[] = [];
+                if (tokens[pos] !== ')') {
+                    args.push(binary(0));
+                    while (tokens[pos] === ',') {
+                        pos++;
+                        args.push(binary(0));
+                    }
+                }
+                if (tokens[pos++] !== ')') throw new Error('Invalid condition');
+                if (!CONDITION_SAFE_METHODS.has(name) || value == null || typeof value[name] !== 'function') {
+                    throw new Error('Unsupported condition method: ' + name);
+                }
+                value = value[name](...args);
+            } else {
+                if (!CONDITION_SAFE_PROPS.has(name) || value == null) {
+                    throw new Error('Unsupported condition property: ' + name);
+                }
+                value = value[name];
+            }
+        }
+        return value;
+    };
+
+    const unary = (): any => {
+        if (tokens[pos] === '!') {
+            pos++;
+            return !unary();
+        }
+        return postfix();
+    };
+
+    function binary(min: number): any {
+        let left = unary();
+        for (let op = CONDITION_OPS[tokens[pos]]; op && op[0] >= min; op = CONDITION_OPS[tokens[pos]]) {
+            pos++;
+            left = op[1](left, binary(op[0] + 1));
+        }
+        return left;
+    }
+
+    const result = binary(0);
+    if (pos !== tokens.length) throw new Error('Invalid condition');
+    return Boolean(result);
+};
+
+// An unparseable tenant condition must never crash an approval action: log it and fall back.
+const safeEvaluateCondition = (condition: string, fallback: boolean): boolean => {
+    try {
+        return evaluateConditionExpression(condition);
+    } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('MSApprovals: unable to evaluate tenant condition; using fallback', {
+            condition,
+            fallback,
+            error,
+        });
+        return fallback;
+    }
+};
+
 export const validateConditionClient = (propertyObject: any, condition: string): boolean => {
     const conditionPhrases = condition.match(/(\w+[^\w\s]\w+)|(\w+\s)/g);
     if (conditionPhrases) {
@@ -88,11 +202,10 @@ export const validateConditionClient = (propertyObject: any, condition: string):
                 propertyName = toCamelCase(propertyName);
             }
             propertyName = propertyName.trim();
-            condition = condition.replace(conditionPhrase.trim(), '"' + propertyObject[propertyName] + '"');
+            condition = condition.replace(conditionPhrase.trim(), formatConditionValue(propertyObject[propertyName]));
         });
     }
-    const result = new Function('return ' + condition)();
-    return result;
+    return safeEvaluateCondition(condition, true);
 };
 
 export const validateCondition = (propertyObject: any, condition: string): boolean => {
@@ -110,11 +223,10 @@ export const validateCondition = (propertyObject: any, condition: string): boole
                         propertyName = toCamelCase(propertyName);
                     }
                     propertyName = propertyName.trim();
-                    condition = condition.replace(conditionPhrase.trim(), '"' + propertyObject[propertyName] + '"');
+                    condition = condition.replace(conditionPhrase.trim(), formatConditionValue(propertyObject[propertyName]));
                 });
             }
-            const result = new Function('return ' + condition)();
-            return result;
+            return safeEvaluateCondition(condition, true);
         }
     }
     return true;

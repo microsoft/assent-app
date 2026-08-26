@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
@@ -27,6 +28,7 @@ using Newtonsoft.Json.Linq;
 /// </summary>
 [ApiController]
 [Route("api/v1/SyntheticTransaction")]
+[Authorize]
 public class SyntheticTransactionController : ControllerBase
 {
     /// <summary>

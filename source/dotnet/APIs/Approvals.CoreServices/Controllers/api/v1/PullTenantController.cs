@@ -55,10 +55,9 @@ public class PullTenantController : BaseApiController
             ArgumentGuard.NotNull(tenantId, nameof(tenantId));
 
             var parameters = GetFilterParameters();
-            if (!parameters.ContainsKey("alias"))
-            {
-                parameters.Add("alias", OnBehalfUser.MailNickname);
-            }
+            // SECURITY FIX: Unconditionally overwrite the alias parameter with the server-derived value
+            // to prevent authorization bypass through user-controlled parameters
+            parameters["alias"] = OnBehalfUser.MailNickname;
 
             var summaryData = await _pullTenantHelper.GetSummaryAsync(SignedInUser, OnBehalfUser, GetTokenOrCookie(), parameters, tenantId, ClientDevice, sessionId, Xcv, MessageId);
             return Ok(summaryData);
@@ -93,10 +92,9 @@ public class PullTenantController : BaseApiController
         try
         {
             var parameters = GetFilterParameters();
-            if (!parameters.ContainsKey("alias"))
-            {
-                parameters.Add("alias", OnBehalfUser.MailNickname);
-            }
+            // SECURITY FIX: Unconditionally overwrite the alias parameter with the server-derived value
+            // to prevent authorization bypass through user-controlled parameters
+            parameters["alias"] = OnBehalfUser.MailNickname;
 
             if (!parameters.ContainsKey(Constants.DocumentNumber))
             {

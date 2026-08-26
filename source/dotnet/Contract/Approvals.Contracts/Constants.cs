@@ -311,6 +311,8 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string OnBehalfUserUpn = "OnBehalfUserUpn";
         public const string OnBehalfUserId = "OnBehalfUserId";
         public const string LoggedInUserAlias = "LoggedInUserAlias";
+        public const string AppClientId = "AppClientId";
+        public const string EasyAuthScheme = "EasyAuth";
         public const string Tenants = "Tenants";
         public const string LoggedInUserUpn = "LoggedInUserUpn";
         public const string DelegatedUserAlias = "DelegatedUserAlias";
@@ -396,6 +398,7 @@ namespace Microsoft.CFS.Approvals.Contracts
         public const string QuickTourAPIErrorMessage = "Failed to fetch Quick tour features";
 
         public const string DownloadAllAttachmentsFile = "AllAttachments.zip";
+        public const string DocumentPreviewErrorMessage = "Not able to preview the document at this time. Please try again later or contact support.";
 
         public const string AdaptiveTemplateVersion = "1.0";
 

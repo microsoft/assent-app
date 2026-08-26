@@ -5,12 +5,12 @@ namespace Microsoft.CFS.Approvals.SupportService.API.Controllers.api.v1;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
 using Microsoft.CFS.Approvals.DevTools.AppConfiguration;
 using Microsoft.CFS.Approvals.DevTools.Model.Models;
-using Microsoft.CFS.Approvals.SupportService.API.Filters;
 using Microsoft.CFS.Approvals.SupportServices.Helper.Interface;
 using Newtonsoft.Json.Linq;
 
@@ -19,7 +19,7 @@ using Newtonsoft.Json.Linq;
 /// </summary>
 [Route("api/v1/SubscribeFeatures")]
 [ApiController]
-[TypeFilter(typeof(AuthorizationFilter))]
+[Authorize]
 public class SubscribeFeaturesController : ControllerBase
 {
     /// <summary>

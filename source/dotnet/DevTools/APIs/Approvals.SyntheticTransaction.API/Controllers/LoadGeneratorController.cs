@@ -6,6 +6,7 @@ namespace Microsoft.CFS.Approvals.SyntheticTransaction.API.Controllers;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CFS.Approvals.DevTools.Model.Constant;
 using Microsoft.CFS.Approvals.LogManager.Provider.Interface;
@@ -18,6 +19,7 @@ using Microsoft.Extensions.Configuration;
 /// </summary>
 [Route("api/v1/LoadGenerator")]
 [ApiController]
+[Authorize]
 public class LoadGeneratorController : ControllerBase
 {
     /// <summary>

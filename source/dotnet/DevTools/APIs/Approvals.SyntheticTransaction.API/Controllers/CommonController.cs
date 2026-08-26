@@ -6,6 +6,7 @@ namespace Microsoft.CFS.Approvals.SyntheticTransaction.API.Controllers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.CFS.Approvals.Data.Azure.Storage.Interface;
@@ -23,6 +24,7 @@ using Microsoft.Extensions.Configuration;
 /// </summary>
 [Route("api/v1/Common")]
 [ApiController]
+[Authorize]
 public class CommonController : ControllerBase
 {
     /// <summary>

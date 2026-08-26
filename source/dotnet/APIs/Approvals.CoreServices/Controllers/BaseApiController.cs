@@ -6,6 +6,7 @@ namespace Microsoft.CFS.Approvals.CoreServices.Controllers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CFS.Approvals.Contracts;
 using Microsoft.CFS.Approvals.Contracts.DataContracts;
@@ -19,6 +20,7 @@ using Newtonsoft.Json.Linq;
 /// </summary>
 [Route("api/v1/[controller]")]
 [ApiController]
+[Authorize]
 public class BaseApiController : ControllerBase
 {
     /// <summary>

@@ -4,6 +4,7 @@
 namespace Microsoft.CFS.Approvals.SyntheticTransaction.API.Controllers;
 
 using System;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 /// <summary>
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 /// </summary>
 [ApiController]
 [Route("api/v1/TestHarnessEnvironment")]
+[Authorize]
 public class TestHarnessEnvironment : ControllerBase
 {
     public TestHarnessEnvironment()

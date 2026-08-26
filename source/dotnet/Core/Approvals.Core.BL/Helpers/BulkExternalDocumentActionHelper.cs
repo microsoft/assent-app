@@ -149,6 +149,8 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
 
         try
         {
+            await _delegationHelper.CheckUserAuthorization(signedInUser, onBehalfUser, oauth2UserToken, clientDevice, sessionId, xcv, tcv);
+
             var tenantOperations = tenantInfo.DetailOperations.DetailOpsList;
             var operation = tenantOperations.FirstOrDefault(item => item.operationtype == Constants.OperationTypeOutOfSync);
 
@@ -166,6 +168,12 @@ public class BulkExternalDocumentActionHelper : DocumentActionHelper
                 var approvalRequestsToTenant = JsonConvert.DeserializeObject<List<ApprovalRequest>>(approvalRequests.ToJson());
                 foreach (var approvalRequest in approvalRequestsToTenant)
                 {
+                    if (!string.IsNullOrEmpty(approvalRequest.ActionByAlias) &&
+                        !approvalRequest.ActionByAlias.Equals(onBehalfUser.MailNickname, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        throw new UnauthorizedAccessException(_config[ConfigurationKey.UnAuthorizedException.ToString()]);
+                    }
+
                     approvalRequest.AdditionalData.Remove("summaryJSON");
                 }
                 actionResponse = await tenantAdapter.ExecuteActionAsync(approvalRequestsToTenant, signedInUser.MailNickname, sessionId, clientDevice, xcv, tcv, null);

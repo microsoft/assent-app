@@ -78,8 +78,9 @@ public class PayloadReceiverManager : IPayloadReceiverManager
     /// </summary>
     /// <param name="documentTypeId">Unique TenantId (GUID) specifying a particular Tenant for which the Payload is received</param>
     /// <param name="payload">Data Payload</param>
+    /// <param name="callerAppId">Caller application id from azp/appid claim.</param>
     /// <returns>Http Response Message</returns>
-    public async Task<JObject> ManagePost(string documentTypeId, string payload)
+    public async Task<JObject> ManagePost(string documentTypeId, string payload, string callerAppId = "")
     {
         JObject response = new JObject();
 
@@ -122,6 +123,8 @@ public class PayloadReceiverManager : IPayloadReceiverManager
             logData.Add(LogDataKey.TenantId, tenantInfo.TenantId);
             logData.Add(LogDataKey.TenantName, tenantInfo.AppName);
 
+            ValidateTenantRegisteredClient(callerAppId, tenantInfo);
+
             #endregion TenantId pre-condition check
 
             #region Read the payload content
@@ -152,6 +155,7 @@ public class PayloadReceiverManager : IPayloadReceiverManager
             if (!string.IsNullOrWhiteSpace(payload))
             {
                 string businessProcessName = string.Empty;
+
                 // Process payload
                 PayloadProcessingResult payloadProcessingResult = _payloadReceiver.ProcessPayload(activityId, payloadType, payload, tenantInfo, out string xcv, out string tcv, out string approvalRequestOperationType, out businessProcessName, out Dictionary<string, string> tenantTelemetry);
 
@@ -195,6 +199,11 @@ public class PayloadReceiverManager : IPayloadReceiverManager
         }
         catch (Exception ex)
         {
+            if (ex is UnauthorizedAccessException)
+            {
+                throw;
+            }
+
             logData[LogDataKey.IsCriticalEvent] = CriticalityLevel.Yes.ToString();
             _logProvider.LogError(TrackingEvent.PayloadProcessingFailure, ex, logData);
 
@@ -203,4 +212,33 @@ public class PayloadReceiverManager : IPayloadReceiverManager
 
         return response;
     }
+
+    /// <summary>
+    /// Validates that the caller application ID is registered for the specified tenant.
+    /// </summary>
+    /// <param name="callerAppId">The application ID of the calling client (from azp/appid claim).</param>
+    /// <param name="tenantInfo">The tenant information containing registered client configurations.</param>
+    /// <exception cref="UnauthorizedAccessException">Thrown when the caller app ID is missing or not registered for the tenant.</exception>
+    private static void ValidateTenantRegisteredClient(string callerAppId, ApprovalTenantInfo tenantInfo)
+    {
+        bool hasRegisteredClientId = !string.IsNullOrWhiteSpace(tenantInfo?.RegisteredClientId);
+
+        // Backward compatibility: do not enforce tenant-specific client checks
+        // until tenant caller IDs are configured.
+        if (!hasRegisteredClientId)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(callerAppId))
+        {
+            throw new UnauthorizedAccessException("Caller app id (azp/appid) is missing.");
+        }
+
+        if (!tenantInfo.RegisteredClientId.Equals(callerAppId, StringComparison.InvariantCultureIgnoreCase))
+        {
+            throw new UnauthorizedAccessException("Caller app id is not registered for the tenant.");
+        }
+    }
+
 }
