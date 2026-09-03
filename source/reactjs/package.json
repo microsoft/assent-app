@@ -37,7 +37,7 @@
         "@micro-frontend-react/employee-experience": "^1.0.0-alpha.5",
         "@microsoft/applicationinsights-web": "^2.7.3",
         "@redux-devtools/extension": "^3.2.2",
-        "adaptive-expressions": "^4.13.3",
+        "adaptive-expressions": "^4.23.3",
         "adaptivecards": "^2.9.0",
         "adaptivecards-templating": "^2.3.1",
         "axios": "^0.26.0",
