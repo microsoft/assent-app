@@ -5,6 +5,11 @@ import { Stack } from '@fluentui/react/lib/Stack';
 import BasicDropdown from '../../../../Controls/BasicDropdown';
 import { IconButton } from '@fluentui/react/lib/Button';
 import ErrorResult from '../../Components/ErrorResult';
+import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
+import { Context } from '@micro-frontend-react/employee-experience/lib/Context';
+import { toggleDetailsScreen as toggleDetailsScreenAction } from '../../SharedComponents.actions';
+import FlightingHandler from '../../Components/FlightingHandler';
+import { openSecondaryPreview } from '../Details.actions';
 
 const DocumentPreview = (props: any): JSX.Element => {
     const {
@@ -19,10 +24,14 @@ const DocumentPreview = (props: any): JSX.Element => {
         toggleDetailsScreen,
         isModal,
         isModalExpanded,
-        previewContainerInitialHeight
+        previewContainerInitialHeight,
+        OCRData,
     } = props;
+    const { useSelector, dispatch } = React.useContext(Context as React.Context<IEmployeeExperienceContext>);
     const type = documentPreview?.[0];
     const isImage = type === '/' || type === 'i' || type === 'R';
+    const isPdf = type === 'J';
+    const isTxt = type === 'V';
     const [rotation, setRotation] = React.useState(0);
     const [width, setWidth] = React.useState(0);
     const [height, setHeight] = React.useState(0);
@@ -31,6 +40,11 @@ const DocumentPreview = (props: any): JSX.Element => {
     const [containerHeight, setContainerHeight] = React.useState(window.innerHeight * 0.65);
 
     const rotationAlt = rotation != 0 ? ` rotated ${rotation} degrees` : '';
+
+    const scrollDiv = React.useRef<HTMLDivElement>(null);
+    React.useEffect(() => {
+        scrollDiv.current?.scrollTo({ top: scrollDiv.current.scrollHeight });
+    });
 
     function handleGetDimensions(e: object): void {
         const { naturalWidth, naturalHeight } = (e as any).target;
@@ -45,6 +59,10 @@ const DocumentPreview = (props: any): JSX.Element => {
             const newRotation = rotation + 90;
             setRotation(newRotation);
         }
+    }
+
+    function handleSecondaryModal(): void {
+        dispatch(openSecondaryPreview());
     }
 
     React.useEffect(() => {
@@ -78,8 +96,10 @@ const DocumentPreview = (props: any): JSX.Element => {
         isModal,
         isModalExpanded,
         previewContainerInitialWidth,
-        previewContainerInitialHeight
+        previewContainerInitialHeight,
     ]);
+
+    const displaySplitPreview = false;
 
     function calcContainerStyle(): React.CSSProperties {
         let previewMaxSize = containerWidth;
@@ -104,7 +124,7 @@ const DocumentPreview = (props: any): JSX.Element => {
             overflow: `auto`,
             height: `${previewMaxHeight}px`,
             maxWidth: `${previewMaxSize}px`,
-            margin: 'auto'
+            margin: 'auto',
         };
         switch (rotation) {
             case 90:
@@ -129,7 +149,7 @@ const DocumentPreview = (props: any): JSX.Element => {
     function calcImgStyle(): React.CSSProperties {
         const style: React.CSSProperties = {
             display: `block`,
-            transformOrigin: `top left`
+            transformOrigin: `top left`,
         };
         if (isFitToWindow) {
             style.height = 'auto';
@@ -152,6 +172,33 @@ const DocumentPreview = (props: any): JSX.Element => {
         }
     }
 
+    function calcChatStyle(): React.CSSProperties {
+        let previewMaxHeight = containerHeight;
+
+        if (!isModal) {
+            const offset = toggleDetailsScreen ? 0.8 : 0.82;
+            let bodyelements = document.getElementsByClassName('custom-details-container');
+
+            if (!bodyelements || bodyelements.length === 0) {
+                bodyelements = document.getElementsByClassName('ms-Panel-scrollableContent');
+            }
+
+            if (bodyelements[0]) {
+                const el = bodyelements[0];
+                previewMaxHeight = el.clientHeight * offset;
+            }
+        }
+
+        const style: React.CSSProperties = {
+            overflow: `auto`,
+            height: `${previewMaxHeight}px`,
+            margin: 'auto',
+            float: 'right',
+            width: '40%',
+        };
+        return style;
+    }
+
     const renderPreviewElement = (documentPreview: string): JSX.Element => {
         const getExtensionName = (typeChar: string): string => {
             switch (typeChar) {
@@ -165,12 +212,16 @@ const DocumentPreview = (props: any): JSX.Element => {
                     return 'txt';
                 case 'J':
                     return 'pdf';
+                case 'U':
+                    return 'office'; //ppt, doc, docx, xlsx, xlsm, pptx
+                case '0':
+                    return 'xls';
             }
         };
         const extensionName = getExtensionName(type);
         if (isImage) {
             return (
-                <div className="custom-scrollbar" style={calcContainerStyle()}>
+                <div style={calcContainerStyle()} ref={scrollDiv} className="custom-scrollbar">
                     <img
                         style={calcImgStyle()}
                         src={`data:image/${extensionName};base64,${documentPreview}`}
@@ -181,20 +232,31 @@ const DocumentPreview = (props: any): JSX.Element => {
             );
         } else if (extensionName === 'txt') {
             return (
-                <iframe
-                    src={`data:text/plain;base64,${documentPreview}`}
-                    name="Text file preview"
-                    title="Text file preview"
-                />
+                <div>
+                    <iframe
+                        src={`data:text/plain;base64,${documentPreview}`}
+                        name="Text file preview"
+                        title="Text file preview"
+                    />
+                </div>
             );
         } else if (extensionName === 'pdf') {
             return (
-                <iframe
-                    src={`data:application/${extensionName};base64,${documentPreview}`}
-                    name="PDF file preview"
-                    title="PDF file preview"
-                    height={containerHeight}
-                />
+                <div>
+                    <iframe
+                        src={`data:application/${extensionName};base64,${documentPreview}`}
+                        name="PDF file preview"
+                        title="PDF file preview"
+                        height={containerHeight}
+                        width={'100%'}
+                    />
+                </div>
+            );
+        } else if (extensionName === 'office' || extensionName === 'xls') {
+            return (
+                <div style={{ padding: '5%' }}>
+                    <ErrorResult message="There was an issue previewing this file, please download the file for viewing." />
+                </div>
             );
         } else {
             return (
@@ -206,52 +268,59 @@ const DocumentPreview = (props: any): JSX.Element => {
     };
 
     return (
-        <Stack tokens={{ childrenGap: 3 }}>
-            <Stack horizontal tokens={Styled.DocumentPreviewStackTokens}>
-                <Stack.Item>
-                    <BasicDropdown
-                        options={dropdownOptions}
-                        selectedKey={dropdownSelectedKey}
-                        onChange={dropdownOnChange}
-                        styles={SharedStyled.SmallDropdownStyles}
-                        label="Select file to preview"
-                        componentRef={(input: { focus: () => any }) => {
-                            input && input.focus();
-                        }}
-                    />
-                </Stack.Item>
-                <Stack.Item align="auto" tokens={{ padding: '30px 0px 0px' }}>
-                    <IconButton
-                        iconProps={{ iconName: 'Download' }}
-                        title="Download file"
-                        ariaLabel="Download file"
-                        onClick={handleDownloadClick}
-                    />
-                </Stack.Item>
-                <Stack.Item align="auto" tokens={{ padding: '30px 0px 0px' }}>
-                    {isImage && (
-                        <IconButton
-                            iconProps={{ iconName: 'Rotate' }}
-                            title="Rotate 90 degrees"
-                            ariaLabel="Rotate 90 degrees"
-                            onClick={handleRotate}
-                        />
-                    )}
-                </Stack.Item>
-                <Stack.Item align="auto" tokens={{ padding: '30px 0px 0px' }}>
-                    {isImage && (
-                        <IconButton
-                            iconProps={isFitToWindow ? { iconName: 'FitWidth' } : { iconName: 'FitPage' }}
-                            title={isFitToWindow ? 'Original size' : 'Fit to window'}
-                            ariaLabel={isFitToWindow ? 'Show full size image' : 'Fit image to window'}
-                            onClick={(): void => {
-                                setIsFitToWidow(!isFitToWindow);
-                            }}
-                        />
-                    )}
-                </Stack.Item>
-            </Stack>
-            {!documentPreviewHasError && renderPreviewElement(documentPreview)}
+        <Stack horizontal tokens={displaySplitPreview ? { childrenGap: 8 } : null}>
+            <Stack.Item
+                styles={{
+                    root: {
+                        width: displaySplitPreview ? containerWidth * 0.6 : '100%',
+                    },
+                }}
+            >
+                <Stack tokens={{ childrenGap: 3 }}>
+                    <Stack horizontal tokens={Styled.DocumentPreviewStackTokens}>
+                        <Stack.Item>
+                            <BasicDropdown
+                                options={dropdownOptions}
+                                selectedKey={dropdownSelectedKey}
+                                onChange={dropdownOnChange}
+                                styles={SharedStyled.SmallDropdownStyles}
+                                label="Select file to preview"
+                            />
+                        </Stack.Item>
+                        <Stack.Item align="auto" tokens={{ padding: '30px 0px 0px' }}>
+                            <IconButton
+                                iconProps={{ iconName: 'Download' }}
+                                title="Download file"
+                                ariaLabel="Download file"
+                                onClick={handleDownloadClick}
+                            />
+                        </Stack.Item>
+                        <Stack.Item align="auto" tokens={{ padding: '30px 0px 0px' }}>
+                            {isImage && (
+                                <IconButton
+                                    iconProps={{ iconName: 'Rotate' }}
+                                    title="Rotate 90 degrees"
+                                    ariaLabel="Rotate 90 degrees"
+                                    onClick={handleRotate}
+                                />
+                            )}
+                        </Stack.Item>
+                        <Stack.Item align="auto" tokens={{ padding: '30px 0px 0px' }}>
+                            {isImage && (
+                                <IconButton
+                                    iconProps={isFitToWindow ? { iconName: 'FitWidth' } : { iconName: 'FitPage' }}
+                                    title={isFitToWindow ? 'Original size' : 'Fit to window'}
+                                    ariaLabel={isFitToWindow ? 'Show full size image' : 'Fit image to window'}
+                                    onClick={(): void => {
+                                        setIsFitToWidow(!isFitToWindow);
+                                    }}
+                                />
+                            )}
+                        </Stack.Item>
+                    </Stack>
+                    {!documentPreviewHasError && renderPreviewElement(documentPreview)}
+                </Stack>
+            </Stack.Item>
         </Stack>
     );
 };

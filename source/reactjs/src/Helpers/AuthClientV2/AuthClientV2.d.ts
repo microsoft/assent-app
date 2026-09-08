@@ -1,0 +1,34 @@
+import { PublicClientApplication, Configuration } from '@azure/msal-browser';
+import { IAuthClientOptions } from '@micro-frontend-react/employee-experience/lib/AuthClient/AuthClient.types';
+import { IAuthClient, ILoginOptions } from '@micro-frontend-react/employee-experience/lib/IAuthClient';
+import { ITelemetryClient } from '@micro-frontend-react/employee-experience/lib/ITelemetryClient';
+import { IUser } from '@micro-frontend-react/employee-experience/lib/IUser';
+export declare class AuthClientV2<T extends IUser> implements IAuthClient<T> {
+    readonly authContext: PublicClientApplication;
+    private readonly config;
+    private readonly telemetryClient;
+    private account;
+    private readonly options;
+    private isLoginRequested;
+    private isRedirectComplete;
+    private acquireTokenRequests;
+    private getUserRequests;
+    constructor(config: Configuration, telemetryClient: ITelemetryClient, options?: IAuthClientOptions<T>);
+    login(loginOptions?: ILoginOptions | undefined): Promise<void>;
+    initializeClient(): Promise<void>;
+    logOut(): Promise<void>;
+    getUser(): Promise<T | null>;
+    getUserId(): Promise<string | null>;
+    isLoggedIn(): Promise<boolean>;
+    acquireToken(scopes: string | string[]): Promise<string | null>;
+    private handleRedirectCompleted;
+    private getUserInner;
+    private getCachedUser;
+    private normalizeScopes;
+    private addGetUserRequest;
+    private flushGetUserRequests;
+    private addAcquireTokenRequest;
+    private flushAcquireTokenRequests;
+    private acquireTokenSilent;
+    private getNameFromIdToken;
+}

@@ -17,10 +17,12 @@ import {
     IRenderFunction,
     MessageBar,
     MessageBarType,
+    TextField
 } from '@fluentui/react';
 import { getFileTypeIconProps } from '@fluentui/react-file-type-icons';
 import { controlStyles, deleteIcon, mainStack, buttonStack } from './FileUpload.styles';
 import { FileAttachment } from './FileAttachment';
+import { isMobileResolution } from '../../../../Helpers/sharedHelpers';
 
 /**
  * Represents a file to be uploaded.
@@ -29,8 +31,10 @@ export interface IFileUpload {
     clientRowKey: string;
     name: string;
     fileSize: number;
-    base64Content: string;
     attachmentAlreadyExists: boolean;
+    category : string;
+    description? : string;
+    file:File
 }
 
 /**
@@ -72,6 +76,26 @@ export interface IFileUploadOptions {
      * Current file attachments.
      */
     currentFileAttachments: FileAttachment[];
+    
+    /**
+     * Attachments categoty.
+     */
+    category: string;
+    
+    /**
+     * Attachments description.
+     */
+    description: string;
+
+    /**
+     * This flag indicate Description is required or not for Request.
+     */
+    isDescriptionRequired: boolean;
+
+    /**
+     * Allow Maximum charactor to provide description.
+     */
+    descriptionLength: number;
 }
 
 /**
@@ -87,6 +111,11 @@ export interface IFileUploadProps {
      * Submit button clicked event callback.
      */
     submitButtonClicked: (files: IFileUpload[]) => void;
+
+    /**
+     * Current window width in pixels. Used to adapt the layout for mobile resolutions.
+     */
+    windowWidth: number;
 }
 
 /**
@@ -113,9 +142,11 @@ export const FileUpload: React.FunctionComponent<IFileUploadProps> = (props: IFi
     const [allowedFileTypes, setAllowedFileTypes] = useState<string[]>([]);
     const [warnEmptyFilesSelected, setWarnEmptyFilesSelected] = useState<string[]>([]);
     const [warnLargeFilesSelected, setWarnLargeFilesSelected] = useState<string[]>([]);
+    const [warnEmptyDescription, setwarnEmptyDescription] = useState<string[]>([]);
     const [warnUnsupportedFilesSelected, setWarnUnsupportedFilesSelected] = useState<string[]>([]);
     const [warnMaxFilesToUploadAtOnceReached, setWarnMaxFilesToUploadAtOnceReached] = useState<boolean>();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const isMobile = isMobileResolution(props.windowWidth);
 
     useEffect(() => {
         const arr: string[] = [];
@@ -149,21 +180,6 @@ export const FileUpload: React.FunctionComponent<IFileUploadProps> = (props: IFi
     };
 
     /**
-     * Convert file to base64.
-     * @param file File object.
-     * @returns Base64 string content for the file.
-     */
-    const toBase64 = (file: File) => {
-        return new Promise<string>((resolve, reject) => {
-            const reader: FileReader = new FileReader();
-            reader.readAsDataURL(file);
-            // The split is to remove the Data-URL declaration portion. ex: data:image/png;base64,iVBORw...
-            reader.onload = () => resolve((reader.result as string).split(',')[1]);
-            reader.onerror = (error) => reject(error);
-        });
-    };
-
-    /**
      * File input change event handler.
      * @param event Change event.
      */
@@ -177,7 +193,7 @@ export const FileUpload: React.FunctionComponent<IFileUploadProps> = (props: IFi
         setWarnMaxFilesToUploadAtOnceReached(false);
 
         const newFilesToUpload: IFileUpload[] = [...filesToUpload];
-        const files: FileList | null = event.target.files;
+        const files: FileList | null = event.target.files;   
         if (files) {
             for (let i = 0; i < files.length; i++) {
                 const file: File | null = files.item(i);
@@ -207,11 +223,12 @@ export const FileUpload: React.FunctionComponent<IFileUploadProps> = (props: IFi
                                 clientRowKey: generateRandomId(),
                                 name: file.name,
                                 fileSize: file.size,
-                                base64Content: await toBase64(file),
-                                attachmentAlreadyExists:
+                                file:file,
+                                category : props.fileUploadOptions.category,
+                                attachmentAlreadyExists:(props.fileUploadOptions.currentFileAttachments !==undefined ?
                                     props.fileUploadOptions.currentFileAttachments.find(
                                         (x) => x.name === file.name && x.isPreAttached === true
-                                    ) !== undefined,
+                                    ) !== undefined : false),
                             };
                             newFilesToUpload.push(fileUpload);
                         } else {
@@ -232,6 +249,24 @@ export const FileUpload: React.FunctionComponent<IFileUploadProps> = (props: IFi
         }
     };
 
+     /**
+     * Attachment description input change event handler.
+     * @param item IFileUpload object.
+     * @param value Attachment description
+     */
+    const fileDescriptionInputChangeHandler = (item : IFileUpload, value : string) => {
+        const files: IFileUpload[] = [...filesToUpload];
+        const newFilesToUpload=files.map((fileitem)=>{
+            if(fileitem.name === item.name && fileitem.clientRowKey === item.clientRowKey){
+                return {...fileitem, description : value};
+            }
+            else{
+                 return fileitem;
+            }
+        })
+        setFilesToUpload(newFilesToUpload);
+    };
+
     /**
      * Remove file button clicked event handler.
      * @param fileUpload File upload.
@@ -250,6 +285,17 @@ export const FileUpload: React.FunctionComponent<IFileUploadProps> = (props: IFi
      */
     const submitButtonClicked = (): void => {
         // Raise submitButtonClicked event so caller can handle this event.
+        if (props.fileUploadOptions.isDescriptionRequired) {
+            const emptyFilesDescription: string[] = [];
+            setwarnEmptyDescription(emptyFilesDescription);
+            filesToUpload.map(fileUpload => {
+                if (fileUpload.description === '' || fileUpload.description === undefined) {
+                    emptyFilesDescription.push(fileUpload.name);
+                }
+            });
+            if (emptyFilesDescription.length > 0)
+                return;
+        }
         props.submitButtonClicked(filesToUpload);
     };
 
@@ -285,7 +331,9 @@ export const FileUpload: React.FunctionComponent<IFileUploadProps> = (props: IFi
             key: 'column1',
             name: 'File',
             fieldName: 'name',
-            minWidth: 80,
+            maxWidth: isMobile ? 150 : 500,
+            minWidth: isMobile ? 70 : 500,
+            isMultiline: isMobile,
             onRender: (item: IFileUpload): JSX.Element => {
                 return (
                     <>
@@ -309,7 +357,18 @@ export const FileUpload: React.FunctionComponent<IFileUploadProps> = (props: IFi
         },
         {
             ...commonColumnProps,
-            key: 'column2',
+             key:'column2',
+             name:'Description',
+             minWidth:100,
+             onRender:(item:IFileUpload): JSX.Element=>{
+                return(
+                    <TextField required={props.fileUploadOptions.isDescriptionRequired} maxLength={props.fileUploadOptions.descriptionLength} aria-label='Description' onChange={(events)=>fileDescriptionInputChangeHandler(item,(events.target as HTMLInputElement).value)}/>
+                )
+             }            
+       },
+       {
+            ...commonColumnProps,
+            key: 'column3',
             name: 'Size (KB)',
             fieldName: 'size',
             minWidth: 50,
@@ -325,7 +384,7 @@ export const FileUpload: React.FunctionComponent<IFileUploadProps> = (props: IFi
         },
         {
             ...commonColumnProps,
-            key: 'column3',
+            key: 'column4',
             minWidth: 26,
             onRender: (item: IFileUpload): JSX.Element => {
                 return (
@@ -367,7 +426,7 @@ export const FileUpload: React.FunctionComponent<IFileUploadProps> = (props: IFi
     };
 
     return (
-        <Stack horizontalAlign="start" verticalFill={true} tokens={buttonStack} className={controlStyles.mainStack}>
+        <Stack horizontalAlign="start" verticalFill={!isMobile} tokens={buttonStack} className={controlStyles.mainStack}>
             <Stack.Item>
                 <Text>Select files to upload as attachments to this approval request.</Text>
                 <br />
@@ -454,6 +513,13 @@ export const FileUpload: React.FunctionComponent<IFileUploadProps> = (props: IFi
                 <Stack.Item>
                     <MessageBar messageBarType={MessageBarType.warning} isMultiline={false}>
                         <Text>Max files to upload at once is reached.</Text>
+                    </MessageBar>
+                </Stack.Item>
+            )}
+            {warnEmptyDescription.length > 0 && (
+                <Stack.Item>
+                    <MessageBar messageBarType={MessageBarType.warning} isMultiline={false}>
+                        <Text>Please enter description for : {warnEmptyDescription.join(', ')}</Text>
                     </MessageBar>
                 </Stack.Item>
             )}

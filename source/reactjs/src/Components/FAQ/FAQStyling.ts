@@ -1,4 +1,5 @@
-import { IStackTokens, IStackStyles } from '@fluentui/react/lib/Stack';
+import { IButtonStyles, IStackStyles } from '@fluentui/react';
+import { CoherenceColors } from '../Shared/SharedColors';
 
 export interface IAdditionalHTMLAttribute {
     windowHeight?: number;
@@ -30,3 +31,42 @@ export const FAQTitle = styled.h1`
 export const QuickLink = styled.div`
     margin-bottom: 16px;
 `;
+
+export const interactiveStyles = {
+    rootHovered: { backgroundColor: CoherenceColors.InputBorder },
+    rootPressed: { backgroundColor: CoherenceColors.InputBorder },
+};
+
+export const interactiveStackStyles: IStackStyles = {
+    root: {
+        width: "210px",
+        padding: "1px 1px 1px 1px",
+        borderRadius: "12px",
+        border: "2px solid #b178780f",
+        selectors: {
+            ':hover': {
+                backgroundColor: CoherenceColors.InputBorder,
+                cursor: "pointer"
+            }
+        }
+    }
+};
+
+export const QuickTourButtons: IButtonStyles = {
+    root: {
+        width: 100,
+    }
+}
+
+export const FAQInnerContentStyles: IStackStyles = {
+    root: {
+        selectors: {
+            ['@media (min-width: 706px)']: {
+                marginLeft: "40px"
+            },
+            ['@media (min-width: 374px) and (max-width: 705px)']: {
+                marginLeft: "40px"
+            },
+        }
+    }
+}

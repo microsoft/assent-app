@@ -9,6 +9,7 @@ import { StoreBuilder } from '@micro-frontend-react/employee-experience/lib/Stor
 import { ReducerRegistry } from '@micro-frontend-react/employee-experience/lib/ReducerRegistry';
 import sessionStorage from 'redux-persist/lib/storage/session';
 import { guid } from './Helpers/Guid';
+import { AuthClientV2 } from './Helpers/AuthClientV2/AuthClientV2';
 
 let correlationId = window.sessionStorage.getItem('correlationId');
 if (correlationId === 'value' || !correlationId) {
@@ -34,11 +35,12 @@ const telemetryClient = new TelemetryClient(
     correlationId
 );
 
-const authClient = new AuthClient(
+const authClient = new AuthClientV2(
     {
         auth: {
             clientId: __CLIENT_ID__,
-            redirectUri: window.location.origin,
+            redirectUri: window.location.origin + '/redirect.html',
+            postLogoutRedirectUri: window.location.origin,
             authority: __AUTHORITY__,
         },
     },

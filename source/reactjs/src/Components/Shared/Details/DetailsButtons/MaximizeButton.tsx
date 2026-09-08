@@ -13,6 +13,7 @@ import {
 import { sharedComponentsSagas } from '../../SharedComponents.sagas';
 import { TooltipHost } from '@fluentui/react/lib/Tooltip';
 import { IComponentsAppState } from '../../SharedComponents.types';
+import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
 
 function MaximizeButton(props: { callbackOnMaximizeToggle?(): void }): React.ReactElement {
     useDynamicReducer(sharedComponentsReducerName, sharedComponentsReducer as Reducer, [sharedComponentsSagas], false);

@@ -61,6 +61,8 @@ import {
     getTenantInfo,
     getSelectedTenantDelegation,
     getSelectedPage,
+    getFeedbackByDocumentNumber,
+    getSummary,
 } from '../SharedComponents.selectors';
 import { trackBusinessProcessEvent, trackException, TrackingEventId } from '../../../Helpers/telemetryHelpers';
 import { setHeader } from '../Components/SagasHelper';
@@ -71,16 +73,20 @@ import {
 } from '@micro-frontend-react/employee-experience/lib/IHttpClient';
 import {
     convertKeysToLowercase,
+    encodeHTML,
     flattenObj,
     formatBusinessProcessName,
     generatePullModelSummary,
     generatePullTenantAdditionalData,
     generateSummaryObjForPullTenant,
     safeJSONParse,
+    shouldInitiateProofOfPresence,
+    getRecordsMeetingPopCondition,
 } from '../../../Helpers/sharedHelpers';
 import { getDisplayDocumentNumber, getSummaryJSON, getTcv, getIsProcessingAction } from './Details.selectors';
 import { IDelegationObj } from '../SharedComponents.types';
 import { IFileUploadResponse } from './Details.types';
+import { getOnBehalfUserUpn, getOnBehalfUserId } from '../SharedComponents.persistent-selectors';
 
 function* fetchUserImage(action: IRequestUserImageAction): IterableIterator<SimpleEffect<{}, {}>> {
     const telemetryClient: ITelemetryClient = yield getContext('telemetryClient');
@@ -132,13 +138,15 @@ function* fetchHeader(action: IRequestHeaderAction): IterableIterator<Effect<{},
     const stateCommonProperties = yield select(getStateCommonTelemetryProperties);
     const selectedPage = yield select(getSelectedPage);
     const tcv = yield select(getTcv);
+    const onBehalfUserUpn = yield select(getOnBehalfUserUpn);
+    const onBehalfUserId = yield select(getOnBehalfUserId);
     let updatedSummaryJSON = null;
     try {
         const httpClient: IHttpClient = yield getContext('httpClient');
         const headerTemplateRequest = {
             url: `${__API_BASE_URL__}${__API_URL_ROOT__}/adaptivedetail/${action.tenantId}?TemplateType=Summary`,
             resource: __RESOURCE_URL__,
-            headers: setHeader(action.userAlias, tcv, action.documentNumber),
+            headers: setHeader(action.userAlias, tcv, action.documentNumber, onBehalfUserUpn, onBehalfUserId),
         };
         let headerDetailsJSON;
         let headerTemplateJSON;
@@ -148,7 +156,7 @@ function* fetchHeader(action: IRequestHeaderAction): IterableIterator<Effect<{},
                 call([httpClient, httpClient.request], {
                     url: `${__API_BASE_URL__}${__API_URL_ROOT__}/detail/${action.tenantId}/${action.documentNumber}?CallType=Summary`,
                     resource: __RESOURCE_URL__,
-                    headers: setHeader(action.userAlias),
+                    headers: setHeader(action.userAlias, '', '', onBehalfUserUpn, onBehalfUserId),
                 }),
             ]);
             headerDetailsJSON = headerDetailsResponse?.data;
@@ -265,13 +273,15 @@ function* fetchDetails(action: IRequestDetailsAction): IterableIterator<Effect<{
     const authClient: IAuthClient = yield getContext('authClient');
     const stateCommonProperties = yield select(getStateCommonTelemetryProperties);
     const tcv = yield select(getTcv);
+    const onBehalfUserUpn = yield select(getOnBehalfUserUpn);
+    const onBehalfUserId = yield select(getOnBehalfUserId);
     try {
         const httpClient: IHttpClient = yield getContext('httpClient');
         const detailsURL = action.isPullModelEnabled
             ? `pulltenant/${action.tenantId}/${action.displayDocumentNumber}?operationType=DTL`
             : `detail/${action.tenantId}/${action.displayDocumentNumber}?CallType=Details`;
         const urlBase = `${__API_BASE_URL__}${__API_URL_ROOT__}/`;
-        let reqHeaders = setHeader(action.userAlias, tcv, action.displayDocumentNumber);
+        let reqHeaders = setHeader(action.userAlias, tcv, action.displayDocumentNumber, onBehalfUserUpn, onBehalfUserId);
         if (action.isPullModelEnabled) {
             const summaryJSON = yield select(getSummaryJSON);
             const flatSummary = flattenObj(summaryJSON, false);
@@ -293,7 +303,7 @@ function* fetchDetails(action: IRequestDetailsAction): IterableIterator<Effect<{
                 call([httpClient, httpClient.request], {
                     url: `${__API_BASE_URL__}${__API_URL_ROOT__}/adaptivedetail/${action.tenantId}?TemplateType=Details`,
                     resource: __RESOURCE_URL__,
-                    headers: setHeader(action.userAlias),
+                    headers: setHeader(action.userAlias, '', '', onBehalfUserUpn, onBehalfUserId),
                 }),
             ]);
             detailsJSON = detailsJSONResponse?.data;
@@ -328,7 +338,7 @@ function* fetchDetails(action: IRequestDetailsAction): IterableIterator<Effect<{
                         {
                             url: `${__API_BASE_URL__}${__API_URL_ROOT__}/saveeditabledetails?tenantId=${action.tenantId}&documentNumber=${action.displayDocumentNumber}`,
                             resource: __RESOURCE_URL__,
-                            headers: setHeader(action.userAlias),
+                            headers: setHeader(action.userAlias, '', '', onBehalfUserUpn, onBehalfUserId),
                         }
                     );
                     yield put(receiveAreDetailsEditable(areDetailsEditable));
@@ -374,6 +384,8 @@ function* postRequestasRead(action: IMarkRequestAsReadAction): IterableIterator<
     const authClient: IAuthClient = yield getContext('authClient');
     const stateCommonProperties = yield select(getStateCommonTelemetryProperties);
     const tcv = yield select(getTcv);
+    const onBehalfUserUpn = yield select(getOnBehalfUserUpn);
+    const onBehalfUserId = yield select(getOnBehalfUserId);
     try {
         const httpClient: IHttpClient = yield getContext('httpClient');
         const url = `${__API_BASE_URL__}${__API_URL_ROOT__}/readdetails/${action.tenantId}`;
@@ -385,7 +397,7 @@ function* postRequestasRead(action: IMarkRequestAsReadAction): IterableIterator<
             url: url,
             resource: __RESOURCE_URL__,
             data: readDetailsRequest,
-            headers: setHeader(action.userAlias, tcv, action.displayDocumentNumber),
+            headers: setHeader(action.userAlias, tcv, action.displayDocumentNumber, onBehalfUserUpn, onBehalfUserId),
         };
         yield call([httpClient, httpClient.post], url, actionRequest);
         trackBusinessProcessEvent(
@@ -420,13 +432,15 @@ function* fetchCallbackDetails(action: IRequestCallbackDetailsAction): IterableI
     const displayDocumentNumber = yield select(getDisplayDocumentNumber);
     let isErrorMessagePresentInResponse = false;
     let callbackJSONs = [];
+    const onBehalfUserUpn = yield select(getOnBehalfUserUpn);
+    const onBehalfUserId = yield select(getOnBehalfUserId);
     try {
         for (let i = 0; i < action.urls.length; i++) {
             const httpClient: IHttpClient = yield getContext('httpClient');
             const { data: callbackDetails }: IHttpClientRequest = yield call([httpClient, httpClient.request], {
                 url: `${__API_BASE_URL__}${action.urls[i]}`,
                 resource: __RESOURCE_URL__,
-                headers: setHeader(action.userAlias, tcv, displayDocumentNumber),
+                headers: setHeader(action.userAlias, tcv, displayDocumentNumber, onBehalfUserUpn, onBehalfUserId),
             });
             callbackJSONs.push(callbackDetails);
             if (callbackDetails?.Message) {
@@ -476,6 +490,8 @@ function* postAction(action: IPostAction): IterableIterator<SimpleEffect<{}, {}>
     const stateCommonProperties = yield select(getStateCommonTelemetryProperties);
     let loggedInAlias: string;
     const newguid = guid();
+    const onBehalfUserUpn = yield select(getOnBehalfUserUpn);
+    const onBehalfUserId = yield select(getOnBehalfUserId);
     try {
         const httpClient: IHttpClient = yield getContext('httpClient');
         const email: string = yield call([authClient, authClient.getUserId]);
@@ -487,6 +503,7 @@ function* postAction(action: IPostAction): IterableIterator<SimpleEffect<{}, {}>
         const newApproverUpn = action.peoplePickerSelections?.length > 0 ? action.peoplePickerSelections[0].upn : null;
         const newApproverAlias = newApproverUpn && newApproverUpn.substring(0, newApproverUpn.indexOf('@'));
         let approvalRequest: any;
+        let proofOfPresence: any;
         let url;
         const selectedTenantDelegation: IDelegationObj = yield select(getSelectedTenantDelegation);
         const originalApprover = selectedTenantDelegation
@@ -494,19 +511,35 @@ function* postAction(action: IPostAction): IterableIterator<SimpleEffect<{}, {}>
             : action.userAlias
             ? action.userAlias
             : loggedInAlias;
+        const originalApproverUpn = selectedTenantDelegation
+            ? selectedTenantDelegation.alias + '@microsoft.com'
+            : onBehalfUserUpn
+            ? onBehalfUserUpn
+            : email;
         if (!action.isBulkAction) {
             const formattedBusinessProcessName = formatBusinessProcessName(action.businessProcessName, [
                 'ApprovalAction',
                 action.code,
             ]);
             url = `${__API_BASE_URL__}${__API_URL_ROOT__}/documentaction/${action.tenantId}`;
+            // Get feedback by document number and append to additionalData if it exists
+            let enhancedAdditionalData = additionalData ? { ...additionalData } : {};
+            const feedbackData = yield select(getFeedbackByDocumentNumber, action.documentNumber);
+            if (feedbackData && feedbackData.Inputs && feedbackData.Inputs.length > 0) {
+                const feedbackInputs: { [key: string]: string } = {};
+                feedbackData.Inputs.forEach((input: { id: string; InputType: string; InputValue: string }) => {
+                    feedbackInputs[input.id] = input.InputValue;
+                });
+                enhancedAdditionalData = { ...enhancedAdditionalData, ...feedbackInputs };
+            }
             approvalRequest = {
                 documentTypeID: action.documentTypeId,
                 Action: action.code,
-                ActionByAlias: action.userAlias ? action.userAlias : loggedInAlias,
+                ActionByAlias: originalApprover,
+                ActionByUpn: originalApproverUpn,
                 //ActionByDelegateInMSApprovals: action.userAlias ? action.userAlias : loggedInAlias,
                 //OriginalApproverInTenantSystem: loggedInAlias,
-                AdditionalData: additionalData ? additionalData : {},
+                AdditionalData: enhancedAdditionalData,
                 telemetry: {
                     tcv: newguid,
                     xcv: action.documentNumber,
@@ -524,6 +557,13 @@ function* postAction(action: IPostAction): IterableIterator<SimpleEffect<{}, {}>
                     ReceiptsAcknowledged: action.receiptsCheck,
                     AntiCorruptionAcknowledged: action.corruptionCheck,
                     DigitalSignature: action.digitalSignature,
+                    AttestPoeCheck: action.attestPoeCheck,
+                    AttestQualificationReviewCheck: action.attestQualificationReviewCheck,
+                    ExemptPoeOptionSelected: action.exemptPoeOptionSelected,
+                    ContractId: action.contractId,
+                    NDAContractId: action.ndaContractId,
+                    HasExpirationDateCheck: action.hasExpirationDateCheck,
+                    ContractExpirationDate: action.contractExpirationDate,
                 };
                 approvalRequest.ActionDetails = actionDetails;
                 approvalRequest.DocumentKeys = [
@@ -546,6 +586,7 @@ function* postAction(action: IPostAction): IterableIterator<SimpleEffect<{}, {}>
                 approvalRequest.ActionByDelegateInMSApprovals = loggedInAlias;
                 approvalRequest.OriginalApproverInTenantSystem = originalApprover;
                 approvalRequest.ActionByAlias = originalApprover;
+                approvalRequest.ActionByUpn = originalApproverUpn;
                 approvalRequest = [approvalRequest];
             }
         } else {
@@ -564,7 +605,8 @@ function* postAction(action: IPostAction): IterableIterator<SimpleEffect<{}, {}>
                         ReasonText: action.reasonText,
                         ActionDate: new Date(),
                     },
-                    ActionByAlias: action.userAlias ? action.userAlias : loggedInAlias,
+                    ActionByAlias: originalApprover,
+                    ActionByUpn: originalApproverUpn,
                     Action: action.code,
                     DocumentKeys: documentKeys,
                     Tcv: tvcNum,
@@ -589,6 +631,7 @@ function* postAction(action: IPostAction): IterableIterator<SimpleEffect<{}, {}>
                         documentTypeID: documentTypeId,
                         Action: action.code,
                         ActionByAlias: originalApprover,
+                        ActionByUpn: originalApproverUpn,
                         telemetry: {
                             tcv: newguid,
                             xcv: summaryJSONForItem.laborId,
@@ -637,7 +680,7 @@ function* postAction(action: IPostAction): IterableIterator<SimpleEffect<{}, {}>
                 approvalRequest.ActionDetails.ReasonText = action.reasonText;
             }
 
-            //for adding next level approver in hierarchy
+            //for OneAsk-EDDA next level approver
             if (action.nextApprover && action.nextApprover != '') {
                 approvalRequest.ActionDetails.NextApprover = action.nextApprover;
                 approvalRequest.ActionDetails.SequenceID = 'AddApprover';
@@ -649,8 +692,100 @@ function* postAction(action: IPostAction): IterableIterator<SimpleEffect<{}, {}>
             Xcv: action.documentNumber ?? newguid,
             Tcv: newguid,
             TenantId: action.tenantId,
-            ...(action.userAlias && { UserAlias: `${action.userAlias ? action.userAlias : undefined}` }),
-        };
+            // SECURITY: Send UserAlias only when acting as another user, from the same source as ActionByAlias.
+            ...(originalApprover && originalApprover !== loggedInAlias && { UserAlias: originalApprover }),
+            OnBehalfUserUpn: onBehalfUserUpn,
+            OnBehalfUserId: onBehalfUserId,
+        };       
+        // Build proofOfPresence payload based on single vs bulk action
+        if (action.isBulkAction) {
+            const bulkActionByAlias = originalApprover;
+            const bulkActionByUpn = originalApproverUpn;
+            let bulkApprovalIdentifiers;
+            if (action.isPullModelEnabled) {
+                bulkApprovalIdentifiers = (approvalRequest as any[]).map((req: any) => req.ApprovalIdentifier);
+            } else {
+                bulkApprovalIdentifiers = approvalRequest.DocumentKeys;
+            }
+            proofOfPresence = {
+                ActionByAlias: bulkActionByAlias,
+                ActionByUpn: bulkActionByUpn,
+                Action: action.code,
+                ApprovalIdentifiers: bulkApprovalIdentifiers,
+                Tcv: action.isPullModelEnabled ? newguid : approvalRequest.Tcv,
+                RememberFor: action.rememberFor,
+                PolicyVersion: 1.0,
+                ClientRequestId: telemetryClient.getCorrelationId(),
+                Timestamp: new Date().toISOString()
+            };
+        } else {
+            const singleApprovalIdentifiers = action.isPullModelEnabled
+                ? [approvalRequest[0]?.ApprovalIdentifier]
+                : approvalRequest.DocumentKeys;
+            proofOfPresence = {
+                ActionByAlias: action.isPullModelEnabled ? approvalRequest[0]?.ActionByAlias : approvalRequest.ActionByAlias,
+                ActionByUpn: action.isPullModelEnabled ? approvalRequest[0]?.ActionByUpn : approvalRequest.ActionByUpn,
+                Action: action.code,
+                ApprovalIdentifiers: singleApprovalIdentifiers,
+                Tcv: newguid,
+                RememberFor: action.rememberFor,
+                PolicyVersion: 1.0,
+                ClientRequestId: telemetryClient.getCorrelationId(),
+                Timestamp: new Date().toISOString()
+            };
+        }
+
+        const tenantInfo = yield select(getTenantInfo);
+        let isProofOfPresenceRequired = false;
+        if (action.isBulkAction) {
+            const summaryData = yield select(getSummary);
+            isProofOfPresenceRequired = shouldInitiateProofOfPresence(
+                action.code, tenantInfo, null, Number(action.tenantId),
+                { selectedRecords: selectedApproval, summaryData, isPullTenant: action.isPullModelEnabled ?? false }
+            );
+            // Filter ApprovalIdentifiers to only include records that meet the PoP condition
+            if (isProofOfPresenceRequired) {
+                const qualifyingRecords = getRecordsMeetingPopCondition(
+                    action.code, tenantInfo, Number(action.tenantId),
+                    selectedApproval, summaryData, action.isPullModelEnabled ?? false
+                );
+                if (action.isPullModelEnabled) {
+                    proofOfPresence.ApprovalIdentifiers = qualifyingRecords.map((rec: any) => ({
+                        displayDocumentNumber: rec.laborId,
+                        documentNumber: rec.laborId,
+                    }));
+                } else {
+                    proofOfPresence.ApprovalIdentifiers = qualifyingRecords;
+                }
+            }
+        } else {
+            const headerDetailsJSON = yield select((state) => state.dynamic?.DetailsReducer?.headerDetailsJSON);
+            const conditionData = { ...headerDetailsJSON, ...additionalData };
+            isProofOfPresenceRequired = shouldInitiateProofOfPresence(action.code, tenantInfo, conditionData, Number(action.tenantId));
+        }
+        if (isProofOfPresenceRequired) {
+            // Call proof-start endpoint to verify user presence before proceeding with action
+            const proofStartUrl = `${__API_BASE_URL__}${__API_URL_ROOT__}/ProofPresence/start?actionId=${action.code}`;
+            const proofStartResponse: IHttpClientResult<any> = yield call([httpClient, httpClient.post], proofStartUrl, {
+                url: proofStartUrl,
+                resource: __RESOURCE_URL__,
+                data: proofOfPresence,
+                headers: headerObject,
+            });
+
+            if (!proofStartResponse || proofStartResponse.status < 200 || proofStartResponse.status >= 300) {
+                const errorMsg = 'Proof of presence verification failed. Please try again.';
+                if (action.isBulkAction) {
+                    yield put(updateIsProcessingBulkApproval(false));
+                    yield put(updateBulkFailedStatus(true));
+                    yield put(updateBulkFailedValue([errorMsg]));
+                } else {
+                    yield put(failedPostAction(errorMsg, action.displayDocumentNumber, action.isPullModelEnabled ?? false));
+                }
+                return;
+            }
+        }
+
 
         const actionRequest = {
             url: url,
@@ -763,7 +898,9 @@ function* postAction(action: IPostAction): IterableIterator<SimpleEffect<{}, {}>
                     }
                 } else {
                     const failureList = errorMessage.ApprovalResponseDetails?.False;
-                    const errorMessageList = failureList?.map((item: any) => item.Key + ' - ' + item.Value);
+                    const errorMessageList = failureList?.map(
+                        (item: any) => encodeHTML(item.Key) + ' - ' + encodeHTML(item.Value)
+                    );
                     if (errorMessageList) {
                         errorList = [failureCountMessage].concat(errorMessageList);
                     }
@@ -787,6 +924,8 @@ function* fetchDocument(action: IRequestDocumentAction): IterableIterator<Simple
     const authClient: IAuthClient = yield getContext('authClient');
     const stateCommonProperties = yield select(getStateCommonTelemetryProperties);
     const tcv = yield select(getTcv);
+    const onBehalfUserUpn = yield select(getOnBehalfUserUpn);
+    const onBehalfUserId = yield select(getOnBehalfUserId);
     try {
         const httpClient: IHttpClient = yield getContext('httpClient');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -808,7 +947,7 @@ function* fetchDocument(action: IRequestDocumentAction): IterableIterator<Simple
             url: selectedURL,
             resource: __RESOURCE_URL__,
             responseType: 'arraybuffer',
-            headers: setHeader(action.userAlias, tcv, action.displayDocumentNumber),
+            headers: setHeader(action.userAlias, tcv, action.displayDocumentNumber, onBehalfUserUpn, onBehalfUserId),
         });
         yield put(requestDocumentEnd());
         const id = action.actionId;
@@ -853,6 +992,8 @@ function* fetchDocumentPreview(action: IRequestDocumentPreviewAction): IterableI
     const authClient: IAuthClient = yield getContext('authClient');
     const stateCommonProperties = yield select(getStateCommonTelemetryProperties);
     const tcv = yield select(getTcv);
+    const onBehalfUserUpn = yield select(getOnBehalfUserUpn);
+    const onBehalfUserId = yield select(getOnBehalfUserId);
     try {
         const httpClient: IHttpClient = yield getContext('httpClient');
         action.isPreAttached = action.isPreAttached ?? true;
@@ -860,7 +1001,7 @@ function* fetchDocumentPreview(action: IRequestDocumentPreviewAction): IterableI
             url: `${__API_BASE_URL__}${__API_URL_ROOT__}/documentpreview/${action.tenantId}/${action.documentNumber}/?displayDocumentNumber=${action.displayDocumentNumber}&attachmentId=${action.attachmentId}&isPreAttached=${action.isPreAttached}`,
             resource: __RESOURCE_URL__,
             responseType: 'arraybuffer',
-            headers: setHeader(action.userAlias, tcv, action.displayDocumentNumber),
+            headers: setHeader(action.userAlias, tcv, action.displayDocumentNumber, onBehalfUserUpn, onBehalfUserId),
         });
         let charConversion = '';
         const byteArrayCopy = new Uint8Array(fileBytes);
@@ -899,6 +1040,8 @@ function* fetchAllDocuments(action: IRequestAllDocumentsAction): IterableIterato
     const authClient: IAuthClient = yield getContext('authClient');
     const stateCommonProperties = yield select(getStateCommonTelemetryProperties);
     const tcv = yield select(getTcv);
+    const onBehalfUserUpn = yield select(getOnBehalfUserUpn);
+    const onBehalfUserId = yield select(getOnBehalfUserId);
     try {
         const httpClient: IHttpClient = yield getContext('httpClient');
         const allDocumentsRequestData = {
@@ -909,7 +1052,7 @@ function* fetchAllDocuments(action: IRequestAllDocumentsAction): IterableIterato
             url: allDocumentsRequestURL,
             resource: __RESOURCE_URL__,
             responseType: 'arraybuffer',
-            headers: setHeader(action.userAlias, tcv, action.displayDocumentNumber),
+            headers: setHeader(action.userAlias, tcv, action.displayDocumentNumber, onBehalfUserUpn, onBehalfUserId),
             data: allDocumentsRequestData,
         };
         const { data: zipBytes }: IHttpClientRequest = yield call(
@@ -961,6 +1104,8 @@ function* postEditableDetails(action: IPostEditableDetailsAction): IterableItera
     const stateCommonProperties = yield select(getStateCommonTelemetryProperties);
     const tcv = yield select(getTcv);
     const displayDocumentNumber = yield select(getDisplayDocumentNumber);
+    const onBehalfUserUpn = yield select(getOnBehalfUserUpn);
+    const onBehalfUserId = yield select(getOnBehalfUserId);
     try {
         const httpClient: IHttpClient = yield getContext('httpClient');
         const url = `${__API_BASE_URL__}${__API_URL_ROOT__}/saveeditabledetails/${action.tenantId}`;
@@ -974,7 +1119,7 @@ function* postEditableDetails(action: IPostEditableDetailsAction): IterableItera
             url: url,
             resource: __RESOURCE_URL__,
             data: editDetailsData,
-            headers: setHeader(action.userAlias, tcv, displayDocumentNumber),
+            headers: setHeader(action.userAlias, tcv, displayDocumentNumber, onBehalfUserUpn, onBehalfUserId),
         };
         yield call([httpClient, httpClient.post], url, actionRequest);
         trackBusinessProcessEvent(
@@ -1006,10 +1151,19 @@ function* uploadFiles(action: IUploadFileAction): IterableIterator<SimpleEffect<
     const authClient: IAuthClient = yield getContext('authClient');
     const stateCommonProperties = yield select(getStateCommonTelemetryProperties);
     const newguid = guid();
+    const attachments = new FormData();
+    
+    action.files.forEach((file, i) => {
+        attachments.append(`file-${i}`, file.file, file.file.name);
+    });
+    attachments.append("attachmentUploadInfo",JSON.stringify(action.files));
+
+    const onBehalfUserUpn = yield select(getOnBehalfUserUpn);
+    const onBehalfUserId = yield select(getOnBehalfUserId);
     try {
         const httpClient: IHttpClient = yield getContext('httpClient');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const url = `${__API_BASE_URL__}${__API_URL_ROOT__}/AttachmentUpload/${action.tenantId}/${action.documentNumber}`;
+        const url = `${__API_BASE_URL__}${__API_URL_ROOT__}/AttachmentUpload/${action.tenantId}/${action.approvalIdentifier.DocumentNumber}/?displayDocumentNumber=${action.approvalIdentifier.DisplayDocumentNumber}&fiscalYear=${action.approvalIdentifier.FiscalYear}`;
 
         const headerObject = {
             ClientDevice: 'React',
@@ -1017,12 +1171,14 @@ function* uploadFiles(action: IUploadFileAction): IterableIterator<SimpleEffect<
             Tcv: newguid,
             TenantId: action.tenantId,
             ...(action.userAlias && { UserAlias: `${action.userAlias ? action.userAlias : undefined}` }),
+            "content-type": "multipart/form-data",
+            OnBehalfUserUpn: onBehalfUserUpn, onBehalfUserId: onBehalfUserId,
         };
         const actionRequest = {
             url: url,
             resource: __RESOURCE_URL__,
             headers: headerObject,
-            data: action.files,
+            data: attachments,
         };
         const { data: actionResponse }: IHttpClientRequest = yield call(
             [httpClient, httpClient.post],
@@ -1050,7 +1206,10 @@ function* uploadFiles(action: IUploadFileAction): IterableIterator<SimpleEffect<
                     : 'Unable to complete file upload at this time. If this issue persists, please contact support team <br>';
             const errorMessageList: string[] = actionResponse
                 ?.filter((item: IFileUploadResponse) => item.e2EErrorInformation)
-                .map((item: IFileUploadResponse) => item.name + ' - ' + item.e2EErrorInformation.errorMessages);
+                .map(
+                    (item: IFileUploadResponse) =>
+                        encodeHTML(item.name) + ' - ' + encodeHTML(item.e2EErrorInformation.errorMessages)
+                );
             const errorList = errorMessageList;
             yield put(failedFileUpload(successCountMessage + failureCountMessage, errorList));
         }
@@ -1058,8 +1217,8 @@ function* uploadFiles(action: IUploadFileAction): IterableIterator<SimpleEffect<
         yield put(
             requestMyDetails(
                 action.tenantId,
-                action.documentNumber,
-                action.displayDocumentNumber,
+                action.approvalIdentifier.DocumentNumber,
+                action.approvalIdentifier.DisplayDocumentNumber,
                 action.userAlias,
                 action.requiresTemplate,
                 action.isPullModelEnabled

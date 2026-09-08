@@ -61,7 +61,7 @@ export const UnitofMeasure: any = styled.div`
 export const Title = styled.div`
     height: 15%;
     font-weight: ${(props: any) => (!props.isRead ? FontWeights.semibold : FontWeights.regular)};
-    padding-Bottom: 0.5%;
+    padding-bottom: 0.5%;
 `;
 
 export const SecondaryTitleContainer = styled.div`
@@ -93,10 +93,12 @@ export const Header = styled.div`
     width: 100%;
 `;
 
-export const StrongHeaderTitle = styled.strong`
+export const StrongHeaderTitle = styled.h2`
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-size: 1em;
+    margin: 0;
 `;
 
 export const HeaderTitleContainer: any = styled.div`
@@ -133,7 +135,7 @@ export const MailReadIcon = styled.div`
 `;
 
 
-export const MailUnreadIcon = styled.div`
+export const MailUnreadIcon= styled.div`
     width: 18px;
     height: 18px;
     background-image: url('/icons/unread-blk.png');
@@ -210,13 +212,28 @@ export const CardContainer = styled.div<any>`
     }
 `;
 
+const cardDepth = '0 25.6px 57.6px 0 rgba(0, 0, 0, 0.38), 0 4.8px 14.4px 0 rgba(0, 0, 0, 0.35)';
+const selectedCardDepth = '0 25.6px 57.6px 0 rgba(0, 0, 0, 0.6), 0 6.4px 14.4px 0 rgba(0, 0, 0, 0.55)';
+
+export const CardWrapper = styled.div`
+    max-width: 300px;
+    min-width: 250px;
+    width: 100%;
+    margin-bottom: 16px;
+    margin-left: 16px;
+    margin-right: 16px;
+
+    ${minWidth.xl} {
+        margin-bottom: 24px;
+        margin-left: 12px;
+        margin-right: 12px;
+    }
+`;
+
 export const Card: any = styled.div`
     background-color: ${SurfaceColors.primary};
     border-radius: 2px;
     box-shadow: ${Depths.depth4};
-    margin-bottom: 16px;
-    margin-left: 16px;
-    margin-right: 16px;
     padding-right: 20px;
     width: 100%;
     height: 20%;
@@ -224,15 +241,10 @@ export const Card: any = styled.div`
     &:hover {
         box-shadow: ${Depths.depth64};
     }
-    max-width: 300px;
-    min-width: 250px;
     cursor: ${(props: any) => (props.role === 'button' ? 'pointer' : 'default')};
-    box-shadow: ${(props: any) => (props.isSelected ? Depths.depth64 : 'none')};
+    box-shadow: ${(props: any) => (props.isSelected ? selectedCardDepth : 'none')};
 
     ${minWidth.xl} {
-        margin-bottom: 24px;
-        margin-left: 12px;
-        margin-right: 12px;
         padding-right: 0px !important;
     }
 
@@ -243,6 +255,8 @@ export const Card: any = styled.div`
                 ? '5px solid rgb(255, 255, 255)'
                 : '5px solid rgb(0, 120, 212)'};
     height: ${(props: any) => (props.footer ? '150px' : '190px')};
+    min-height: ${(props: any) => (props.footer ? '150px' : '190px')};
+    overflow: hidden;
 `;
 
 export const CardBody = styled.div`

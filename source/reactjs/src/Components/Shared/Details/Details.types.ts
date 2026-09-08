@@ -37,6 +37,7 @@ export interface IDetailsState {
     isProcessingAction: boolean;
     actionDetails: object;
     documentPreview: string | null;
+    documentPreviewKey: string | null;
     isPreviewOpen: boolean;
     postActionHasError: boolean;
     postActionErrorMessage: string | null;
@@ -86,6 +87,12 @@ export interface IDetailsState {
     bulkMessagebarHeight: number;
     aliasMessagebarHeight: number;
     isRequestFullyRendered: boolean;
+    isUploadAttachment: boolean,
+    isExemptAttachment: boolean,
+    isSupplierMeetsReqSelected: boolean,
+    isSupplierDoesNotMeetReqSelected: boolean,
+    isSupplierDoesNotMeetRejectSelected: boolean,
+    selectedFhrOptionId: string,
     isPullModelEnabled: boolean;
     detailsComponentType: DetailsType;
     areDetailsEditable: boolean;
@@ -94,6 +101,7 @@ export interface IDetailsState {
     summaryJSON: object | null;
     summaryDataMapping: string | null;
     isModalPreviewOpen: boolean;
+    isModalPreviewSecondary: boolean;
     isShowingSuccessStatus: boolean;
     tenantDetailUrl?: string;
     templateName?: string;
@@ -101,6 +109,8 @@ export interface IDetailsState {
     isExternalTenantActionDetails?: boolean;
     isFileUploadOpen: boolean;
     isModalFileUploadOpen: boolean;
+    highlightTerms?: string[];
+    isUploadingFiles?: boolean;
 }
 
 export interface IControlValidation {

@@ -1,8 +1,27 @@
 import { detailsInitialState, detailsReducerName } from './Details.reducer';
 import { IDetailsAppState } from './Details.types';
 import { createSelector } from 'reselect';
-import { getIsPullTenantSelected } from '../SharedComponents.selectors';
+import { getIsPullTenantSelected, getSelectedPage } from '../SharedComponents.selectors';
 import { IComponentsAppState } from '../SharedComponents.types';
+
+const HIDE_ON_HISTORY_IDS = new Set([
+    'UploadPOEDocumentsHeader',
+    'UploadPOEAttachmentsImage',
+    'UploadPOEDocumentsRadioButtons',
+    'DeliveryManagerPOEInstruction',
+]);
+
+const hideUploadNodesForHistory = (template: any): any => {
+    if (!template) return template;
+    const cloned = JSON.parse(JSON.stringify(template));
+    const walk = (node: any): void => {
+        if (!node || typeof node !== 'object') return;
+        if (HIDE_ON_HISTORY_IDS.has(node.id)) node.isVisible = false;
+        Object.values(node).forEach((v) => (Array.isArray(v) ? v.forEach(walk) : walk(v)));
+    };
+    walk(cloned);
+    return cloned;
+};
 
 export const getReadRequests = (state: IDetailsAppState): string[] => {
     return state.dynamic?.[detailsReducerName]?.readRequests || detailsInitialState.readRequests;
@@ -106,4 +125,13 @@ const getDetailsCommonPropertiesMemo = (
 export const getDetailsCommonPropertiesSelector = createSelector(
     [getDocumentNumber, getDisplayDocumentNumber, getTenantId, getTcv],
     getDetailsCommonPropertiesMemo
+);
+
+export const getDetailsTemplateJSON = (state: IDetailsAppState): any => {
+    return state.dynamic?.[detailsReducerName]?.detailsTemplateJSON ?? detailsInitialState.detailsTemplateJSON;
+};
+
+export const getProcessedDetailsTemplate = createSelector(
+    [getDetailsTemplateJSON, getSelectedPage],
+    (template, selectedPage) => (selectedPage === 'history' ? hideUploadNodesForHistory(template) : template)
 );

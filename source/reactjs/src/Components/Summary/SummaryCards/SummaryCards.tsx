@@ -10,6 +10,8 @@ import { detailsSagas } from '../../Shared/Details/Details.sagas';
 import { IComponentsAppState } from '../../Shared/SharedComponents.types';
 import { IDetailsAppState } from '../../Shared/Details/Details.types';
 import { sharedComponentsReducerName } from '../../Shared/SharedComponents.reducer';
+import { flattenObject, validateBulkCondition } from '../../../Helpers/sharedHelpers';
+import { SearchPreviewClickHandler } from './SummaryCard.types';
 
 interface ISummaryCardsState {
     selectedApprovalRecords: any;
@@ -19,6 +21,7 @@ interface ISummaryCardsState {
 interface ISummaryCardsProps extends ISummaryCardsState {
     summary: any;
     bulkSelectedRecordsLength: number;
+    onSearchPreviewClick?: SearchPreviewClickHandler;
 }
 
 class SummaryCards extends React.Component<ISummaryCardsProps, ISummaryCardsState> {
@@ -60,6 +63,8 @@ class SummaryCards extends React.Component<ISummaryCardsProps, ISummaryCardsStat
                                         ? true
                                         : this._isCardSelected(item)
                                 }
+                                isCardAvailableForBulk={this._isCardAvailableForBulk(item)}
+                                onSearchPreviewClick={this.props.onSearchPreviewClick}
                             />
                         ))}
             </CardContainer>
@@ -68,7 +73,12 @@ class SummaryCards extends React.Component<ISummaryCardsProps, ISummaryCardsStat
 
     private _isCardAvailableForBulk(item: ISummaryCardsModel): boolean {
         const { readRequests } = this.props;
-        return item.isRead || readRequests.includes(item.DocumentNumber) || !item.IsControlsAndComplianceRequired;
+        const isBulkConditionValid = item?.AllowBulkApprovalCondition ? validateBulkCondition(item?.FlattenedSummary, item?.AllowBulkApprovalCondition) : true;
+
+        return (
+            (item.isRead || readRequests.includes(item.DocumentNumber) || !item.IsControlsAndComplianceRequired) &&
+            isBulkConditionValid
+        );
     }
 
     private _isCardSelected(item: ISummaryCardsModel): boolean {
@@ -115,6 +125,9 @@ class SummaryCards extends React.Component<ISummaryCardsProps, ISummaryCardsStat
                     CustomAttributeName: val.CustomAttribute?.CustomAttributeName,
                     CustomAttributeValue: val.CustomAttribute?.CustomAttributeValue,
                     IsControlsAndComplianceRequired: val.IsControlsAndComplianceRequired,
+                    AllowBulkApprovalCondition: val.AllowBulkApprovalCondition,
+                    FlattenedSummary: flattenObject(val),
+                    _matchMetadata: val._matchMetadata,
                 } as ISummaryCardsModel)
         );
         return summaryList;

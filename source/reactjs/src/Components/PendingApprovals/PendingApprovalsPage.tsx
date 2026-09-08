@@ -5,12 +5,12 @@ import { useDynamicReducer } from '@micro-frontend-react/employee-experience/lib
 import {
     sharedComponentsReducerName,
     sharedComponentsReducer,
-    sharedComponentsInitialState
+    sharedComponentsInitialState,
 } from '../Shared/SharedComponents.reducer';
 import {
     sharedComponentsPersistentReducerName,
     sharedComponentsPersistentReducer,
-    SharedComponentsPersistentInitialState
+    SharedComponentsPersistentInitialState,
 } from '../Shared/SharedComponents.persistent-reducer';
 import { usePersistentReducer } from '../Shared/Components/PersistentReducer';
 import { sharedComponentsSagas } from '../Shared/SharedComponents.sagas';
@@ -21,31 +21,38 @@ import { updateSelectedSummarytoPending } from '../Shared/SharedComponents.actio
 import { usePageTracking } from '@micro-frontend-react/employee-experience/lib/usePageTracking';
 import { usePageTitle } from '@micro-frontend-react/employee-experience/lib/usePageTitle';
 import { Summary } from '../Summary/Summary';
-import { PrimaryHeader } from '../Shared/Components/PrimaryHeader/PrimaryHeader';
 import DetailsFooter from '../Shared/Details/DetailsFooter';
 import { getFeature, getPageLoadFeature } from '@micro-frontend-react/employee-experience/lib/UsageTelemetryHelper';
 import { isMobile } from 'react-device-detect';
 import { updateBulkSelected, updateFilterValue } from '../Shared/SharedComponents.actions';
-import { getCardViewSelected, getIsProcessingBulkApproval } from '../Shared/SharedComponents.selectors';
-import { MessageBar } from '@fluentui/react';
-import { LargeMessageStyles } from '../Shared/SharedLayout';
+import {
+    getCardViewSelected,
+    getIsProcessingBulkApproval,
+    getQuickTourData,
+    getIsSubmitterView,
+} from '../Shared/SharedComponents.selectors';
 import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
+import { QuickTour } from '../Shared/Components/QuickTour/QuickTour';
 
 interface IPendingApprovalProps {
-    match: {
+    match?: {
         params: {
             tenantId: string;
             documentNumber: string;
         };
     };
+    isDashboardView?: boolean;
 }
+
 function PendingApprovalsPage(props: IPendingApprovalProps): React.ReactElement {
-    usePageTitle(`Pending Approvals - ${__APP_NAME__}`);
-    const feature = getFeature('MSApprovalsWeb', 'PendingApprovalsPage');
+    const { isDashboardView } = props;
+    const { useSelector, dispatch } = React.useContext(Context as React.Context<IEmployeeExperienceContext>);
+    const isSubmitterView = useSelector(getIsSubmitterView);
+    usePageTitle(`${isDashboardView ? 'Dashboard' : (isSubmitterView ? 'Sent for Approval' : 'Pending Approvals')} - ${__APP_NAME__}`);
+    const feature = getFeature('MSApprovalsWeb', isDashboardView ? 'DashboardPage' : 'PendingApprovalsPage');
     usePageTracking(getPageLoadFeature(feature));
     useDynamicReducer(sharedComponentsReducerName, sharedComponentsReducer as Reducer, [sharedComponentsSagas], false);
     usePersistentReducer(sharedComponentsPersistentReducerName, sharedComponentsPersistentReducer);
-    const { useSelector, dispatch } = React.useContext(Context as React.Context<IEmployeeExperienceContext>);
     const { isBulkSelected, isPanelOpen, selectedApprovalRecords } = useSelector(
         (state: IComponentsAppState) => state.dynamic?.[sharedComponentsReducerName] || sharedComponentsInitialState
     );
@@ -56,6 +63,11 @@ function PendingApprovalsPage(props: IPendingApprovalProps): React.ReactElement 
     const isProcessingBulkApproval = useSelector(getIsProcessingBulkApproval);
     const isCardViewSelected = useSelector(getCardViewSelected);
     const bulkFooterHeight = 0;
+    const quickTourData = useSelector(getQuickTourData);
+    // Coachmark-only entries (slides: null) live in quickTourData for their own UI gating;
+    // only auto-open the QuickTour dialog when there's an unread slide-bearing tour.
+    const hasSlideTour = Array.isArray(quickTourData)
+        && quickTourData.some((t: any) => Array.isArray(t?.slides) && t.slides.length > 0);
 
     React.useEffect(() => {
         dispatch(updateSelectedSummarytoPending());
@@ -65,14 +77,14 @@ function PendingApprovalsPage(props: IPendingApprovalProps): React.ReactElement 
 
     const [dimensions, setDimensions] = React.useState({
         height: window.innerHeight,
-        width: window.innerWidth
+        width: window.innerWidth,
     });
 
     React.useEffect(() => {
         function handleResize(): void {
             setDimensions({
                 height: window.innerHeight,
-                width: window.innerWidth
+                width: window.innerWidth,
             });
         }
         window.addEventListener('resize', handleResize);
@@ -85,13 +97,15 @@ function PendingApprovalsPage(props: IPendingApprovalProps): React.ReactElement 
     dispatch(setBulkFooterHeight(0));
     return (
         <>
-            <PrimaryHeader windowHeight={dimensions.height} windowWidth={dimensions.width} />
+            {hasSlideTour && <QuickTour hidden={false} unreadOnly={true} />}
             <Summary
                 windowHeight={dimensions.height}
                 windowWidth={dimensions.width}
-                queryTenantId={props.match.params.tenantId}
-                queryDocNumber={props.match.params.documentNumber}
+                queryTenantId={props.match?.params?.tenantId || ''}
+                queryDocNumber={props.match?.params?.documentNumber || ''}
+                isDashboardPageView={isDashboardView}
             />
+
             {isBulkSelected &&
                 selectedApprovalRecords.length > 0 &&
                 !((isMobile || window.innerWidth < 653) && isPanelOpen) && (

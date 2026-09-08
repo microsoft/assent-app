@@ -4,8 +4,8 @@ import { TextColors } from '../../Shared/SharedColors';
 import { IDropdownStyles } from '@fluentui/react/lib/Dropdown';
 import { maxWidth, minWidth } from '../../Shared/Styles/Media';
 
-export const SummaryTableContainer = styled.div`
-    padding: 0 2% 0 2%;
+export const SummaryTableContainer = styled.div<{ isDashboardView?: boolean }>`
+    padding: 0 ${(props) => (props.isDashboardView ? '0' : '2%')} 0 2%;
 
     @media only screen and (max-device-width: 480px) {
         margin-left: 0;
@@ -24,22 +24,22 @@ export const SummaryTableMainContainer = styled.div`
 export const failedIconStyle = {
     color: '#A80000',
     fontSize: 12,
-    cursor: 'default'
+    cursor: 'default',
 };
 
 export const pendingIconStyle = {
     fontSize: 11,
-    cursor: 'default'
+    cursor: 'default',
 };
 
 export const fileIconCell = mergeStyles({
-    textOverflow: 'unset!important'
+    textOverflow: 'unset!important',
 });
 
 export const fileIconImg = {
     verticalAlign: 'middle',
     maxHeight: '16px',
-    maxWidth: '16px'
+    maxWidth: '16px',
 };
 
 export const MailReadIcon = styled.div`
@@ -70,20 +70,35 @@ export const paginationWidth = {
         marginBottom: '0px',
         selectors: {
             '@media (min-device-width: 320px) and (max-width: 320px)': {
-                transform: ' scale(0.6)'
-            }
-        }
-    }
+                transform: ' scale(0.6)',
+            },
+        },
+    },
 };
 
 export const paginationAlign = { marginLeft: -132 };
 
 export const DataGridContainer = styled.div<any>`
-    display: ${props => (props.isFilterPanelOpen ? 'flex' : 'block')};
+    display: ${(props) => (props.isFilterPanelOpen ? 'flex' : 'block')};
+    & > *:first-child {
+        flex: 1;
+        min-width: 0;
+    }
+`;
+
+// Global overrides for DetailsList column reorder visuals
+export const TableGlobalStyles = styled.div`
+    [class*='gripperBarVerticalStyle'] {
+        display: none !important;
+    }
+    .ms-DetailsHeader-dropHintCaretStyle,
+    .ms-DetailsHeader-dropHintLineStyle {
+        visibility: hidden;
+    }
 `;
 
 export const StackStylesBottomBorder: IStackStyles = {
-    root: { borderBottom: `1px solid #C6C6C6`, paddingBottom: '10px' }
+    root: { borderBottom: `1px solid #C6C6C6`, paddingBottom: '10px' },
 };
 
 export const StackStylesRowCount = (isMaximized: boolean, isPanelOpen: boolean): IStackStyles => ({
@@ -91,30 +106,37 @@ export const StackStylesRowCount = (isMaximized: boolean, isPanelOpen: boolean):
         marginLeft: `${isMaximized ? '3%' : isPanelOpen ? '1%' : '0.5%'}`,
         selectors: {
             [minWidth.xxxl]: {
-                marginLeft: `${isMaximized ? '2%' : isPanelOpen ? '1%' : '0.5%'}`
+                marginLeft: `${isMaximized ? '2%' : isPanelOpen ? '1%' : '0.5%'}`,
             },
             [maxWidth.xxl]: {
-                marginLeft: `${isMaximized ? '4%' : '1%'}`
+                marginLeft: `${isMaximized ? '4%' : '1%'}`,
             },
             [maxWidth.xl]: {
-                marginLeft: `${isMaximized ? '4%' : '2%'}`
+                marginLeft: `${isMaximized ? '4%' : '2%'}`,
             },
             [maxWidth.m]: {
-                marginLeft: '4%'
-            }
-        }
-    }
+                marginLeft: '4%',
+            },
+        },
+    },
 });
 
 export const truncateTextWithEllipsis = {
     fontSize: '14px',
     color: TextColors.lightPrimary,
     textOverflow: 'ellipsis',
-    overflow: 'hidden'
+    overflow: 'hidden',
 };
 
 export const searchCriteraDropdownStyles: Partial<IDropdownStyles> = {
     root: { display: 'flex' },
     dropdown: { maxWidth: 500, minWidth: 200 },
-    label: { paddingRight: '5px' }
+    label: {
+        paddingRight: '5px',
+        selectors: {
+            '@media (max-width: 1280px)': {
+                fontSize: '12px',
+            },
+        },
+    },
 };

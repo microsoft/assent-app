@@ -29,6 +29,7 @@ module.exports = (env) => {
                 path: path.join(__dirname, 'public', 'bundles'),
                 filename: '[name].[contenthash].js',
                 clean: true,
+                publicPath:'/bundles/',
             },
             externals: {
                 react: 'React',
@@ -90,7 +91,7 @@ module.exports = (env) => {
                 port: 9000,
                 historyApiFallback: true,
                 //writeToDisk: true,
-                https: true,
+                server: 'https',
                 devMiddleware: {
                     writeToDisk: true,
                 },

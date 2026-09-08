@@ -13,7 +13,7 @@ function* fetchAboutInfo(): IterableIterator<SimpleEffect<{}, {}>> {
             headers: setHeader(null),
         });
         // get rid of the "mailto:" in front of the email address
-        yield put(receiveAboutInfo(aboutResponse.data.supportEmailId.substring(7)));
+        yield put(receiveAboutInfo(aboutResponse?.data?.supportEmailId));
     } catch (error) {
         // TODO: add failure action
         console.log(error);

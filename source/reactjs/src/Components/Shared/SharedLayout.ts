@@ -9,8 +9,8 @@ import { minWidth } from '../Shared/Styles/Media';
 //import styled from "styled-components";
 
 export interface IAdditionalHTMLAttribute {
-    windowWidth: number;
-    windowHeight: number;
+    windowWidth?: number;
+    windowHeight?: number;
 }
 
 export const Container = styled.div`
@@ -18,6 +18,13 @@ export const Container = styled.div`
     margin-bottom: 35px;
     margin-left: 2%;
     margin-right: 5%;
+`;
+
+export const WhiteContainer = styled.div`
+    padding-top: 1.5%;
+    padding-left: 2%;
+    background-color: #ffffff;
+    height: ${(props: IAdditionalHTMLAttribute) => props.windowHeight - 96}px;
 `;
 
 export const Space = styled.div`
@@ -36,14 +43,14 @@ export const HeightBelowShell = styled.div`
 export const PageHeading = styled(Text).attrs({
     as: 'h1',
     variant: 'xLarge',
-    block: true
+    block: true,
 })`
     margin-bottom: 6px;
 `;
 
 export const PageDescription = styled(Text).attrs({
     as: 'p',
-    block: true
+    block: true,
 })`
     margin-bottom: 24px;
 `;
@@ -51,7 +58,7 @@ export const PageDescription = styled(Text).attrs({
 export const SectionTitle = styled(Text).attrs({
     as: 'h2',
     variant: 'large',
-    block: true
+    block: true,
 })`
     margin-bottom: 24px;
 `;
@@ -90,19 +97,25 @@ export const AccessibilityIcon = styled.div`
     background-size: 16px 16px;
     font-size: 16;
 
-
     @media screen and (forced-colors: active) and (prefers-color-scheme: light) {
         background-image: url('/icons/ic_fluent_accessibility_24_regular.svg');
     }
 `;
 
+export const AdminIcon = styled.div`
+    width: 16px;
+    height: 16px;
+    background-image: url('/icons/admin-icon.svg');
+    background-size: 16px 16px;
+`;
+
 export const ErrorText = styled.p`
-    color: #d73b02;
+    color: #a80000;
 `;
 
 // move this too
 export const MessageBarTitle = styled(Text).attrs({
-    as: 'p'
+    as: 'p',
 })`
     font-size: ${FontSizes.size16};
     font-weight: ${FontWeights.semibold};
@@ -135,7 +148,13 @@ export const SmallDropdownStyles: Partial<IDropdownStyles> = { dropdown: { maxWi
 export const MediumDropdownStyles: Partial<IDropdownStyles> = { dropdown: { maxWidth: 500, minWidth: 200 } };
 
 export const StackStylesBottomBorder: IStackStyles = {
-    root: { borderBottom: `1px solid #C6C6C6`, paddingBottom: '10px' }
+    root: {
+        borderBottom: `1px solid #C6C6C6`,
+        paddingBottom: '10px',
+        '&:last-child': {
+            borderBottom: 'none',
+        },
+    },
 };
 
 export const StackStylesOverflowWithEllipsis: IStackStyles = { root: { overflow: 'hidden', textOverflow: 'ellipsis' } };
@@ -145,15 +164,17 @@ export const bulkTableViewBottomOffset = 350;
 export const FilterContainer = styled.div<any>`
     overflow-y: auto;
     background: #fafafa;
-    width: 400px;
+    width: 280px;
+    max-width: 280px;
+    flex-shrink: 0;
     margin-left: 10px;
     padding-right: 10px;
     padding-top: 1%;
     height: 100vh;
-     ${minWidth.xl} {      
-        height: calc(100vh - ${bulkTableViewBottomOffset}px);       
-    }   
-    @media (min-device-width: 1023px) and (min-width: 639px) and (max-width: 916px){ 
+    ${minWidth.xl} {
+        height: calc(100vh - ${bulkTableViewBottomOffset}px);
+    }
+    @media (min-device-width: 1023px) and (min-width: 639px) and (max-width: 916px) {
         width: 900px;
     }
 `;
@@ -163,11 +184,11 @@ export const LargeMessageStyles: IMessageBarStyles = {
         paddingLeft: '1.5%',
         paddingTop: '0.5%',
         paddingBottom: '0.5%',
-        backgroundColor: '#D0E7F8' // Coherence DefaultThemeColors.blue20
+        backgroundColor: '#D0E7F8', // Coherence DefaultThemeColors.blue20
     },
     text: {
-        fontSize: '14px'
-    }
+        fontSize: '14px',
+    },
 };
 
 export const PullTenantSummaryCountDiv = styled.div`
@@ -213,14 +234,14 @@ export const PullTenantSummaryCountCardDiv = styled.div<any>`
 
     ${minWidth.l} {
         margin-bottom: 24px;
-        margin-left: ${props => (props.isTableView ? '0px' : '12px')};
+        margin-left: ${(props) => (props.isTableView ? '0px' : '12px')};
         margin-right: 12px;
         padding-right: 0px !important;
     }
 
     ${minWidth.xl} {
         margin-bottom: 24px;
-        margin-left: ${props => (props.isTableView ? '0px' : '12px')};
+        margin-left: ${(props) => (props.isTableView ? '0px' : '12px')};
         margin-right: 12px;
         padding-right: 0px !important;
     }
@@ -267,5 +288,28 @@ export const PullTenantCardLabel = styled.div`
 export const dropdownStyles: Partial<IDropdownStyles> = {
     dropdownOptionText: { overflow: 'visible', whiteSpace: 'normal' },
     dropdownItem: { height: 'auto' },
-    title: { overflow: 'visible', whiteSpace: 'normal', height: 'auto' }
+    title: { overflow: 'visible', whiteSpace: 'normal', height: 'auto' },
 };
+
+export const NoResults = styled.div`
+    outline: none;
+    &:focus {
+        outline: rgb(96, 94, 92) solid 1px;
+        padding: 0 2px;
+    }
+`;
+
+export const ChartWrapper = styled.div`
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    height: 100%;
+    width: 100%;
+`;
+
+export const ChartTitle = styled(Text).attrs({
+    as: 'p',
+})`
+    font-size: ${FontSizes.size16};
+    font-weight: ${FontWeights.semibold};
+`;

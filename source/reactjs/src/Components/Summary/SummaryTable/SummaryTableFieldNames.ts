@@ -1,7 +1,7 @@
 export enum SummaryTableFieldNames {
-    ApprovalIdentifier = 'ApprovalIdentifier',
+    ApprovalIdentifier = 'ApprovalIdentifier.DisplayDocumentNumber',
     SubmittedDate = 'SubmittedDate',
-    Submitter = 'Submitter',
+    Submitter = 'Submitter.Name',
     UnitValue = 'UnitValue',
     CompanyCode = 'CompanyCode',
     IsRead = 'IsRead',
@@ -16,6 +16,6 @@ export enum SummaryTableFieldNames {
     isBillable = 'isBillable',
     laborNotes = 'laborNotes',
     Title = 'Title',
-    CustomAttribute = 'CustomAttribute',
-    allowInBulkApproval = 'allowInBulkApproval'
+    CustomAttribute = 'CustomAttribute.CustomAttributeValue',
+    allowInBulkApproval = 'allowInBulkApproval',
 }

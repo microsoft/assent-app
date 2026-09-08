@@ -22,6 +22,7 @@ export const detailsInitialState: IDetailsState = {
     isProcessingAction: false,
     actionDetails: null,
     documentPreview: null,
+    documentPreviewKey: null,
     isPreviewOpen: false,
     postActionHasError: false,
     postActionErrorMessage: null,
@@ -67,6 +68,13 @@ export const detailsInitialState: IDetailsState = {
     panelWidth: 600,
     footerHeight: 64,
     isRequestFullyRendered: false,
+    isUploadAttachment: false,
+    isExemptAttachment: false,
+    // Finance SLM default: preselects FHR>=46 so the optional upload container is visible on first render; no-op for non-SLM tenants (their templates lack these IDs).
+    isSupplierMeetsReqSelected: true,
+    isSupplierDoesNotMeetReqSelected: false,
+    isSupplierDoesNotMeetRejectSelected: false,
+    selectedFhrOptionId: 'fhrgte46Selected',
     detailsComponentType: DetailsType.AdaptiveCard,
     areDetailsEditable: false,
     cdnURL: null,
@@ -78,9 +86,11 @@ export const detailsInitialState: IDetailsState = {
     summaryJSON: null,
     summaryDataMapping: null,
     isModalPreviewOpen: false,
+    isModalPreviewSecondary: false,
     isShowingSuccessStatus: false,
     isFileUploadOpen: false,
     isModalFileUploadOpen: false,
+    isUploadingFiles: false,
 };
 
 export function detailsReducer(prev: IDetailsState = detailsInitialState, action: DetailsAction): IDetailsState {
@@ -166,6 +176,8 @@ export function detailsReducer(prev: IDetailsState = detailsInitialState, action
                 isPreviewOpen: false,
                 isRequestFullyScrolled: false,
                 isRequestFullyRendered: false,
+                isUploadAttachment: false,
+                isExemptAttachment: false,
                 shouldDetailReRender: true,
                 detailsHasError: false,
                 detailsErrorMessage: null,
@@ -180,7 +192,9 @@ export function detailsReducer(prev: IDetailsState = detailsInitialState, action
                 headerTemplateJSON: action.template,
                 isPreviewOpen: false,
                 shouldDetailReRender: true,
-                summaryJSON: action.summaryObj ?? prev.summaryJSON
+                summaryJSON: action.summaryObj ?? prev.summaryJSON,
+                documentNumber: prev.documentNumber || action.details?.ApprovalIdentifier?.DocumentNumber,
+                fiscalYear: prev.fiscalYear || action.details?.ApprovalIdentifier?.FiscalYear,
             };
         case DetailsActionType.FAILED_HEADER:
             return {
@@ -203,6 +217,8 @@ export function detailsReducer(prev: IDetailsState = detailsInitialState, action
                 callbackJSONs: null,
                 isRequestFullyScrolled: false,
                 isRequestFullyRendered: false,
+                isUploadAttachment: false,
+                isExemptAttachment: false,
                 shouldDetailReRender: true
             };
         case DetailsActionType.RECEIVE_MY_DETAILS:
@@ -285,7 +301,8 @@ export function detailsReducer(prev: IDetailsState = detailsInitialState, action
                 documentDownloadHasError: false,
                 documentDownloadErrorMessage: null,
                 allDocumentsDownloadHasError: false,
-                allDocumentsDownloadErrorMessage: null
+                allDocumentsDownloadErrorMessage: null,
+                documentPreviewKey: action.attachmentId,
             };
         case DetailsActionType.OPEN_FILE_UPLOAD:
             return {
@@ -304,6 +321,8 @@ export function detailsReducer(prev: IDetailsState = detailsInitialState, action
                 ...prev,
                 fileUploadHasError: false,
                 fileUploadErrorMessage: null,
+                isUploadingFiles: true,
+                isLoadingDetails: true
             };
         case DetailsActionType.FAILED_UPLOAD_FILE:
             return {
@@ -311,12 +330,14 @@ export function detailsReducer(prev: IDetailsState = detailsInitialState, action
                 fileUploadHasError: true,
                 fileUploadErrorMessage: action.uploadFilesErrorMessage,
                 uploadFilesErrorMessageList: action.uploadFilesErrorMessageList,
+                isUploadingFiles: false
             };
         case DetailsActionType.SUCCESS_UPLOAD_FILE:
             return {
                 ...prev,
                 fileUploadHasError: false,
                 fileUploadErrorMessage: null,
+                isUploadingFiles: false
             };
         case DetailsActionType.RECEIVE_ACTION_RESPONSE:
             return {
@@ -334,14 +355,16 @@ export function detailsReducer(prev: IDetailsState = detailsInitialState, action
         case DetailsActionType.CLEAR_DOCUMENT_PREVIEW:
             return {
                 ...prev,
-                documentPreview: null
+                documentPreview: null,
+                documentPreviewKey: null,
             };
 
         case DetailsActionType.CLOSE_DOCUMENT_PREVIEW:
             return {
                 ...prev,
-                isPreviewOpen: false,
-                isModalPreviewOpen: false
+                isPreviewOpen: prev.isModalPreviewSecondary ? true : false,
+                isModalPreviewOpen: false,
+                isModalPreviewSecondary: false,
             };
         case DetailsActionType.REINITIALIZE_DETAILS:
             return {
@@ -402,6 +425,25 @@ export function detailsReducer(prev: IDetailsState = detailsInitialState, action
                 ...prev,
                 isRequestFullyRendered: action.isRequestFullyRendered
             };
+        case DetailsActionType.POE_ACTION_ENABLED:
+            // Only merge SLM fields the caller supplied so attachment and supplier toggles don't clobber each other.
+            return {
+                ...prev,
+                isUploadAttachment: action.isUploadAttachment,
+                isExemptAttachment: action.isExemptAttachment,
+                ...(action.isSupplierMeetsReqSelected !== undefined && {
+                    isSupplierMeetsReqSelected: action.isSupplierMeetsReqSelected,
+                }),
+                ...(action.isSupplierDoesNotMeetReqSelected !== undefined && {
+                    isSupplierDoesNotMeetReqSelected: action.isSupplierDoesNotMeetReqSelected,
+                }),
+                ...(action.isSupplierDoesNotMeetRejectSelected !== undefined && {
+                    isSupplierDoesNotMeetRejectSelected: action.isSupplierDoesNotMeetRejectSelected,
+                }),
+                ...(action.selectedFhrOptionId !== undefined && {
+                    selectedFhrOptionId: action.selectedFhrOptionId,
+                }),
+            };
         case DetailsActionType.RECEIVE_ARE_DETAILS_EDITABLE:
             return {
                 ...prev,
@@ -411,6 +453,12 @@ export function detailsReducer(prev: IDetailsState = detailsInitialState, action
             return {
                 ...prev,
                 editDetailsErrorMessage: action.errorMessage
+            };
+        case DetailsActionType.OPEN_SECONDARY_PREVIEW:
+            return {
+                ...prev,
+                isModalPreviewSecondary: true,
+                isModalPreviewOpen: true,
             };
         default:
             return prev;

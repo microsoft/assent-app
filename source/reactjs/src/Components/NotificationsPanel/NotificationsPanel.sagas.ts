@@ -8,21 +8,24 @@ import { setHeader } from '../Shared/Components/SagasHelper';
 import { trackBusinessProcessEvent, trackException, TrackingEventId } from '../../Helpers/telemetryHelpers';
 import { getStateCommonTelemetryProperties } from '../Shared/SharedComponents.selectors';
 import { INotificationPanelListItem } from './NotificationsPanel.types';
+import { getOnBehalfUserUpn, getOnBehalfUserId } from '../Shared/SharedComponents.persistent-selectors';
 
 function* fetchAlertsInfo(): IterableIterator<SimpleEffect<{}, {}>> {
     const telemetryClient: ITelemetryClient = yield getContext('telemetryClient');
     const authClient: IAuthClient = yield getContext('authClient');
     const stateCommonProperties = yield select(getStateCommonTelemetryProperties);
+    const onBehalfUserUpn = yield select(getOnBehalfUserUpn);
+    const onBehalfUserId = yield select(getOnBehalfUserId);
     try {
         const httpClient: IHttpClient = yield getContext('httpClient');
         const alertResponse: any = yield call([httpClient, httpClient.request], {
             url: `${__API_BASE_URL__}${__API_URL_ROOT__}/alerts`,
             resource: __RESOURCE_URL__,
-            headers: setHeader(null)
+            headers: setHeader(null, null, null, onBehalfUserUpn, onBehalfUserId),
         });
         let tempItemsUnread: INotificationPanelListItem[] = [];
         let tempItemsRead: INotificationPanelListItem[] = [];
-        const newNotifications: Array<string> = []
+        const newNotifications: Array<string> = [];
         
         const getIconType = (type: string): string => {
             if(type === 'danger') return 'ReportWarning'
@@ -87,13 +90,15 @@ function* updateAlertsInfo(action: IPostAlertsInfo): IterableIterator<SimpleEffe
     const telemetryClient: ITelemetryClient = yield getContext('telemetryClient');
     const authClient: IAuthClient = yield getContext('authClient');
     const stateCommonProperties = yield select(getStateCommonTelemetryProperties);
+    const onBehalfUserUpn = yield select(getOnBehalfUserUpn);
+    const onBehalfUserId = yield select(getOnBehalfUserId);
     try {
         const httpClient: IHttpClient = yield getContext('httpClient');
         yield call([httpClient, httpClient.request], {
-            url: `${__API_BASE_URL__}${__API_URL_ROOT__}/userpreference?SessionId=${telemetryClient.getCorrelationId()}`,
+            url: `${__API_BASE_URL__}${__API_URL_ROOT__}/user/preferences?SessionId=${telemetryClient.getCorrelationId()}`,
             method: 'POST',
             resource: __RESOURCE_URL__,
-            headers: setHeader(null),
+            headers: setHeader(null, null, null, onBehalfUserUpn, onBehalfUserId),
             data: { FeaturePreferenceJson: null, ReadNotificationsList: `${JSON.stringify(action.unReadNotifications)}` }
         });
         trackBusinessProcessEvent(

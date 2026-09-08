@@ -1,4 +1,5 @@
 import * as React from 'react';
+import * as AdaptiveCards from 'adaptivecards';
 import { Stack, IStackTokens } from '@fluentui/react/lib/Stack';
 import { withContext } from '@micro-frontend-react/employee-experience/lib/Context';
 import { detailsReducerName, detailsReducer, detailsInitialState } from './Details.reducer';
@@ -25,10 +26,10 @@ import {
     setFooterHeight,
     requestFullyRendered,
     requestDocumentStart,
-    requestDocumentEnd,
     openFileUpload,
     closeFileUpload,
     uploadFiles,
+    actionEnabled,
 } from './Details.actions';
 import {
     requestMySummary,
@@ -37,8 +38,9 @@ import {
     updatePeoplePickerHasError,
     updatePeoplePickerSelection,
     requestPullTenantSummary,
+    updateFeedbackInput,
+    deleteFeedbackInput,
 } from '../SharedComponents.actions';
-import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
 import { connect } from 'react-redux';
 import { Adaptive } from './Adaptive';
 import * as Styled from './DetailsStyling';
@@ -53,26 +55,45 @@ import InfoView from './DetailsMessageBars/InfoView';
 import Microfrontend from './Microfrontend';
 import { Spinner } from '@fluentui/react/lib/Spinner';
 import { trackBusinessProcessEvent, trackException, TrackingEventId } from '../../../Helpers/telemetryHelpers';
-import { getStateCommonTelemetryProperties } from '../SharedComponents.selectors';
+import { extractMatchedTerms } from '../../../Helpers/searchHighlightUtils';
 import { stockImage } from '../../../Helpers/stockImage';
-import { flattenObject, isMobileResolution, validateCondition } from '../../../Helpers/sharedHelpers';
-import { PeoplePicker } from '../../Shared/Components/PeoplePicker';
+import { isMobileResolution } from '../../../Helpers/sharedHelpers';
 import { CloseButton } from './DetailsButtons/CloseButton';
 import { RefreshButton } from './DetailsButtons/RefreshButton';
 import { MaximizeButton } from './DetailsButtons/MaximizeButton';
 import { BackButton } from './DetailsButtons/BackButton';
-import { Checkbox, ICheckboxProps } from '@fluentui/react/lib/Checkbox';
+import { SummarizeSection } from './DetailsButtons/SummarizeSection';
 import DetailsFooter from './DetailsFooter';
 import { DetailsWrapper } from './DetailsWrapper';
-import { getDetailsCommonPropertiesSelector } from './Details.selectors';
+import { getDetailsCommonPropertiesSelector, getProcessedDetailsTemplate } from './Details.selectors';
 import { ContinueMessage } from '../Components/ContinueMessage';
-import { CONTINUE_TIMEOUT } from '../SharedConstants';
 import { Modal } from '@fluentui/react/lib/Modal';
 import { ContextualMenu, IconButton } from '@fluentui/react';
+import { DocumentPreviewModal } from './DocumentPreview/DocumentPreviewModal';
+import { DocumentPreviewMode } from './DocumentPreview/DocumentPreviewModal.types';
 import { FileUpload, IFileUpload } from './FileUpload/FileUpload';
 import { createFileAttachmentArray, IFileUploadOptions, propsForFileUpload } from './FileUpload/fileUploadHelper';
 import { FileAttachmentOptions } from './FileUpload/FileAttachmentOptions';
 import { FileAttachment } from './FileUpload/FileAttachment';
+import { IApprovalIdentifier } from '../SharedComponents.types';
+import FlightingHandler from '../Components/FlightingHandler';
+
+const EMPTY_HIGHLIGHT_TERMS: string[] = [];
+let _prevHighlightTerms: string[] = EMPTY_HIGHLIGHT_TERMS;
+
+/** Returns a stable array reference when highlight terms haven't changed. */
+function stableHighlightTerms(highlights: any): string[] {
+    const next = extractMatchedTerms(highlights);
+    if (next.length === 0) return EMPTY_HIGHLIGHT_TERMS;
+    if (
+        next.length === _prevHighlightTerms.length &&
+        next.every((t, i) => t === _prevHighlightTerms[i])
+    ) {
+        return _prevHighlightTerms;
+    }
+    _prevHighlightTerms = next;
+    return next;
+}
 
 type DetailsAdaptiveState = {
     actionCompleted: boolean;
@@ -102,6 +123,8 @@ type DetailsAdaptiveState = {
     showContinue: boolean;
     isModalExpanded: boolean;
     fileAttachmentOptions: FileAttachmentOptions;
+    category: string;
+    chatMessages: object[];
 };
 
 const WIP_MESSAGE = 'The details page for this application is currently in development.';
@@ -172,6 +195,14 @@ interface IDetailsAdaptiveDispatch {
     disptachToggleDetailScreen(): void;
     dispatchSetFooterHeight(height: number): void;
     dispatchRequestFullyRendered(isRequestFullyRendered: boolean): void;
+    dispatchActionEnabled(
+        isUploadAttachment: boolean,
+        isExemptAttachment: boolean,
+        isSupplierMeetsReqSelected?: boolean,
+        isSupplierDoesNotMeetReqSelected?: boolean,
+        isSupplierDoesNotMeetRejectSelected?: boolean,
+        selectedFhrOptionId?: string
+    ): void;
     dispatchUpdatePeoplePickerSelections(peoplePickerSelections: object[]): void;
     dispatchUpdatePeoplePickerHasError(peoplePickerHasError: boolean): void;
     dispatchRequestPullTenantSummary(tenantId: number, userAlias: string, filterCriteria: object): void;
@@ -179,13 +210,21 @@ interface IDetailsAdaptiveDispatch {
     dispatchCloseFileUpload(): void;
     dispatchUploadFiles(
         tenantId: string,
-        documentNumber: string,
-        displayDocumentNumber: string,
+        approvalIdentifier: IApprovalIdentifier,
         userAlias: string,
         requiresTemplate: boolean,
         isPullModelEnabled: boolean,
         files: IFileUpload[]
     ): void;
+    dispatchUpdateFeedbackInput(
+        id: string,
+        featureName: string,
+        inputType: string,
+        inputValue: string,
+        documentNumber?: string,
+        fiscalYear?: string
+    ): void;
+    dispatchDeleteFeedbackInput(id: string, featureName: string): void;
 }
 
 interface IDetailsAdaptiveProps extends IDetailsState, IDetailsAdaptiveDispatch {
@@ -310,7 +349,28 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
             const { historyRef, locationRef } = this.props;
             if (historyRef && locationRef) {
                 if (locationRef.pathname.length > 1) {
-                    historyRef.push('/');
+                    const urlSearch = new URLSearchParams(locationRef.search);
+                    const aliasParam =
+                        urlSearch.get('alias') || new URLSearchParams(window.location.search).get('alias');
+                    const filterParam = urlSearch.get('filter');
+
+                    const newUrlSearch = new URLSearchParams();
+
+                    if (aliasParam) {
+                        newUrlSearch.set('alias', aliasParam);
+                    }
+
+                    if (filterParam) {
+                        newUrlSearch.set('filter', filterParam);
+                    }
+
+                    let navigationPath = '/';
+                    const queryString = newUrlSearch.toString();
+                    if (queryString) {
+                        navigationPath += `?${queryString}`;
+                    }
+
+                    historyRef.push(navigationPath);
                 }
             }
             this.successTimeout = setTimeout(() => {
@@ -342,7 +402,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
             this.props.dispatchSetFooterHeight(detailsInitialState.footerHeight);
         }
         if (
-            this.props.documentNumber != '' &&
+            this.props.displayDocumentNumber != '' &&
             this.props.tenantId != '' &&
             prevProps.displayDocumentNumber != this.props.displayDocumentNumber
         ) {
@@ -375,7 +435,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
             this.props.dispatchUpdatePeoplePickerHasError(false);
         }
         if (
-            this.props.documentNumber != '' &&
+            this.props.displayDocumentNumber != '' &&
             this.props.tenantId != '' &&
             prevProps.displayDocumentNumber != this.props.displayDocumentNumber &&
             this.props.templateType.toLowerCase() == 'all'
@@ -396,7 +456,14 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                 this.primaryActionRef.focus();
             }
         }
-        const { detailsJSON, callbackJSONs, headerDetailsJSON, isRequestFullyScrolled } = this.props;
+        const {
+            detailsJSON,
+            callbackJSONs,
+            headerDetailsJSON,
+            isRequestFullyScrolled,
+            isUploadAttachment,
+            isExemptAttachment,
+        } = this.props;
 
         if (
             this.props.selectedPage === 'summary' &&
@@ -520,6 +587,10 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
         }
     }
 
+    handleToggleVisibilityAction = (_element: AdaptiveCards.CardElement): void => {
+        // Tenant-specific toggle-visibility handlers are not included in the public build.
+    };
+
     handleAdaptiveCardSubmitAction = (id: string, data: any): void => {
         const {
             dispatchRequestDocumentPreview,
@@ -554,6 +625,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                 this.props.userAlias,
                 isModal
             );
+
             trackBusinessProcessEvent(
                 authClient,
                 telemetryClient,
@@ -574,6 +646,23 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
             );
         } else if (id.includes('viewMoreDetails')) {
             dispatchOpenMicrofrontend();
+        } else if (id.includes('correctRiskLevel') || id.includes('riskLevelAgreement')) {
+            // Handle feedback input for risk level correction
+            if (data.value === null || data.value === undefined || data.value === '') {
+                this.props.dispatchDeleteFeedbackInput(
+                    id, //Input name
+                    'RiskAssessment' //Feature name
+                );
+            } else {
+                this.props.dispatchUpdateFeedbackInput(
+                    id, //Input name
+                    'RiskAssessment', //Feature name
+                    data.type || 'Unknown', //Input type
+                    data.value, //Input value
+                    this.props.documentNumber,
+                    this.props.fiscalYear
+                );
+            }
         } else if (id.includes('fileUpload') && !id.includes('fileUploadDisabled')) {
             // Data is passed from adaptive card.
             // See Blob: Common/adaptiveAttachmentTemplateReact.json for fileUpload action:
@@ -584,8 +673,11 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
             this.setState({
                 attachmentsArray: data.currentAttachments,
                 fileAttachmentOptions: new FileAttachmentOptions(data.fileAttachmentOptions),
+                category: data.category,
             });
-            dispatchOpenFileUpload(isModal);
+            // On mobile, always open the file upload as a modal popup so it overlays the page
+            // (including the action buttons) instead of rendering inline.
+            dispatchOpenFileUpload(isModal || isMobileResolution(windowWidth));
         }
     };
 
@@ -743,6 +835,19 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
         );
     };
 
+    getOCRDataForAttachment = (): string => {
+        if (this.props.detailsJSON.OCRDetails !== undefined && this.props.detailsJSON.OCRDetails !== null) {
+            let ocrDetail = this.props.detailsJSON.OCRDetails.filter(
+                (item: object) => (item as any).id === this.state.selectedAttachmentID.toString()
+            );
+            if (ocrDetail !== undefined && ocrDetail !== null && ocrDetail.length > 0) {
+                const { OCRoutput } = ocrDetail[0];
+                return OCRoutput;
+            }
+        }
+        return '';
+    };
+
     renderFilePreview = (
         isModal?: boolean,
         modalWidth?: number,
@@ -757,7 +862,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
             toggleDetailsScreen,
         } = this.props;
         const { attachmentsArray, selectedAttachmentID } = this.state;
-        const attachmentOptions: IDropdownOption[] = attachmentsArray.map((attachment: any) => {
+        const attachmentOptions: IDropdownOption[] = (attachmentsArray || []).map((attachment: any) => {
             return { key: attachment.ID, text: attachment.Name, data: attachment };
         });
         return (
@@ -776,6 +881,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                         isModal={isModal}
                         isModalExpanded={isModalExpanded}
                         previewContainerInitialHeight={isModal ? modalHeight : null}
+                        OCRData={this.getOCRDataForAttachment()}
                     />
                 </Stack.Item>
                 {documentPreviewHasError && documentPreviewErrorMessage && (
@@ -828,9 +934,11 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                                 <SharedStyled.ErrorText>Download all failed.</SharedStyled.ErrorText>
                             </Stack.Item>
                         )}
-                    <Stack.Item>
-                        <MaximizeButton />
-                    </Stack.Item>
+                    {!isMobileResolution(this.props.windowWidth) && (
+                        <Stack.Item>
+                            <MaximizeButton />
+                        </Stack.Item>
+                    )}
                     {!(this.props.isMicrofrontendOpen || this.props.isPreviewOpen || this.props.isFileUploadOpen) && (
                         <Stack.Item>
                             <RefreshButton />
@@ -845,10 +953,14 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
     };
 
     private fileUploadSubmitButtonClicked(files: IFileUpload[]) {
+        const approvalIdentifier: IApprovalIdentifier = {
+            DocumentNumber: this.props.documentNumber,
+            DisplayDocumentNumber: this.props.displayDocumentNumber,
+            FiscalYear: this.props.fiscalYear,
+        };
         this.props.dispatchUploadFiles(
             this.props.tenantId,
-            this.props.documentNumber,
-            this.props.displayDocumentNumber,
+            approvalIdentifier,
             this.props.userAlias,
             this.props.detailsComponentType === DetailsType.AdaptiveCard,
             this.props.isPullModelEnabled,
@@ -897,6 +1009,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
             isFileUploadOpen,
             windowWidth,
             windowHeight,
+            isUploadingFiles,
         } = this.props;
 
         const stackTokens: IStackTokens = { childrenGap: isPreviewOpen || isFileUploadOpen ? 5 : 12 };
@@ -911,62 +1024,28 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
         const fileAttachments: FileAttachment[] = createFileAttachmentArray(this.state.attachmentsArray);
         const fileUploadOptions: IFileUploadOptions = propsForFileUpload(
             this.state.fileAttachmentOptions,
-            fileAttachments
+            fileAttachments,
+            this.state.category
         );
 
         return (
             <div>
-                {/* Modal for document preview. */}
-                <Modal
-                    titleAriaId={'documentPreviewModal'}
+                {/* Modal for document preview — shared component in 'provided' mode */}
+                <DocumentPreviewModal
+                    mode={DocumentPreviewMode.Provided}
                     isOpen={isModalPreviewOpen}
-                    isBlocking={false}
-                    dragOptions={{ moveMenuItemText: 'Move', closeMenuItemText: 'Close', menu: ContextualMenu }}
                     onDismiss={(): void => {
                         this.props.dispatchCloseDocumentPreview();
                     }}
-                    styles={{ main: { minWidth: modalDimensions.width, minHeight: modalDimensions.height } }}
-                >
-                    <Stack>
-                        <Stack.Item align={'end'}>
-                            <Stack horizontal>
-                                <IconButton
-                                    iconProps={
-                                        isModalExpanded ? { iconName: 'BackToWindow' } : { iconName: 'FullScreen' }
-                                    }
-                                    ariaLabel={isModalExpanded ? 'Restore modal size' : 'Maximize modal'}
-                                    title={isModalExpanded ? 'Resize' : 'Maximize'}
-                                    onClick={(): void => {
-                                        this.setState({ isModalExpanded: !isModalExpanded });
-                                    }}
-                                    styles={{ icon: { fontSize: 18 } }}
-                                />
-                                <IconButton
-                                    iconProps={{ iconName: 'Cancel' }}
-                                    ariaLabel="Close preview modal"
-                                    title="Close"
-                                    onClick={(): void => {
-                                        this.props.dispatchCloseDocumentPreview();
-                                    }}
-                                    styles={{ icon: { fontSize: 18 } }}
-                                />
-                            </Stack>
-                        </Stack.Item>
-                        {isModalPreviewOpen && isLoadingPreview && (
-                            <Stack.Item verticalFill={true}>
-                                <Spinner label="Loading preview..." />
-                            </Stack.Item>
-                        )}
-                        {isModalPreviewOpen &&
-                            !isLoadingPreview &&
-                            this.renderFilePreview(
-                                true,
-                                modalDimensions.width,
-                                modalDimensions.height,
-                                isModalExpanded
-                            )}
-                    </Stack>
-                </Modal>
+                    isLoading={isLoadingPreview}
+                    hasError={this.props.documentPreviewHasError}
+                    errorMessage={this.props.documentPreviewErrorMessage}
+                    windowWidth={windowWidth}
+                    windowHeight={windowHeight}
+                    renderContent={(modalWidth, modalHeight, isExpanded) =>
+                        this.renderFilePreview(true, modalWidth, modalHeight, isExpanded)
+                    }
+                />
 
                 {/* Modal for file attachment upload. */}
                 <Modal
@@ -1019,16 +1098,22 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                         </Stack.Item>
                         <FileUpload
                             fileUploadOptions={fileUploadOptions}
+                            windowWidth={windowWidth}
                             submitButtonClicked={(files: IFileUpload[]): void => {
                                 this.fileUploadSubmitButtonClicked(files);
                             }}
                         />
                     </Stack>
                 </Modal>
-
                 <Stack tokens={stackTokens}>
                     {!this.props.hideHeaderActionBar && this.detailCardHeaderActionBar()}
-                    {(!tenantId || !documentNumber) && (
+                    <FlightingHandler featureName="AIAnalysis">
+                        {detailsJSON?.AIAnalysisData?.RequestSummary &&
+                            !isLoadingDetails && (
+                                <SummarizeSection summary={detailsJSON.AIAnalysisData.RequestSummary} />
+                            )}
+                    </FlightingHandler>
+                    {(!tenantId || !this.props.displayDocumentNumber) && (
                         <Stack.Item>
                             <h2>No request selected</h2>
                         </Stack.Item>
@@ -1043,7 +1128,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                         !isMicrofrontendOpen &&
                         !isPreviewOpen &&
                         !isFileUploadOpen && (
-                            <Stack.Item>
+                            <Stack.Item styles={{ root: { marginTop: '0px !important' } }}>
                                 <WarningView
                                     warningTitle={'Reasons for previous action failures'}
                                     warningMessages={detailsJSON.LastFailedExceptionMessage}
@@ -1092,8 +1177,10 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                                                         dataPayload={headerDetailsJSON}
                                                         onOpenURLActionExecuted={this.props.dispatchRequestDocument}
                                                         onSubmitActionExecuted={this.handleAdaptiveCardSubmitAction}
+                                                        onToggleVisibilityActionExecuted={this.handleToggleVisibilityAction}
                                                         userAlias={this.props.userAlias}
                                                         shouldDetailReRender={this.props.shouldDetailReRender}
+                                                        highlightTerms={this.props.highlightTerms}
                                                     />
                                                 </Stack.Item>
                                             </Stack>
@@ -1114,7 +1201,8 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                         headerDetailsJSON &&
                         (postActionHasError || !this.state.actionCompleted) &&
                         this.props.templateType == 'Summary' &&
-                        !showingDetails && (
+                        !showingDetails &&
+                        headerDetailsJSON.IsHistoryClickable && (
                             <Stack.Item align="center">
                                 <BasicButton
                                     primary={true}
@@ -1133,14 +1221,29 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                                 />
                             </Stack.Item>
                         )}
+                    {isUploadingFiles && (
+                        <div
+                            ref={(input) => input && input.focus()}
+                            role="status"
+                            aria-label="Uploading attachment(s)"
+                            title="Uploading attachment(s)"
+                            tabIndex={0}
+                            style={{ outline: 'none' }}
+                        >
+                            <Stack.Item>
+                                <Spinner label="Uploading attachment(s)..." />
+                            </Stack.Item>
+                        </div>
+                    )}
                     {!detailsHasError &&
                         !callbackHasError &&
                         showingDetails &&
                         !isLoadingHeader &&
+                        !isUploadingFiles &&
                         (isLoadingDetails || isLoadingCallback) && (
                             <div
                                 ref={(input) => input && input.focus()}
-                                role="loading details"
+                                role="status"
                                 aria-label="loading details"
                                 title="loading details"
                                 tabIndex={0}
@@ -1187,12 +1290,14 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                                                 combinedDetailsJSON={this.combineDataPayload()}
                                                 onOpenURLActionExecuted={this.props.dispatchRequestDocument}
                                                 onSubmitActionExecuted={this.handleAdaptiveCardSubmitAction}
+                                                onToggleVisibilityActionExecuted={this.handleToggleVisibilityAction}
                                                 userAlias={this.props.userAlias}
                                                 shouldDetailReRender={this.props.shouldDetailReRender}
                                                 tenantId={tenantId}
                                                 executeMicrofrontendActionRef={this.executeMicrofrontendActionRef}
                                                 dispatchUpdateAdditionalData={this.props.dispatchUpdateAdditionalData}
                                                 selectedPage={this.props.selectedPage}
+                                                highlightTerms={this.props.highlightTerms}
                                             />
                                         </Stack.Item>
                                     </>
@@ -1207,6 +1312,7 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                                 {isFileUploadOpen && (
                                     <FileUpload
                                         fileUploadOptions={fileUploadOptions}
+                                        windowWidth={windowWidth}
                                         submitButtonClicked={(files: IFileUpload[]): void => {
                                             this.fileUploadSubmitButtonClicked(files);
                                         }}
@@ -1276,6 +1382,11 @@ class RequestView extends React.Component<IDetailsAdaptiveProps, DetailsAdaptive
                             isBulkApproval={false}
                             isControlsAndComplianceRequired={this.props.isControlsAndComplianceRequired}
                             isRequestFullyScrolled={this.props.isRequestFullyScrolled}
+                            isUploadAttachment={this.props.isUploadAttachment}
+                            isExemptAttachment={this.props.isExemptAttachment}
+                            isSupplierMeetsReqSelected={this.props.isSupplierMeetsReqSelected}
+                            isSupplierDoesNotMeetReqSelected={this.props.isSupplierDoesNotMeetReqSelected}
+                            isSupplierDoesNotMeetRejectSelected={this.props.isSupplierDoesNotMeetRejectSelected}
                             executeMicrofrontendActionRef={this.executeMicrofrontendActionRef}
                             setFooterRef={(element: any) => {
                                 this.footerRef = element;
@@ -1310,8 +1421,15 @@ const mapStateToProps = (state: IDetailsAppState): IDetailsState => {
     if (state.dynamic[detailsReducerName] && state.SharedComponentsPersistentReducer) {
         const dynamicState = state.dynamic;
         const { tenantId } = dynamicState[detailsReducerName];
-        const { tenantInfo, selectedPage, toggleDetailsScreen, pullTenantSearchCriteria, pullTenantSearchSelection } =
-            dynamicState.SharedComponentsReducer;
+        const {
+            tenantInfo,
+            selectedPage,
+            toggleDetailsScreen,
+            pullTenantSearchCriteria,
+            pullTenantSearchSelection,
+            isSearchResultsViewOpen,
+            searchResults,
+        } = dynamicState.SharedComponentsReducer;
         const { userName, userAlias } = state.SharedComponentsPersistentReducer;
         const updatedState: any = { ...state.dynamic[detailsReducerName] };
         if (!tenantId || !tenantInfo) {
@@ -1344,8 +1462,22 @@ const mapStateToProps = (state: IDetailsAppState): IDetailsState => {
         updatedState.isPullModelEnabled = isPullModelEnabled;
         updatedState.summaryDataMapping = summaryDataMapping;
         updatedState.isExternalTenantActionDetails = isExternalTenantActionDetails;
+        updatedState.detailsTemplateJSON = getProcessedDetailsTemplate(state);
         const stateCommonProperties = getDetailsCommonPropertiesSelector(state);
         updatedState.stateCommonProperties = stateCommonProperties;
+
+        // Derive highlight terms from search results for the currently open document
+        if (isSearchResultsViewOpen && searchResults?.length > 0) {
+            const { displayDocumentNumber } = dynamicState[detailsReducerName];
+            const matchingItem = searchResults.find(
+                (item: any) =>
+                    item?.ApprovalIdentifier?.DisplayDocumentNumber?.toString() === displayDocumentNumber?.toString()
+            );
+            updatedState.highlightTerms = stableHighlightTerms(matchingItem?._matchMetadata?.highlights);
+        } else {
+            updatedState.highlightTerms = EMPTY_HIGHLIGHT_TERMS;
+        }
+
         return updatedState;
     } else {
         return detailsInitialState;
@@ -1441,7 +1573,15 @@ const mapDispatchToProps = (dispatch: Dispatch): IDetailsAdaptiveDispatch => ({
         isModal: boolean
     ): void => {
         dispatch(
-            requestDocumentPreview(tenantId, documentNumber, displayDocumentNumber, attachmentId, isPreAttached, userAlias, isModal)
+            requestDocumentPreview(
+                tenantId,
+                documentNumber,
+                displayDocumentNumber,
+                attachmentId,
+                isPreAttached,
+                userAlias,
+                isModal
+            )
         );
     },
     dispatchRequestAllDocuments: (
@@ -1484,6 +1624,25 @@ const mapDispatchToProps = (dispatch: Dispatch): IDetailsAdaptiveDispatch => ({
     dispatchRequestFullyRendered: (isRequestFullyRendered: boolean): void => {
         dispatch(requestFullyRendered(isRequestFullyRendered));
     },
+    dispatchActionEnabled: (
+        isUploadAttachment: boolean,
+        isExemptAttachment: boolean,
+        isSupplierMeetsReqSelected?: boolean,
+        isSupplierDoesNotMeetReqSelected?: boolean,
+        isSupplierDoesNotMeetRejectSelected?: boolean,
+        selectedFhrOptionId?: string
+    ): void => {
+        dispatch(
+            actionEnabled(
+                isUploadAttachment,
+                isExemptAttachment,
+                isSupplierMeetsReqSelected,
+                isSupplierDoesNotMeetReqSelected,
+                isSupplierDoesNotMeetRejectSelected,
+                selectedFhrOptionId
+            )
+        );
+    },
     dispatchUpdatePeoplePickerSelections: (peoplePickerSelections: object[]): void => {
         dispatch(updatePeoplePickerSelection(peoplePickerSelections));
     },
@@ -1501,24 +1660,26 @@ const mapDispatchToProps = (dispatch: Dispatch): IDetailsAdaptiveDispatch => ({
     },
     dispatchUploadFiles: (
         tenantId: string,
-        documentNumber: string,
-        displayDocumentNumber: string,
+        approvalIdentifier: IApprovalIdentifier,
         userAlias: string,
         requiresTemplate: boolean,
         isPullModelEnabled: boolean,
         files: IFileUpload[]
     ): void => {
-        dispatch(
-            uploadFiles(
-                tenantId,
-                documentNumber,
-                displayDocumentNumber,
-                userAlias,
-                requiresTemplate,
-                isPullModelEnabled,
-                files
-            )
-        );
+        dispatch(uploadFiles(tenantId, approvalIdentifier, userAlias, requiresTemplate, isPullModelEnabled, files));
+    },
+    dispatchUpdateFeedbackInput: (
+        id: string,
+        featureName: string,
+        inputType: string,
+        inputValue: string,
+        documentNumber?: string,
+        fiscalYear?: string
+    ): void => {
+        dispatch(updateFeedbackInput(id, featureName, inputType, inputValue, documentNumber, fiscalYear));
+    },
+    dispatchDeleteFeedbackInput: (id: string, featureName: string): void => {
+        dispatch(deleteFeedbackInput(id, featureName));
     },
 });
 

@@ -2,7 +2,7 @@ import * as React from 'react';
 import { render } from '@testing-library/react';
 import TextFieldCustom from '../../Controls/TextFieldCustom';
 
-describe("Lob App - TextFieldCustom", () => {
+describe("MSInvoice - TextFieldCustom", () => {
     it("will render TextFieldCustom", () => {
         let onSAPCostChange = (newValue: boolean) => { }
         let errorMessage = "";

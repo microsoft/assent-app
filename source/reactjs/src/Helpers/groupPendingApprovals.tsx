@@ -82,6 +82,43 @@ export const groupByTenant = (summary: object[]): any => {
     return groupedByTenant;
 }
 
+export const groupByCategory = (summary: object[], tenantInfo: any): any => {
+    const groupedByCategory: IGrouping[] = [];
+
+    // map tenant id -> category using tenant metadata
+    const tenantCategoryMap = new Map<number, string>();
+    if (tenantInfo) {
+        tenantInfo.forEach((tenant: any) => {
+            tenantCategoryMap.set(tenant.tenantId, tenant.tenantCategory || 'Others');
+        });
+    }
+
+    // group the approval requests by their tenant's category
+    const categoryMap = new Map<string, any[]>();
+    summary.forEach((item: any) => {
+        const category = tenantCategoryMap.get(item.TenantId) || 'Others';
+        if (!categoryMap.has(category)) {
+            categoryMap.set(category, []);
+        }
+        categoryMap.get(category).push(item);
+    });
+
+    categoryMap.forEach((groupingItems, category) => {
+        const categoryGroup: IGrouping = {
+            key: category,
+            displayValue: category,
+            // sort the cards by descending date in their groups
+            grouping: sortCardsByDescendingDate(groupingItems)
+        };
+        groupedByCategory.push(categoryGroup);
+    });
+
+    // sort alphabetically by category name
+    groupedByCategory.sort((a, b) => (a.displayValue > b.displayValue) ? 1 : -1);
+
+    return groupedByCategory;
+}
+
 export const groupByDate = (summary: object[]): any => {
     const groupedByDate: IGrouping[] = [];
     

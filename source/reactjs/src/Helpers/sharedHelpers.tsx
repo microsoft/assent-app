@@ -74,6 +74,9 @@ export const flattenObject = (ob: any): any => {
 };
 
 const formatConditionValue = (value: any): string => {
+    if (value === undefined) {
+        return JSON.stringify('undefined');
+    }
     if (value !== null && value !== undefined && value !== '' && !isNaN(Number(value))) {
         return String(Number(value));
     }
@@ -93,6 +96,25 @@ const CONDITION_OPS: { [op: string]: [number, (l: any, r: any) => any] } = {
     '>': [4, (l, r) => l > r],
     '>=': [4, (l, r) => l >= r],
 };
+
+// Read-only, side-effect-free members the tenant condition DSL may access on string/number values.
+// Anything outside these allowlists (e.g. `constructor`, `__proto__`, `call`) throws, blocking prototype breakouts.
+const CONDITION_SAFE_METHODS: ReadonlySet<string> = new Set([
+    'includes',
+    'startsWith',
+    'endsWith',
+    'indexOf',
+    'lastIndexOf',
+    'toLowerCase',
+    'toUpperCase',
+    'trim',
+    'charAt',
+    'substring',
+    'substr',
+    'slice',
+    'toString',
+]);
+const CONDITION_SAFE_PROPS: ReadonlySet<string> = new Set(['length']);
 
 // Eval-free replacement for `new Function('return ' + condition)()`: evaluates only literals + allowed operators, else throws.
 const evaluateConditionExpression = (condition: string): boolean => {
@@ -209,6 +231,9 @@ export const validateConditionClient = (propertyObject: any, condition: string):
 };
 
 export const validateCondition = (propertyObject: any, condition: string): boolean => {
+    if (!condition) {
+        return true;
+    }
     const conditionParts = condition.split('^');
     if (conditionParts.length > 1) {
         const key = conditionParts[0];
@@ -226,6 +251,41 @@ export const validateCondition = (propertyObject: any, condition: string): boole
                     condition = condition.replace(conditionPhrase.trim(), formatConditionValue(propertyObject[propertyName]));
                 });
             }
+            return safeEvaluateCondition(condition, true);
+        }
+    }
+    return true;
+};
+
+export const validateProofOfPresenceCondition = (propertyObject: any, condition: string): boolean => {
+    const conditionPhrases = condition.match(/(\w+[^\w\s]\w+)|(\w+\s)/g);
+    if (conditionPhrases) {
+        conditionPhrases.forEach((conditionPhrase) => {
+            const operatorMatch = conditionPhrase.match(/[^\w\s]+/);
+            let propertyName = conditionPhrase;
+            if (operatorMatch) {
+                const [operator] = operatorMatch;
+                const conditionPhraseSplit = conditionPhrase.split(operator);
+                if (conditionPhraseSplit.length > 1) {
+                    propertyName = conditionPhraseSplit[1];
+                }
+            }
+            propertyName = propertyName.trim();
+            condition = condition.replace(conditionPhrase.trim(), formatConditionValue(propertyObject[propertyName]));
+        });
+    }
+    return safeEvaluateCondition(condition, true);
+};
+
+export const validateBulkCondition = (propertyObject: any, condition: string): boolean => {
+    if (condition) {
+        const conditionPhrases = condition.match(/(\w+[^\w\s]\w+)|(\w+\s)/g);
+        if (conditionPhrases) {
+            conditionPhrases.forEach((conditionPhrase) => {
+                let propertyName = conditionPhrase;
+                propertyName = propertyName.trim();
+                condition = condition.replace(conditionPhrase.trim(), formatConditionValue(propertyObject[propertyName]));
+            });
             return safeEvaluateCondition(condition, true);
         }
     }
@@ -418,12 +478,17 @@ export const formatBusinessProcessName = (name: string, values: string[]): strin
 };
 export const UrlWithQueryParams = (): void => {
     const history = useHistory();
-    const queryParams = getUrlParams(window.location.hash);
+    const queryParams = getUrlParams(window.location.search);
     const tenantId = queryParams['tenantId'];
     const documentNumber = queryParams['documentNumber'];
-
     if (tenantId && documentNumber) {
-        history.push(`/${tenantId}/${documentNumber}`);
+        const urlSearch = new URLSearchParams(history.location.search);
+        const filterParam = urlSearch.get('filter');
+        let path = `/${tenantId}/${documentNumber}`;
+        if (filterParam) {
+            path += `?filter=${encodeURIComponent(filterParam)}`;
+        }
+        history.push(path);
     }
 };
 
@@ -437,4 +502,136 @@ const getUrlParams = (hashQuery: any): any => {
 
 export const removeHTMLFromString = (str: string): string => {
     return str?.replace(/(<([^>]+)>)/gi, '') ?? '';
+};
+
+// HTML-encodes special characters so backend-echoed text cannot carry markup into a markup sink.
+export const encodeHTML = (str: unknown): string => {
+    if (str === null || str === undefined) {
+        return '';
+    }
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+};
+
+// Formats a unit value: if it's a number, returns it with 2 decimal places, otherwise returns as-is
+export const formatUnitValue = (value: any): string => {
+    if (typeof value === 'number' || (!isNaN(Number(value)) && value !== '')) {
+        return Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    return String(value);
+};
+
+export const getRememberForOptions = (actionCode: string, tenantInfo: any, tenantId: number): { key: number; text: string }[] | undefined => {
+    const tenant = Array.isArray(tenantInfo)
+        ? tenantInfo.find((t: any) => t.tenantId === Number(tenantId))
+        : tenantInfo;
+
+    if (!tenant) return undefined;
+
+    const actionDetails = typeof tenant.tenantActionDetails === 'string'
+        ? safeJSONParse(tenant.tenantActionDetails)
+        : tenant.tenantActionDetails;
+    
+    const allActions = [...(actionDetails?.Primary || []), ...(actionDetails?.Secondary || [])];
+    const matchedAction = allActions.find(
+        (action: any) => action.Code?.toLowerCase() === actionCode.toLowerCase()
+    );
+    
+    if (matchedAction?.RememberForOptions?.length > 0) {
+        
+        return matchedAction.RememberForOptions.map((opt: { Value: number; Text: string }) => ({
+            key: opt.Value,
+            text: opt.Text,
+        }));
+    }
+
+    return undefined;
+};
+
+export const shouldInitiateProofOfPresence = (
+    actionCode: string,
+    tenantInfo: any,
+    propertyObject: any,
+    tenantId: number,
+    bulkOptions?: { selectedRecords: any[]; summaryData: any[]; isPullTenant: boolean }
+): boolean => {
+    const tenant = Array.isArray(tenantInfo)
+        ? tenantInfo.find((t: any) => t.tenantId === Number(tenantId))
+        : tenantInfo;
+
+    if (!tenant?.isProofOfPresenceRequired) {
+        return false;
+    }
+
+    const actionDetails = typeof tenant.tenantActionDetails === 'string'
+        ? safeJSONParse(tenant.tenantActionDetails)
+        : tenant.tenantActionDetails;
+
+    const allActions = [...(actionDetails?.Primary || []), ...(actionDetails?.Secondary || [])];
+
+    if (allActions.length === 0) {
+        return true;
+    }
+
+    const matchedAction = allActions.find(
+        (action: any) => action.Code?.toLowerCase() === actionCode.toLowerCase()
+    );
+
+    if (!matchedAction) {
+        return false;
+    }
+
+    if (!matchedAction.ProofOfPresenceCondition) {
+        return true;
+    }
+
+    // Bulk: check condition against each selected record; if any requires PoP, return true
+    if (bulkOptions) {
+        const { selectedRecords, summaryData, isPullTenant } = bulkOptions;
+        for (const record of selectedRecords) {
+            let recordPropertyObject: any = {};
+            if (isPullTenant) {
+                recordPropertyObject = record;
+            } else {
+                const matchingSummary = summaryData?.find(
+                    (s: any) => s.ApprovalIdentifier?.DocumentNumber === record.DocumentNumber
+                );
+                if (matchingSummary) {
+                    recordPropertyObject = flattenObject(matchingSummary);
+                }
+            }
+
+            if (validateProofOfPresenceCondition(recordPropertyObject, matchedAction.ProofOfPresenceCondition)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Single: check condition against the provided property object
+    return validateProofOfPresenceCondition(propertyObject, matchedAction.ProofOfPresenceCondition);
+};
+
+export const getRecordsMeetingPopCondition = (
+    actionCode: string,
+    tenantInfo: any,
+    tenantId: number,
+    selectedRecords: any[],
+    summaryData: any[],
+    isPullTenant: boolean
+): any[] => {
+    return selectedRecords.filter((record) => {
+        const propertyObject = isPullTenant
+            ? record
+            : flattenObject(
+                  summaryData?.find(
+                      (s: any) => s.ApprovalIdentifier?.DocumentNumber === record.DocumentNumber
+                  ) ?? {}
+              );
+        return shouldInitiateProofOfPresence(actionCode, tenantInfo, propertyObject, tenantId);
+    });
 };

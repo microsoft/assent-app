@@ -8,6 +8,7 @@ import { requestFullyScrolled } from './Details.actions';
 import { RequestView } from './DetailsAdaptive';
 import { getSelectedPage, getToggleDetailsScreen } from '../SharedComponents.selectors';
 import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
+import { Stack } from '@fluentui/react/lib/Stack';
 
 interface IDetailsDockedViewProps {
     templateType: string;
@@ -31,7 +32,7 @@ function DetailsDockedViewBase(props: IDetailsDockedViewProps): React.ReactEleme
         footerHeight,
         bulkMessagebarHeight,
         aliasMessagebarHeight,
-        isRequestFullyRendered
+        isRequestFullyRendered,
     } = useSelector((state: IDetailsAppState) => state.dynamic?.[detailsReducerName] || detailsInitialState);
 
     const toggleDetailsScreen = useSelector(getToggleDetailsScreen);
@@ -52,28 +53,32 @@ function DetailsDockedViewBase(props: IDetailsDockedViewProps): React.ReactEleme
                 (toggleDetailsScreen ? ' ms-xl8-docked ms-xxl8-docked ms-xxxl8-docked' : ' ms-xl6-docked')
             }
         >
-            <SummaryStyled.DetailCardContainer
-                className="custom-details-container"
-                windowHeight={windowHeight}
-                windowWidth={windowWidth}
-                footerHeight={footerHeight}
-                onScroll={handleScroll}
-                bulkMessagebarHeight={bulkMessagebarHeight}
-                aliasMessagebarHeight={aliasMessagebarHeight}
-                selectedPage={selectedPage}
-            >
-                <RequestView
-                    componentContext={componentContext}
-                    reduxContext={reduxContext}
-                    viewType="Docked"
-                    templateType={templateType}
-                    handleContainerScrolling={handleScroll}
-                    windowWidth={windowWidth}
-                    windowHeight={windowHeight}
-                    historyRef={historyRef}
-                    locationRef={locationRef}
-                ></RequestView>
-            </SummaryStyled.DetailCardContainer>
+            <Stack horizontal tokens={{ childrenGap: 5 }}>
+                <Stack.Item styles={{ root: { width: '100%' } }}>
+                    <SummaryStyled.DetailCardContainer
+                        className="custom-details-container"
+                        windowHeight={windowHeight}
+                        windowWidth={windowWidth}
+                        footerHeight={footerHeight}
+                        onScroll={handleScroll}
+                        bulkMessagebarHeight={bulkMessagebarHeight}
+                        aliasMessagebarHeight={aliasMessagebarHeight}
+                        selectedPage={selectedPage}
+                    >
+                        <RequestView
+                            componentContext={componentContext}
+                            reduxContext={reduxContext}
+                            viewType="Docked"
+                            templateType={templateType}
+                            handleContainerScrolling={handleScroll}
+                            windowWidth={windowWidth}
+                            windowHeight={windowHeight}
+                            historyRef={historyRef}
+                            locationRef={locationRef}
+                        ></RequestView>
+                    </SummaryStyled.DetailCardContainer>
+                </Stack.Item>
+            </Stack>
         </div>
     );
 }

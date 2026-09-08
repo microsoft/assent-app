@@ -44,7 +44,7 @@ function DetailsPanel(props: {
         isMicrofrontendOpen,
         toggleHistoryDetailPanel,
         isRequestFullyScrolled,
-        isRequestFullyRendered,
+        isRequestFullyRendered
     } = useSelector((state: IDetailsAppState) => state.dynamic?.[detailsReducerName] || detailsInitialState);
 
     function calculateWidth() {
@@ -119,10 +119,22 @@ function DetailsPanel(props: {
                     focusTrapZoneProps={{
                         firstFocusableSelector: 'close-button',
                     }}
-                    styles={{ content: { paddingTop: '36px' } }}
+                    styles={{
+                        content: { paddingTop: '36px' },
+                        commands: { display: 'flex', alignItems: 'center', padding: '8px 4px 0px' },
+                    }}
                     onRenderNavigation={() => {
                         return (
-                            <Stack.Item styles={Styled.DetailsDocPreviewHeaderBarStyles('FLY')}>
+                            <Stack.Item styles={{
+                                root: {
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    width: '100%',
+                                    background: '#ffffff',
+                                    paddingBottom: '5px',
+                                    zIndex: 1,
+                                },
+                            }}>
                                 {(isPreviewOpen || isMicrofrontendOpen) && <BackButton />}
                                 {!(isPreviewOpen || isMicrofrontendOpen) && <div></div>}
                                 <Stack style={{ flexFlow: 'row' }}>

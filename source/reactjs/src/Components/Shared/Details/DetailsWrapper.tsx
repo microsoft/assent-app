@@ -9,6 +9,7 @@ interface IDetailsWrapperProps {
     combinedDetailsJSON: any;
     onOpenURLActionExecuted: any;
     onSubmitActionExecuted: any;
+    onToggleVisibilityActionExecuted: any;
     userAlias: string;
     shouldDetailReRender: boolean;
     tenantId: string;
@@ -16,6 +17,7 @@ interface IDetailsWrapperProps {
     dispatchUpdateAdditionalData: any;
     cdnURL: string | null;
     selectedPage: string;
+    highlightTerms?: string[];
 }
 
 export function DetailsWrapper(props: IDetailsWrapperProps): React.ReactElement {
@@ -26,12 +28,13 @@ export function DetailsWrapper(props: IDetailsWrapperProps): React.ReactElement 
         combinedDetailsJSON,
         onOpenURLActionExecuted,
         onSubmitActionExecuted,
+        onToggleVisibilityActionExecuted,
         userAlias,
         shouldDetailReRender,
         tenantId,
         executeMicrofrontendActionRef,
         dispatchUpdateAdditionalData,
-        selectedPage
+        selectedPage,
     } = props;
 
     const useAdaptiveCard = detailsComponentType === DetailsType.AdaptiveCard;
@@ -42,8 +45,10 @@ export function DetailsWrapper(props: IDetailsWrapperProps): React.ReactElement 
             dataPayload={combinedDetailsJSON}
             onOpenURLActionExecuted={onOpenURLActionExecuted}
             onSubmitActionExecuted={onSubmitActionExecuted}
+            onToggleVisibilityActionExecuted={onToggleVisibilityActionExecuted}
             userAlias={userAlias}
             shouldDetailReRender={shouldDetailReRender}
+            highlightTerms={props.highlightTerms}
         />
     ) : (
         <Microfrontend

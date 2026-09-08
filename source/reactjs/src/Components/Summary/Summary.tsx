@@ -13,6 +13,7 @@ import {
     updatePanelState,
     setSelectedSumaryTileRef,
     requestPullTenantSummaryCount,
+    requestFlightingData,
 } from '../Shared/SharedComponents.actions';
 import {
     sharedComponentsPersistentReducerName,
@@ -24,16 +25,21 @@ import { DetailsPanel } from '../Shared/Details/DetailsPanel';
 import { FLYOUT_VIEW } from '../Shared/SharedConstants';
 import { SummaryView } from './SummaryView';
 import {
+    getBulkApproveStatus,
+    getBulkApproveFailed,
     getDetailsDefaultView,
     getIsPanelOpen,
-    getSummary,
+    getIsSearchResultsViewOpen,
     getTenantInfo,
     getToggleDetailsScreen,
 } from '../Shared/SharedComponents.selectors';
-import { getBulkMessagebarHeight, getAliasMessagebarHeight } from '../Shared/Details/Details.selectors';
+import {
+    getBulkMessagebarHeight,
+    getAliasMessagebarHeight,
+    getDisplayDocumentNumber,
+} from '../Shared/Details/Details.selectors';
 import { getUserAlias } from '../Shared/SharedComponents.persistent-selectors';
 import { updateMyRequest } from '../Shared/Details/Details.actions';
-import { ISummaryObject } from '../Shared/SharedComponents.types';
 import { RefreshSummaryButton } from './RefreshSummaryButton';
 import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
 import { useHistory, useLocation } from 'react-router-dom';
@@ -43,12 +49,13 @@ interface ISummaryProps {
     windowWidth: number;
     queryDocNumber: string;
     queryTenantId?: string;
+    isDashboardPageView?: boolean;
 }
 
 function Summary(props: ISummaryProps): React.ReactElement {
     useDynamicReducer(sharedComponentsReducerName, sharedComponentsReducer as Reducer, [sharedComponentsSagas], false);
     usePersistentReducer(sharedComponentsPersistentReducerName, sharedComponentsPersistentReducer);
-    const { windowHeight, windowWidth } = props;
+    const { windowHeight, windowWidth, isDashboardPageView } = props;
     const reduxContext = React.useContext(Context as React.Context<IEmployeeExperienceContext>);
     const { useSelector, dispatch } = reduxContext;
     const isPanelOpen = useSelector(getIsPanelOpen);
@@ -59,7 +66,12 @@ function Summary(props: ISummaryProps): React.ReactElement {
     const bulkMessagebarHeight = useSelector(getBulkMessagebarHeight);
     const aliasMessagebarHeight = useSelector(getAliasMessagebarHeight);
     const initialMount = React.useRef(true);
-    const summary = useSelector(getSummary);
+    const isSearchResultsViewOpen = useSelector(getIsSearchResultsViewOpen);
+    const bulkApproveStatus = useSelector(getBulkApproveStatus);
+    const bulkApproveFailed = useSelector(getBulkApproveFailed);
+    // Hide the floating refresh button while a bulk action banner is shown so it does not overlap the message bar (esp. mobile).
+    const isBulkActionBannerShown = bulkApproveStatus || bulkApproveFailed;
+    const currentDisplayDocumentNumber = useSelector(getDisplayDocumentNumber);
     const history = useHistory();
     const location = useLocation();
 
@@ -83,24 +95,23 @@ function Summary(props: ISummaryProps): React.ReactElement {
     }, [userAlias]);
 
     React.useEffect(() => {
-        if (numberInRoute && numberInRoute !== '' && tenantInfo && summary && !isPanelOpen) {
-            const requestFromSummary: ISummaryObject = summary.find(
-                (request: ISummaryObject) => request.ApprovalIdentifier.DisplayDocumentNumber === numberInRoute
+        if (
+            numberInRoute &&
+            numberInRoute !== '' &&
+            tenantInfo &&
+            numberInRoute !== currentDisplayDocumentNumber
+        ) {
+            dispatch(
+                updateMyRequest(
+                    parseInt(tenantIdInRoute),
+                    '',
+                    numberInRoute
+                )
             );
-            if (requestFromSummary) {
-                dispatch(
-                    updateMyRequest(
-                        parseInt(tenantIdInRoute),
-                        requestFromSummary.ApprovalIdentifier.DocumentNumber,
-                        numberInRoute,
-                        requestFromSummary.ApprovalIdentifier.FiscalYear
-                    )
-                );
-                dispatch(setSelectedSumaryTileRef(numberInRoute));
-                dispatch(updatePanelState(true));
-            }
+            dispatch(setSelectedSumaryTileRef(numberInRoute));
+            dispatch(updatePanelState(true));
         }
-    }, [numberInRoute, tenantIdInRoute, tenantInfo, isPanelOpen, summary, dispatch]);
+    }, [numberInRoute, tenantIdInRoute, tenantInfo, isPanelOpen, currentDisplayDocumentNumber, dispatch]);
 
     return (
         <SummaryStyled.SummaryContainer
@@ -110,6 +121,7 @@ function Summary(props: ISummaryProps): React.ReactElement {
             windowHeight={windowHeight}
             windowWidth={windowWidth}
             selectedPage={'summary'}
+            isDashboardView={isDashboardPageView}
         >
             <div className="ms-Grid" dir="ltr">
                 <div className="ms-Grid-row">
@@ -125,25 +137,34 @@ function Summary(props: ISummaryProps): React.ReactElement {
                         }
                     >
                         <SummaryStyled.RefreshMedia
+                            isDetailsExpanded={isPanelOpen && detailsDefaultView !== FLYOUT_VIEW && toggleDetailsScreen}
+                            isDashboardView={isDashboardPageView}
                             style={
                                 isPanelOpen && detailsDefaultView !== FLYOUT_VIEW
-                                    ? { position: 'relative' }
+                                    ? { position: 'absolute' }
                                     : { display: 'none', position: 'absolute' }
                             }
                         >
-                            <RefreshSummaryButton />
+                            {!isSearchResultsViewOpen && !isBulkActionBannerShown && <RefreshSummaryButton />}
                         </SummaryStyled.RefreshMedia>
                         {/*Mobile View*/}
                         <SummaryStyled.RefreshMediaDuplicate
+                            isDashboardView={isDashboardPageView}
                             style={
                                 isPanelOpen && detailsDefaultView !== FLYOUT_VIEW
                                     ? { display: 'none', position: 'relative' }
                                     : { visibility: 'visible', position: 'absolute' }
                             }
                         >
-                            <RefreshSummaryButton />
+                            {!isSearchResultsViewOpen && !isBulkActionBannerShown && <RefreshSummaryButton />}
                         </SummaryStyled.RefreshMediaDuplicate>
-                        <SummaryView windowHeight={windowHeight} windowWidth={windowWidth}></SummaryView>
+                        <SummaryStyled.SummaryViewWrapper isDashboardView={isDashboardPageView}>
+                            <SummaryView
+                                windowHeight={windowHeight}
+                                windowWidth={windowWidth}
+                                isDashboardPageView={isDashboardPageView}
+                            ></SummaryView>
+                        </SummaryStyled.SummaryViewWrapper>
                     </div>
                     {isPanelOpen && detailsDefaultView !== FLYOUT_VIEW && tenantInfo && (
                         <DetailsDockedView

@@ -7,47 +7,36 @@ import { FontSizes } from '@fluentui/react';
 export const SummaryContainer = styled.div<any>`
     padding-top: 0;
     margin: 0;
-    min-width: 95%;
+    min-width: ${(props) => (props.windowWidth <= 640 ? '100%' : '95%')};
     margin-bottom: 20px;
-    margin-top: 0px;
     ${maxWidth.m} {
         min-width: 100%;
-        margin-top: ${props => (props.isPanelOpen && props.selectedPage === 'summary' ? '-12.5%' : '0px')};
+        margin-top: ${(props) => (props.isPanelOpen && props.selectedPage === 'summary' ? '-12.5%' : '0px')};
     }
-    @media only screen and (min-device-width: 1023px) and (min-width: 571px) and (max-width: 639px) {
-        margin-top: ${props => (props.isPanelOpen ? '-48px' : '0px')};
+    @media (max-width: 640px) {
         min-width: 100%;
+        margin-top: ${(props) => (props.isPanelOpen ? '-24px' : '0px')};
     }
-    @media only screen and (min-device-width: 1023px) and (min-width: 320px) and (max-width: 571px) {
-        margin-top: ${props =>
-            props.isPanelOpen ? -(props.bulkMessagebarHeight + props.aliasMessagebarHeight + 24) + 'px' : '0px'};
-        min-width: 100%;
-    }
-    @media only screen and (min-device-width: 1023px) and (max-width: 320px) {
-        margin-top: ${props =>
-            props.isPanelOpen ? -(props.bulkMessagebarHeight + props.aliasMessagebarHeight + 18) + 'px' : '0px'};
-        width: 100%;
-    }
+`;
+
+export const SummaryViewWrapper = styled.div<any>`
+    margin-top: ${(props) => (props.isDashboardView ? '-30px' : '0px')};
 `;
 
 export const SummaryTablesContainer = styled.div<any>`
     padding-top: 0;
     margin: 0;
     margin-bottom: 40px;
-    min-width: 95%;
-    margin-left: ${props => (props.isBulkSelected ? '-20px' : '0px')};
-    margin-top: ${props => (props.isPanelOpen && props.isMobile ? '-12.5%' : '0px')};
-    @media only screen and (min-device-width: 1023px) and (min-width: 571px) and (max-width: 639px) {
-        margin-top: ${props => (props.isPanelOpen ? '-48px' : '0px')};
-        min-width: 100%;
+    min-width: ${(props) => (props.windowWidth <= 640 ? '100%' : '95%')};
+    margin-left: ${(props) => (props.isBulkSelected ? (props.windowWidth <= 640 ? '0px' : '-20px') : '0px')};
+    margin-top: ${(props) => (props.isPanelOpen && props.isMobile ? '-12.5%' : '0px')};
+    ${maxWidth.m} {
+        margin-left: 0px;
     }
-    @media only screen and (min-device-width: 1023px) and (min-width: 320px) and (max-width: 571px) {
-        margin-top: ${props => (props.isPanelOpen ? '0px' : '0px')};
+    @media (max-width: 640px) {
         min-width: 100%;
-    }
-    @media only screen and (min-device-width: 1023px) and (max-width: 320px) {
-        margin-top: ${props => (props.isPanelOpen ? '-18px' : '0px')};
-        width: 100%;
+        margin-left: 0px;
+        margin-top: ${(props) => (props.isPanelOpen ? '-12px' : '0px')};
     }
 `;
 
@@ -55,19 +44,39 @@ export const TenantLabel = styled.div`
     height: 100%;
     flex-grow: 1;
     margin-left: 6px;
+
+    h2 {
+        font-size: 1em;
+        font-weight: bold;
+        margin: 0;
+    }
+`;
+
+export const TenantDescription = styled.div`
+    font-style: italic;
+    font-size: 0.85em;
+    color: #605e5c;
+    margin-top: 2px;
+    margin-left: calc(3vw + 8px);
+    margin-right: calc(3vw + 8px);
+
+    ${minWidth.xl} {
+        margin-left: calc(4vw - 22px);
+        margin-right: calc(4vw - 22px);
+    }
 `;
 
 export const CardTenantImage = styled.div<any>`
     padding-top: 6px;
     height: 100%;
     float: left;
-    margin-left: ${props => (!props.isCardViewSelected && props.isBulkSelected ? '-19px' : '0px')};
+    margin-left: ${(props) => (!props.isCardViewSelected && props.isBulkSelected ? '-19px' : '0px')};
     @media (-ms-high-contrast: active), (forced-colors: active) {
         img {
-         forced-color-adjust: none;
-         background-color: #ffffff;
+            forced-color-adjust: none;
+            background-color: #ffffff;
         }
-      }
+    }
 `;
 export const SelectAllCheckStyle = styled.div`
     margin-left: 0px;
@@ -78,16 +87,18 @@ export const SelectAllCheckStyle = styled.div`
 export const CardGroupLabel = styled.div`
     display: flex;
     flex-direction: row;
-    margin-left: calc(3vw + 8px);
-    margin-right: calc(3vw + 8px);
+    margin-left: calc(2vw + 4px);
+    margin-right: calc(2vw + 4px);
     align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
 
     ${minWidth.xl} {
         margin-left: calc(4vw - 22px);
         margin-right: calc(4vw - 22px);
     }
 `;
-export const RefreshMedia = styled.div`
+export const RefreshMedia: any = styled.div<any>`
     visibility: visible;
     left: 95.9%;
     ${minWidth.s} {
@@ -106,7 +117,7 @@ export const RefreshMedia = styled.div`
     }
 
     ${minWidth.xl} {
-        left: 94.9%;
+        left: ${(props: any) => (props.isDetailsExpanded ? '93.4%' : '94.9%')};
         visibility: visible;
         margin-top: -45px;
     }
@@ -121,14 +132,19 @@ export const RefreshMedia = styled.div`
         margin-top: -45px;
     }
 
-    @media only screen and  (orientation: portrait) {
+    /* At 200% zoom (≤640px), avoid overlap with analytics header */
+    @media (max-width: 640px) {
+        margin-top: 0px;
+    }
+
+    @media only screen and (orientation: portrait) {
         left: 94.9%;
         visibility: visible;
         margin-top: -45px;
     }
 `;
 
-export const RefreshMediaDuplicate = styled.div`
+export const RefreshMediaDuplicate = styled.div<any>`
     visibility: visible;
     left: 80.4%;
     margin-top: 0px;
@@ -181,47 +197,62 @@ export const CalendarIcon = styled(FontIcon)`
 `;
 
 export const DetailCardContainer = styled.div<any>`
-    height: ${props =>
+    height: ${(props) =>
         props.windowWidth < 572
             ? props.windowWidth < 320
                 ? props.windowHeight - (50 + props.footerHeight)
                 : props.windowHeight - (60 + props.footerHeight)
             : props.windowHeight -
-              (140 + props.bulkMessagebarHeight + props.aliasMessagebarHeight + props.footerHeight)}px;
+              (90 + props.bulkMessagebarHeight + props.aliasMessagebarHeight + props.footerHeight)}px;
     overflow-y: auto;
     background: white;
-    margin-top: 35px;
+    margin-top: 5px;
     @media only screen and (min-device-width: 1023px) and (min-width: 640px) and (max-width: 2048px) {
-        margin-top: ${props => (props.selectedPage === 'summary' ? '-14px' : '35px')};
+        margin-top: ${(props) => (props.selectedPage === 'summary' ? '0px' : '10px')};
+    }
+    @media only screen and (max-width: 640px) {
+        position: fixed;
+        top: 48px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: auto;
+        margin: 0;
+        padding: 0;
+        z-index: 40;
+        overflow: hidden auto;
+        box-sizing: border-box;
+    }
+    @media only screen and (min-device-width: 1023px) and (min-width: 320px) and (max-width: 639px) {
+        top: 24px;
     }
 `;
 
 export const SummaryLayoutContainer = styled.div<any>`
-    height: ${props =>
-        props.windowWidth < 572
-            ? props.windowWidth < 320
-                ? props.windowHeight -
-                  (44 + props.bulkMessagebarHeight + props.aliasMessagebarHeight + props.footerHeight)
-                : props.windowHeight -
-                  (70 +
-                      props.bulkMessagebarHeight +
-                      props.aliasMessagebarHeight +
-                      props.footerHeight +
-                      props.bulkFailureMessageOffset / 2)
-            : props.windowHeight -
-              (145 +
-                  props.bulkMessagebarHeight +
-                  props.aliasMessagebarHeight +
-                  props.footerHeight +
-                  props.bulkFailureMessageOffset)}px;
-    overflow-y: auto;
+    height: ${(props) => {
+        // At 200% zoom, let content flow naturally in the scrollable Main container
+        if (props.windowWidth <= 640) {
+            return 'auto';
+        }
+        // Desktop: fixed height for internal scrolling
+        return (
+            props.windowHeight -
+            (145 +
+                props.bulkMessagebarHeight +
+                props.aliasMessagebarHeight +
+                props.footerHeight +
+                props.bulkFailureMessageOffset) +
+            'px'
+        );
+    }};
+    overflow-y: ${(props) => (props.isDashboardView ? 'hidden' : props.windowWidth <= 640 ? 'visible' : 'auto')};
     overflow-x: hidden;
-    @media only screen and (min-device-width: 1023px) and (min-width: 320px) and (max-width: 639px) {     
-        margin-top: 30px;
+    padding: 0 20px;
+    box-sizing: border-box;
+    ${maxWidth.m} {
+        padding-left: 10px;
+        padding-right: 10px;
     }
-    @media only screen and (min-device-width: 1023px) and (max-width: 320px) {        
-        margin-top: 30px;
-    }    
 `;
 
 export const ErrorWrapStyle = styled.div`
@@ -231,7 +262,25 @@ export const ErrorWrapStyle = styled.div`
 export const disableInteractionStyle = { root: { pointerEvents: 'none', opacity: '0.5' } };
 
 export const SummaryPageTitle = styled.h1<any>`
-    margin-left: ${(props) => (props.isTableView ? 'calc(2vw - 8px)' : 'calc(3vw)')};
+    padding-left: 0px;
     font-size: 20px;
-    margin-bottom: 5px;
+    margin: 0 0 5px 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+
+    @media (max-width: 640px) {
+        font-size: 18px;
+    }
+`;
+
+export const SearchResultsTitle = styled.h1<any>`
+    font-size: 20px;
+`;
+
+export const SearchResultsSubtext = styled.div`
+    font-size: 14px;
+    color: #d6d6d;
+    font-weight: 400;
+    margin-top: 2px;
+    margin-left: 2px;
 `;

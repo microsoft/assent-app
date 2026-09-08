@@ -1,5 +1,7 @@
 export interface IFeedback {
     launchFeedback(): void;
+
+    handleFeedbackException(ex?: any): void;
 }
 
 /* SAMPLE IMPLEMENTION OF IFEEDBACK INTERFACE

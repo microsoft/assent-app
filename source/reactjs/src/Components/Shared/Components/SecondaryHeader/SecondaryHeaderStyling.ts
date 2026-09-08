@@ -1,6 +1,7 @@
 import { IStackStyles, IStackItemStyles } from '@fluentui/react/lib/Stack';
+import { IButtonStyles } from '@fluentui/react/lib/Button';
 import { Text } from '@fluentui/react/lib/Text';
-import { TextColors, MessagingColors } from '../../SharedColors';
+import { TextColors, MessagingColors, SurfaceColors, CoherenceColors } from '../../SharedColors';
 import { IMessageBarStyles } from '@fluentui/react/lib/MessageBar';
 import { IToggleStyles } from '@fluentui/react';
 //uncomment styled import for performance testing
@@ -14,7 +15,7 @@ export const SecondaryHeaderContainer = styled.div<{ isTopHeader: boolean }>`
         color: ${(props: { isTopHeader: boolean }) => (props.isTopHeader ? 'white' : 'rgb(0, 13, 23) !important')};
     }
 
-    @media only screen and (max-width: 639px) {
+    @media only screen and (min-device-width: 1023px) and (max-width: 639px) {
         height: 24px !important;
     }
 
@@ -41,8 +42,8 @@ export const topHeaderTitleLink = styled.a`
     border: 1px solid transparent;
     color: rgb(255, 255, 255) !important;
 
-    @media only screen and (max-width: 639px) {
-        font-size: 10px;
+    @media only screen and (min-device-width: 1023px) and (max-width: 639px) {
+        font-size: 10px !important;
         height: 24px;
         line-height: 24px;
     }
@@ -126,7 +127,72 @@ export const DelegationBarStyles: IMessageBarStyles = {
             '@media only screen and (min-device-width: 1023px) and  (min-width: 1024px) and (max-width: 1024px)': {
                 marginLeft: '0px',
             },
-            '@media only screen and (min-device-width: 1023px) and  (min-width: 1024px) and (max-width: 2048px)': {
+            '@media only screen and (min-device-width: 1023px) and  (min-width: 1025px) and (max-width: 2048px)': {
+                marginLeft: '32px',
+            },
+            '@media only screen and (min-device-width: 1023px) and  (min-width: 763px) and (max-width: 1023px)': {
+                paddingLeft: '50px !important;',
+                marginLeft: -48 + 'px !important;',
+                marginBottom: -5 + 'px !important;',
+                width: 'calc(100vw + 48px)',
+            },
+            '@media only screen and (min-device-width: 1023px) and  (min-width: 654px) and (max-width: 763px)': {
+                marginLeft: -48 + 'px !important;',
+                marginBottom: -5 + 'px !important;',
+                paddingLeft: '30px !important;',
+                width: 'calc(100vw + 48px)',
+            },
+            '@media only screen and (min-device-width: 1023px) and  (min-width: 640px) and (max-width: 654px)': {
+                marginLeft: -48 + 'px !important;',
+                marginBottom: -5 + 'px !important;',
+                paddingLeft: '25px !important;',
+                width: 'calc(100vw + 48px)',
+            },
+            '@media only screen and (min-device-width: 1023px) and  (min-width: 458px) and (max-width: 640px)': {
+                paddingLeft: '25px !important;',
+                marginLeft: -48 + 'px !important;',
+                marginBottom: -5 + 'px !important;',
+                width: 'calc(100vw + 48px)',
+            },
+            '@media only screen and (min-device-width: 1023px) and (min-width: 320px) and (max-width: 458px)': {
+                paddingLeft: '18px !important;',
+                paddingTop: '0px',
+                marginLeft: -48 + 'px !important;',
+                marginBottom: -5 + 'px !important;',
+                width: 'calc(100vw + 48px)',
+            },
+            '@media only screen and (min-device-width: 1023px) and (max-width: 320px)': {
+                paddingLeft: '13px !important;',
+                paddingTop: '0px',
+                marginLeft: -48 + 'px !important;',
+                marginBottom: -5 + 'px !important;',
+                width: 'calc(100vw + 48px)',
+            },
+        },
+    },
+    icon: {
+        selectors: {
+            '@media only screen and (min-device-width: 1023px) and  (min-width: 320px) and (max-width: 639px)': {
+                marginTop: '5px',
+                fontSize: 14,
+            },
+        },
+    },
+};
+
+// Identical layout to DelegationBarStyles, minus the blue backgroundColor so
+// Fluent's MessageBarType.warning yellow shows through when a delegation is
+// expiring soon.
+export const DelegationWarningBarStyles: IMessageBarStyles = {
+    root: {
+        paddingLeft: '1.5%',
+        paddingTop: '0.25%',
+        paddingBottom: '0.25%',
+        selectors: {
+            '@media only screen and (min-device-width: 1023px) and  (min-width: 1024px) and (max-width: 1024px)': {
+                marginLeft: '0px',
+            },
+            '@media only screen and (min-device-width: 1023px) and  (min-width: 1025px) and (max-width: 2048px)': {
                 marginLeft: '36px',
             },
             '@media only screen and (min-device-width: 1023px) and  (min-width: 763px) and (max-width: 1023px)': {
@@ -178,12 +244,16 @@ export const DelegationBarStyles: IMessageBarStyles = {
         },
     },
 };
-export const SecondaryHeaderStackStyles = (isPanelOpen: boolean, isTopHeader?: boolean): IStackStyles => ({
+
+export const SecondaryHeaderStackStyles = (
+    isPanelOpen: boolean,
+    isTopHeader?: boolean
+): IStackStyles => ({
     root: {
         height: '48px',
         background: `${isTopHeader ? '#0078D4' : '#e5e5e5'}`,
         width: `${isTopHeader ? '100vw' : 'calc(100vw - 48px)'}`,
-        zIndex: 50,
+        zIndex: isTopHeader ? 51 : 50,
         position: 'fixed',
         selectors: {
             '@media (min-device-width: 1023px) and (min-width: 320px) and (max-width: 639px)': {
@@ -194,7 +264,6 @@ export const SecondaryHeaderStackStyles = (isPanelOpen: boolean, isTopHeader?: b
                 height: 14 + 'px',
                 display: `${isPanelOpen ? 'none' : 'flex'}`,
             },
-
         },
     },
 });
@@ -202,6 +271,7 @@ export const SecondaryHeaderStackStyles = (isPanelOpen: boolean, isTopHeader?: b
 export const SecondaryHeaderIconStyling = {
     height: '24px',
     paddingTop: '4px',
+    paddingBottom: '4px',
     selectors: {
         '@media (min-device-width: 1023px) and (min-width: 320px) and (max-width: 639px)': {
             padding: 0,
@@ -214,14 +284,30 @@ export const PersonaMobileStyling = {
     root: {
         selectors: {
             '@media (min-device-width: 1023px) and (min-width: 320px) and (max-width: 639px)': {
-                maxWidth: '60px',
+                maxWidth: '100%',
+            },
+            '@media (min-width: 279px) and (max-width: 374px)': {
+                width: '10px',
             },
         },
     },
     primaryText: {
         selectors: {
             '@media (min-device-width: 1023px) and (min-width: 320px) and (max-width: 639px)': {
-                maxWidth: '35px',
+                maxWidth: '60px',
+            },
+            '@media (min-width: 375px) and (max-width: 389px)': {
+                maxWidth: '70px',
+            },
+            '@media (min-width: 390px) and (max-width: 413px)': {
+                maxWidth: '80px',
+            },
+        },
+    },
+    details: {
+        selectors: {
+            '@media (min-width: 375px) and (max-width: 425px)': {
+                padding: '5px',
             },
         },
     },
@@ -263,6 +349,62 @@ export const ToggleStackStyles: any = {
         },
     },
 };
+
+export const ViewTypeToggleContainerStyles: IStackStyles = {
+    root: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        height: '30px',
+        backgroundColor: SurfaceColors.primary,
+        border: `1px solid ${CoherenceColors.InputBorder}`,
+        borderRadius: '4px',
+        overflow: 'hidden',
+        marginRight: '4px',
+        selectors: {
+            '@media (min-device-width: 1023px) and (min-width: 320px) and (max-width: 639px)': {
+                height: '22px',
+            },
+        },
+    },
+};
+
+// Selected state mirrors the General Settings view-type selector (UserSettings pictorialChoiceStyles):
+// a denser light-blue fill (#C7E0F4 has no SharedColors token) with the CoherenceColors.bluePrimary icon accent.
+export const ViewTypeToggleButtonStyles = (withDivider: boolean): IButtonStyles => ({
+    root: {
+        height: '100%',
+        width: '34px',
+        margin: 0,
+        padding: 0,
+        borderRadius: 0,
+        backgroundColor: 'transparent',
+        borderLeft: withDivider ? `1px solid ${SurfaceColors.navigation}` : undefined,
+        selectors: {
+            '@media (min-device-width: 1023px) and (min-width: 320px) and (max-width: 639px)': {
+                width: '28px',
+            },
+        },
+    },
+    rootHovered: { backgroundColor: SurfaceColors.tertiary },
+    rootPressed: { backgroundColor: SurfaceColors.quaternary },
+    rootChecked: { backgroundColor: '#C7E0F4' },
+    rootCheckedHovered: { backgroundColor: '#C7E0F4' },
+    rootDisabled: { backgroundColor: 'transparent' },
+    icon: {
+        fontSize: '20px',
+        height: '20px',
+        lineHeight: '20px',
+        color: CoherenceColors.bluePrimary,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        selectors: {
+            svg: { width: '20px', height: '20px', display: 'block' },
+        },
+    },
+    iconChecked: { color: CoherenceColors.bluePrimary },
+    iconDisabled: { color: TextColors.disabled },
+});
 
 export const BulkMessageHeight = styled.div``;
 

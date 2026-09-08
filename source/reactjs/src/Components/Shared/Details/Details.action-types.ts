@@ -1,4 +1,5 @@
-import { IFileUpload } from "./FileUpload/FileUpload";
+import { IApprovalIdentifier } from '../SharedComponents.types';
+import { IFileUpload } from './FileUpload/FileUpload';
 
 export enum DetailsActionType {
     REQUEST_USER_IMAGE = 'REQUEST_USER_IMAGE',
@@ -40,6 +41,7 @@ export enum DetailsActionType {
     TOGGLE_HISTORY_DETAIL_PANEL = 'TOGGLE_HISTORY_DETAIL_PANEL',
     SET_FOOTER_HEIGHT = 'SET_FOOTER_HEIGHT',
     REQUEST_FULLY_RENDERED = 'REQUEST_FULLY_RENDERED',
+    POE_ACTION_ENABLED = 'POE_ACTION_ENABLED',
     RECEIVE_ARE_DETAILS_EDITABLE = 'RECEIVE_ARE_DETAILS_EDITABLE',
     POST_EDITABLE_DETAILS = 'POST_EDITABLE_DETAILS',
     FAILED_EDIT_DETAILS = 'FAILED_EDIT_DETAILS',
@@ -53,6 +55,7 @@ export enum DetailsActionType {
     UPLOAD_FILE = 'UPLOAD_FILE',
     FAILED_UPLOAD_FILE = 'FAILED_UPLOAD_FILE',
     SUCCESS_UPLOAD_FILE = 'SUCCESS_UPLOAD_FILE',
+    OPEN_SECONDARY_PREVIEW = 'OPEN_SECONDARY_PREVIEW',
 }
 
 export type DetailsAction =
@@ -96,6 +99,7 @@ export type DetailsAction =
     | ISetBulkMessagebarHeight
     | ISetAliasMessagebarHeight
     | IRequestFullyRenderedAction
+    | IActionEnabled
     | IConcatFailedRequests
     | IRequestDocumentStart
     | IRequestAllDocumentsAction
@@ -104,7 +108,8 @@ export type DetailsAction =
     | ICloseFileUploadAction
     | IUploadFileAction
     | IFailedUploadFilesAction
-    | ISuccessUploadFilesAction;
+    | ISuccessUploadFilesAction
+    | IOpenSecondaryPreviewAction;
 
 export interface ISetFooterHeight {
     type: DetailsActionType.SET_FOOTER_HEIGHT;
@@ -232,8 +237,7 @@ export interface ICloseFileUploadAction {
 export interface IUploadFileAction {
     type: DetailsActionType.UPLOAD_FILE;
     tenantId: string;
-    documentNumber: string;
-    displayDocumentNumber: string;
+    approvalIdentifier: IApprovalIdentifier;
     userAlias: string;
     requiresTemplate: boolean;
     isPullModelEnabled: boolean;
@@ -303,6 +307,14 @@ export interface IPostAction {
     digitalSignature: string;
     isBulkAction?: boolean;
     isPullModelEnabled?: boolean;
+    attestPoeCheck: boolean;
+    attestQualificationReviewCheck?: boolean;
+    exemptPoeOptionSelected: string;
+    contractId?: string;
+    ndaContractId?: string;
+    hasExpirationDateCheck?: boolean;
+    contractExpirationDate?: string;
+    rememberFor?: number;
 }
 
 export interface IFailedPostAction {
@@ -372,6 +384,16 @@ export interface IRequestFullyRenderedAction {
     isRequestFullyRendered: boolean;
 }
 
+export interface IActionEnabled {
+    type: DetailsActionType.POE_ACTION_ENABLED;
+    isUploadAttachment: boolean;
+    isExemptAttachment: boolean;
+    isSupplierMeetsReqSelected?: boolean;
+    isSupplierDoesNotMeetReqSelected?: boolean;
+    isSupplierDoesNotMeetRejectSelected?: boolean;
+    selectedFhrOptionId?: string;
+}
+
 export interface IReceiveAreDetailsEditable {
     type: DetailsActionType.RECEIVE_ARE_DETAILS_EDITABLE;
     areDetailsEditable: boolean;
@@ -399,4 +421,8 @@ export interface IRequestDocumentStart {
 
 export interface IRequestDocumentEnd {
     type: DetailsActionType.REQUEST_DOCUMENT_END;
+}
+
+export interface IOpenSecondaryPreviewAction {
+    type: DetailsActionType.OPEN_SECONDARY_PREVIEW;
 }

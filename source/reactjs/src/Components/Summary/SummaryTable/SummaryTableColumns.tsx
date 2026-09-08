@@ -2,10 +2,22 @@
 import * as React from 'react';
 import * as Styled from './SummaryTableStyling';
 import * as SharedStyled from '../../Shared/SharedLayout';
-import { failedIconStyle, pendingIconStyle, fileIconCell, paginationWidth, paginationAlign } from './SummaryTableStyling';
+import {
+    failedIconStyle,
+    pendingIconStyle,
+    fileIconCell,
+    paginationWidth,
+    paginationAlign,
+} from './SummaryTableStyling';
 import { ISummaryRecordModel } from './SummaryTable.types';
 import { SummaryTableFieldNames } from './SummaryTableFieldNames';
-import { booleanToReadableValue, imitateClickOnKeyPressForAnchor } from '../../../Helpers/sharedHelpers';
+import {
+    booleanToReadableValue,
+    flattenObject,
+    imitateClickOnKeyPressForAnchor,
+    validateBulkCondition,
+    formatUnitValue,
+} from '../../../Helpers/sharedHelpers';
 import { Dictionary } from 'adaptivecards';
 import {
     TooltipHost,
@@ -25,6 +37,7 @@ import {
     updatePanelState,
     updateRetainBulkSelection,
     updateTableRowCount,
+    updateVisibleColumns,
 } from '../../Shared/SharedComponents.actions';
 import { updateMyRequest } from '../../Shared/Details/Details.actions';
 import { Stack } from '@fluentui/react/lib/Stack';
@@ -54,10 +67,10 @@ import {
     getIsBulkSelectionRetained,
     getIsLoadingSummary,
     getIsPaginationEnabled,
-    getIsPullTenantSelected,
     getSelectedApprovalRecords,
     getTableRowCount,
 } from '../../Shared/SharedComponents.selectors';
+import { getPersistedVisibleColumns } from '../../Shared/SharedComponents.persistent-selectors';
 import {
     getDisplayDocumentNumber,
     getFailedRequests,
@@ -72,6 +85,8 @@ import { Context } from '@micro-frontend-react/employee-experience/lib/Context';
 import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
 import { Link } from '../../Shared/Styles/Link';
 import { getIsKeyboardColumnResizingOn } from '../../AccessibilityPanel/Accessibility.selectors';
+import { useHistory } from 'react-router-dom';
+import { NavigationUtils } from '../../Shared/Utils/NavigationUtils';
 
 const ColSize = {
     XXS: 40,
@@ -101,12 +116,18 @@ function SummaryTableColumns(props: any): React.ReactElement {
     const postActionErrorMessage = useSelector(getPostActionErrorMessage);
     const failedRequests = useSelector(getFailedRequests);
     const isPaginationEnabled = useSelector(getIsPaginationEnabled);
-    const isPullTenantSelected = useSelector(getIsPullTenantSelected);
+    // Use prop instead of global selector to avoid tenant mismatch when
+    // filterValue resets during preference saves.
+    const isPullTenantSelected = props.isPullTenant === true;
     const failedPullTenantRequests = useSelector(getFailedPullTenantRequests);
     const filteredTenantInfo = useSelector(getFilteredTenantInfo);
     const tableRowCount = useSelector(getTableRowCount);
     const disabled = useSelector(getIsDisabled);
     const isKeyboardColumnResizingOn = useSelector(getIsKeyboardColumnResizingOn);
+    const visibleColumnsDefault = useSelector((state: any) => getPersistedVisibleColumns(state, 'all'));
+    const visibleColumnsPullTenant = useSelector((state: any) => getPersistedVisibleColumns(state, 'pullTenant'));
+
+    const history = useHistory();
 
     const [windowWidth, setWindowWidth] = React.useState<number>(0);
     const [dimensions, setDimensions] = React.useState({
@@ -149,13 +170,18 @@ function SummaryTableColumns(props: any): React.ReactElement {
     };
 
     const getCanSelectItem = (item: any): boolean => {
+        let conditionPropertyObject = {};
         if (isPullTenantSelected) {
             return item['allowInBulkApproval'] && (item?.isSelectable ?? true);
         } else {
+            conditionPropertyObject = flattenObject(item);
+            const isBulkConditionValid = item?.AllowBulkApprovalCondition
+                ? validateBulkCondition(conditionPropertyObject, item?.AllowBulkApprovalCondition)
+                : true;
             const res = item['IsControlsAndComplianceRequired']
                 ? item['IsRead'] && (item?.isSelectable ?? true)
                 : item?.isSelectable ?? true;
-            return res;
+            return res && isBulkConditionValid;
         }
     };
 
@@ -228,6 +254,139 @@ function SummaryTableColumns(props: any): React.ReactElement {
         return newItems;
     }
 
+    // Helper function to sort items by column key
+    function sortItems(items: any[], columnKey: string, descending: boolean): any[] {
+        if (!columnKey || items.length === 0) {
+            return items;
+        }
+
+        const sortedItems = [...items];
+        const column = allColumns.find((col) => col.key === columnKey);
+
+        if (!column) {
+            return items;
+        }
+
+        switch (columnKey) {
+            case 'ApprovalIdentifier':
+                sortedItems.sort((a: any, b: any) => {
+                    const comparison =
+                        a.ApprovalIdentifier?.DisplayDocumentNumber?.localeCompare(
+                            b.ApprovalIdentifier?.DisplayDocumentNumber || '',
+                            'en-US',
+                            { numeric: true, sensitivity: 'base' }
+                        ) || 0;
+                    return descending ? -comparison : comparison;
+                });
+                break;
+            case 'Submitter':
+                sortedItems.sort((a: any, b: any) => {
+                    const aName = a.Submitter?.Name || '';
+                    const bName = b.Submitter?.Name || '';
+                    const comparison = aName > bName ? 1 : aName < bName ? -1 : 0;
+                    return descending ? -comparison : comparison;
+                });
+                break;
+            case 'UnitValue':
+                sortedItems.sort((a: any, b: any) => {
+                    const comparison = (a.UnitValue || '').localeCompare(b.UnitValue || '', 'en-US', {
+                        numeric: true,
+                        sensitivity: 'base',
+                    });
+                    return descending ? -comparison : comparison;
+                });
+                break;
+            case 'SubmittedDate':
+            case 'laborDate':
+                sortedItems.sort((a: any, b: any) => {
+                    const aTime = a[columnKey] ? new Date(a[columnKey]).getTime() : 0;
+                    const bTime = b[columnKey] ? new Date(b[columnKey]).getTime() : 0;
+                    const comparison = aTime - bTime;
+                    return descending ? -comparison : comparison;
+                });
+                break;
+            case 'displayLaborHours':
+            case 'laborHours':
+                sortedItems.sort((a: any, b: any) => {
+                    const comparison = (parseFloat(a.laborHours) || 0) - (parseFloat(b.laborHours) || 0);
+                    return descending ? -comparison : comparison;
+                });
+                break;
+            case 'actionDetails':
+                sortedItems.sort((a: any, b: any) => {
+                    const aType = a.actionDetails?.actionType || '';
+                    const bType = b.actionDetails?.actionType || '';
+                    const comparison = aType > bType ? 1 : aType < bType ? -1 : 0;
+                    return descending ? -comparison : comparison;
+                });
+                break;
+            case 'assignmentName':
+                sortedItems.sort((a: any, b: any) => {
+                    const aName = a.assignmentDetails?.assignmentName || '';
+                    const bName = b.assignmentDetails?.assignmentName || '';
+                    const comparison = aName > bName ? 1 : aName < bName ? -1 : 0;
+                    return descending ? -comparison : comparison;
+                });
+                break;
+            case 'isBillable':
+                sortedItems.sort((a: any, b: any) => {
+                    const aBillable = a.assignmentDetails?.isBillable ?? false;
+                    const bBillable = b.assignmentDetails?.isBillable ?? false;
+                    const comparison = aBillable > bBillable ? 1 : aBillable < bBillable ? -1 : 0;
+                    return descending ? -comparison : comparison;
+                });
+                break;
+            case 'allowInBulkApproval':
+                sortedItems.sort((a: any, b: any) => {
+                    const aType = a?.actionDetails?.[0]?.actionType ?? 'Standard';
+                    const bType = b?.actionDetails?.[0]?.actionType ?? 'Standard';
+                    const comparison = aType > bType ? 1 : aType < bType ? -1 : 0;
+                    return descending ? -comparison : comparison;
+                });
+                break;
+            case 'isRead':
+            case 'IsRead':
+                sortedItems.sort((a: any, b: any) => {
+                    const comparison = (a.IsRead ? 1 : 0) - (b.IsRead ? 1 : 0);
+                    return descending ? -comparison : comparison;
+                });
+                break;
+            default:
+                // Generic comparison for other columns
+                sortedItems.sort((a: any, b: any) => {
+                    let aValue, bValue;
+                    const fieldName = column.fieldName;
+
+                    if (fieldName && fieldName.includes('.')) {
+                        aValue = fieldName.split('.').reduce((obj, key) => obj?.[key], a) || '';
+                        bValue = fieldName.split('.').reduce((obj, key) => obj?.[key], b) || '';
+                    } else {
+                        aValue = a[columnKey] || '';
+                        bValue = b[columnKey] || '';
+                    }
+
+                    const comparison =
+                        typeof aValue === 'string' && typeof bValue === 'string'
+                            ? aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' })
+                            : aValue > bValue
+                            ? 1
+                            : aValue < bValue
+                            ? -1
+                            : 0;
+
+                    return descending ? -comparison : comparison;
+                });
+                break;
+        }
+
+        return sortedItems;
+    }
+
+    // Reapply the current sort state (column and direction) to a set of items
+    function reapplyCurrentSort(items: any[]): any[] {
+        return sortItems(items, sortedColumn, isSortedDescending);
+    }
+
     function handleResize() {
         setWindowWidth(window.innerWidth);
         setDimensions({
@@ -262,17 +421,19 @@ function SummaryTableColumns(props: any): React.ReactElement {
     React.useEffect(() => {
         if (isAllChecked && !areItemsUpdated && !isSelectAllConfigured) {
             const newItems = handleMaxSelection(selectedRowStateObj[selectedPage], selectionState.getItems());
-            selectionState.setItems(newItems);
-            setTableRecords(newItems);
+            const sortedNewItems = reapplyCurrentSort(newItems);
+            selectionState.setItems(sortedNewItems);
+            setTableRecords(sortedNewItems);
             setAreItemsUpdated(true);
         } else if (!isAllChecked && areItemsUpdated && !isSelectAllConfigured) {
             selectionState.setAllSelected(true);
             setIsSelectAllConfigured(true);
         } else if (!isAllChecked && areItemsUpdated && isSelectAllConfigured) {
             const clearedItems = clearMaxSelection(selectionState.getItems());
+            const sortedClearedItems = reapplyCurrentSort(clearedItems);
             setSavedSelection(selectionState.getSelection());
-            selectionState.setItems(clearedItems);
-            setTableRecords(clearedItems);
+            selectionState.setItems(sortedClearedItems);
+            setTableRecords(sortedClearedItems);
             setAreItemsUpdated(false);
             setIsSelectAllConfigured(false);
         } else if (!isAllChecked && !areItemsUpdated && !isSelectAllConfigured) {
@@ -308,7 +469,8 @@ function SummaryTableColumns(props: any): React.ReactElement {
             let records = [];
             setPageCount(Math.ceil(props.tenantGroup.length / rowsPerPage));
             records = props.tenantGroup.slice(0, rowsPerPage);
-            setTableRecords(records);
+            const sortedRecords = reapplyCurrentSort(records);
+            setTableRecords(sortedRecords);
         }
     }, [rowsPerPage, isPaginationEnabled]);
 
@@ -379,7 +541,8 @@ function SummaryTableColumns(props: any): React.ReactElement {
             return item;
         });
         const lastRead = readRequests[readRequests.length - 1];
-        setTableRecords(temp);
+        const sortedTemp = reapplyCurrentSort(temp);
+        setTableRecords(sortedTemp);
         if (!isMax && isAllChecked && areItemsUpdated && isSelectAllConfigured) {
             //prevents requests from getting auto-selected if they are opened when select all is checked
             const lastSelection = [...selectedRowState];
@@ -396,9 +559,11 @@ function SummaryTableColumns(props: any): React.ReactElement {
     React.useEffect(() => {
         if (isAllChecked) {
             const withSelection = handleMaxSelection(selectedRowStateObj[selectedPage], props.tenantGroup);
-            setTableRecords(withSelection);
+            const sortedWithSelection = reapplyCurrentSort(withSelection);
+            setTableRecords(sortedWithSelection);
         } else {
-            setTableRecords(props.tenantGroup);
+            const sortedTenantGroup = reapplyCurrentSort(props.tenantGroup);
+            setTableRecords(sortedTenantGroup);
         }
     }, [props.tenantGroup]);
 
@@ -414,8 +579,7 @@ function SummaryTableColumns(props: any): React.ReactElement {
         let displayDocNum = jsonData.DisplayDocumentNumber;
         let fiscalYear = jsonData.FiscalYear;
         if (displayDocNum !== displayDocumentNumber) {
-            dispatch(updateMyRequest(Number(tenantId), docNum, displayDocNum, fiscalYear));
-            dispatch(updatePanelState(true));
+            NavigationUtils.navigateToDetails(history, tenantId, displayDocNum, true, true);
         }
     };
 
@@ -461,9 +625,27 @@ function SummaryTableColumns(props: any): React.ReactElement {
             if (isOpen) {
                 customStyles.root = { border: `1px solid` };
             }
-            return <DetailsRow {...props} styles={customStyles} />;
+            const rowNumber = (props.itemIndex ?? 0) + 2;
+            return (
+                <DetailsRow
+                    {...props}
+                    styles={customStyles}
+                    aria-rowindex={rowNumber}
+                    aria-label={`row ${rowNumber}`}
+                />
+            );
         }
         return null;
+    };
+
+    const onItemInvoked = (item?: any): void => {
+        if (!isBulkSelected || !item) {
+            return;
+        }
+
+        const itemKey = getIdentifyingKey(item);
+        const isCurrentlySelected = selectionState.isKeySelected(itemKey);
+        selectionState.setKeySelected(itemKey, !isCurrentlySelected, false);
     };
 
     const convertLaborHours: any = (timeString: string, laborHoursMeasure: string) => {
@@ -478,20 +660,20 @@ function SummaryTableColumns(props: any): React.ReactElement {
             return dimensions.width >= breakpointMap.xxxl
                 ? ColSize.XXXL
                 : dimensions.width >= 1440
-                    ? ColSize.Large
-                    : ColSize.Medium;
+                ? ColSize.Large
+                : ColSize.Medium;
         } else if (colSize === ColSize.Large) {
             return dimensions.width >= breakpointMap.xxxl
                 ? ColSize.XL
                 : dimensions.width >= 1440
-                    ? ColSize.Large
-                    : ColSize.Medium;
+                ? ColSize.Large
+                : ColSize.Medium;
         } else if (colSize === ColSize.Medium) {
             return dimensions.width >= breakpointMap.xxxl
                 ? ColSize.XL
                 : dimensions.width >= 1440
-                    ? ColSize.Medium
-                    : ColSize.Small;
+                ? ColSize.Medium
+                : ColSize.Small;
         } else {
             return colSize;
         }
@@ -517,19 +699,31 @@ function SummaryTableColumns(props: any): React.ReactElement {
             fieldName: SummaryTableFieldNames.IsRead,
             minWidth: 45,
             maxWidth: 60,
-            onRender: (item: any) => {
-                let lastFailedLocal = item.LastFailed;
+            onRender: (item: any, index?: number) => {
                 let icon;
-                if (lastFailedLocal) {
-                    icon = <Icon title="Error Icon" iconName="ReportWarning" style={failedIconStyle} />;
+                let statusLabel = 'unread request icon';
+                const rowNumber = (index ?? 0) + 2;
+                if (item.LastFailed) {
+                    statusLabel = 'error icon';
+                    icon = (
+                        <Icon
+                            title="Error Icon"
+                            iconName="ReportWarning"
+                            style={failedIconStyle}
+                            ariaLabel={`row ${rowNumber} ${statusLabel}`}
+                        />
+                    );
                 } else if (item['IsRead']) {
+                    statusLabel = 'read request icon';
                     icon = <Styled.MailReadIcon title="Read Request Icon" />;
-                } else if (!item['IsRead']) {
-                    icon = <Styled.MailUnreadIcon title="Unread Request Icon" />;
                 } else {
-                    null;
+                    icon = <Styled.MailUnreadIcon title="Unread Request Icon" />;
                 }
-                return icon;
+                return (
+                    <span role="img" aria-label={`row ${rowNumber} ${statusLabel}`}>
+                        {icon}
+                    </span>
+                );
             },
         },
         {
@@ -673,9 +867,10 @@ function SummaryTableColumns(props: any): React.ReactElement {
             maxWidth: ColSize.Large,
             ariaLabel: setAriaLabel('Unit Value'),
             onRender: (item: any) => {
+                const unitOfMeasure = item['UnitOfMeasure'] && item['UnitOfMeasure'] !== '-' ? item['UnitOfMeasure'] : '';
                 return (
                     <Stack horizontal>
-                        <Stack.Item>{`${item['UnitValue']} ${item['UnitOfMeasure']}`}</Stack.Item>
+                       <Stack.Item>{`${formatUnitValue(item['UnitValue'])}${unitOfMeasure ? ' ' + unitOfMeasure : ''}`}</Stack.Item>
                     </Stack>
                 );
             },
@@ -713,7 +908,26 @@ function SummaryTableColumns(props: any): React.ReactElement {
                     return (
                         <Stack horizontal>
                             <Stack.Item align="center" grow>
-                                {item['CustomAttribute']['CustomAttributeValue']}
+                                {item['CustomAttribute']['CustomAttributeValue'] ? (
+                                    item['CustomAttribute']['CustomAttributeName'] ? (
+                                        typeof item['CustomAttribute']['CustomAttributeName'] === 'string' &&
+                                        item['CustomAttribute']['CustomAttributeName'].endsWith(':') ? (
+                                            <>
+                                                {item['CustomAttribute']['CustomAttributeName']}{' '}
+                                                {item['CustomAttribute']['CustomAttributeValue']}
+                                            </>
+                                        ) : (
+                                            <>
+                                                {item['CustomAttribute']['CustomAttributeName']}:{' '}
+                                                {item['CustomAttribute']['CustomAttributeValue']}
+                                            </>
+                                        )
+                                    ) : (
+                                        item['CustomAttribute']['CustomAttributeValue']
+                                    )
+                                ) : (
+                                    ''
+                                )}
                             </Stack.Item>
                         </Stack>
                     );
@@ -744,16 +958,16 @@ function SummaryTableColumns(props: any): React.ReactElement {
                 }
                 if (hasAnomaly) {
                     icon = <Icon title={title} iconName="Warning" style={failedIconStyle} />;
-                    exceptionReason = item?.actionDetails?.[0]?.actionType ?? ''
+                    exceptionReason = item?.actionDetails?.[0]?.actionType ?? '';
                 } else {
-                    icon = <Icon title={title} iconName="Completed" style={pendingIconStyle} />
+                    icon = <Icon title={title} iconName="Completed" style={pendingIconStyle} />;
                 }
                 return (
                     <TooltipHost content={exceptionReason}>
                         <Stack horizontal>
                             <Stack.Item styles={SharedStyled.StackStylesOverflowWithEllipsis}>
                                 {icon}
-                                {" " + exceptionReason}
+                                {' ' + exceptionReason}
                             </Stack.Item>
                         </Stack>
                     </TooltipHost>
@@ -896,8 +1110,8 @@ function SummaryTableColumns(props: any): React.ReactElement {
             minWidth: ColSize.XS,
             maxWidth: ColSize.Small,
             ariaLabel: setAriaLabel('Labor Duration'),
-            isSorted: sortedColumn === 'laborHours',
-            isSortedDescending: sortedColumn === 'laborHours' ? isSortedDescending : true,
+            isSorted: sortedColumn === 'displayLaborHours',
+            isSortedDescending: sortedColumn === 'displayLaborHours' ? isSortedDescending : true,
             isResizable: true,
             onRender: (item: any) => {
                 return (
@@ -967,8 +1181,9 @@ function SummaryTableColumns(props: any): React.ReactElement {
             onRender: (item: any) => {
                 return (
                     <Stack horizontal>
-                        <Stack.Item>{`${booleanToReadableValue(item?.assignmentDetails?.isBillable) || ''
-                            }`}</Stack.Item>
+                        <Stack.Item>{`${
+                            booleanToReadableValue(item?.assignmentDetails?.isBillable) || ''
+                        }`}</Stack.Item>
                     </Stack>
                 );
             },
@@ -1043,217 +1258,38 @@ function SummaryTableColumns(props: any): React.ReactElement {
         Mobile: [SummaryTableFieldNames.ApprovalIdentifier, SummaryTableFieldNames.Submitter],
     };
 
-    // will accept tenant type: all | pullTenant
+    // will accept tenant type: all | pullTenant — returns columns in the user's saved order
     function renderColumns(appName: string) {
-        // if (windowWidth < 640) {
-        //     return allColumns.filter(column => tenantToColumnMapping['Mobile'].includes(column.fieldName));
-        // }
-        switch (appName) {
-            // allColumns is created by filtering with tenant mapped columns
-            case 'all':
-                return allColumns.filter((column) => tenantToColumnMapping['Default'].includes(column.fieldName));
-            case 'pullTenant':
-                return allColumns.filter((column) => tenantToColumnMapping['PullTenant'].includes(column.fieldName));
-            default:
-                return allColumns.filter((column) => tenantToColumnMapping['Default'].includes(column.fieldName));
-        }
+        const ordered = appName === 'pullTenant' ? visibleColumnsPullTenant : visibleColumnsDefault;
+        return ordered
+            .map((fieldName: string) => allColumns.find((col) => col.fieldName === fieldName))
+            .filter(Boolean) as IColumn[];
+    }
+
+    function handleColumnReorder(draggedIndex: number, targetIndex: number) {
+        const currentCols = isPullTenantSelected ? visibleColumnsPullTenant : visibleColumnsDefault;
+        const reordered = [...currentCols];
+        const [removed] = reordered.splice(draggedIndex, 1);
+        reordered.splice(targetIndex, 0, removed);
+        dispatch(updateVisibleColumns(isPullTenantSelected ? 'pullTenant' : 'all', reordered));
     }
 
     function onSort(event: React.MouseEvent<HTMLElement, MouseEvent>, column: IColumn): void {
         event.preventDefault();
-        //if no column is currently sorted, keep default false value for isSortedDescending
-        if (sortedColumn !== column.key) {
-            setIsSortedDescending(false);
-        } else {
-            setIsSortedDescending(!isSortedDescending);
-        }
+
+        // Determine new sort direction
+        const newDescending = sortedColumn === column.key ? !isSortedDescending : false;
+
+        // Update state
+        setIsSortedDescending(newDescending);
         setSortedColumn(column.key);
-        switch (column.key) {
-            case 'ApprovalIdentifier':
-                if (column.isSorted) {
-                    if (column.isSortedDescending) {
-                        props.tenantGroup.sort((a: any, b: any) =>
-                            a['ApprovalIdentifier']['DisplayDocumentNumber'].localeCompare(
-                                b['ApprovalIdentifier']['DisplayDocumentNumber'],
-                                'en-US',
-                                {
-                                    numeric: true,
-                                    sensitivity: 'base',
-                                }
-                            )
-                        );
-                    } else {
-                        props.tenantGroup.sort((a: any, b: any) =>
-                            b['ApprovalIdentifier']['DisplayDocumentNumber'].localeCompare(
-                                a['ApprovalIdentifier']['DisplayDocumentNumber'],
-                                'en-US',
-                                {
-                                    numeric: true,
-                                    sensitivity: 'base',
-                                }
-                            )
-                        );
-                    }
-                } else {
-                    props.tenantGroup.sort((a: any, b: any) =>
-                        a['ApprovalIdentifier']['DisplayDocumentNumber'].localeCompare(
-                            b['ApprovalIdentifier']['DisplayDocumentNumber'],
-                            'en-US',
-                            {
-                                numeric: true,
-                                sensitivity: 'base',
-                            }
-                        )
-                    );
-                }
 
-                if (isPaginationEnabled) {
-                    setTableRecords(
-                        props.tenantGroup.slice(rowsPerPage * selectedPage - rowsPerPage, rowsPerPage * selectedPage)
-                    );
-                } else {
-                    setTableRecords(props.tenantGroup);
-                }
-                break;
-            case 'Submitter':
-                if (column.isSorted) {
-                    if (column.isSortedDescending) {
-                        props.tenantGroup.sort((a: any, b: any) =>
-                            a['Submitter']['Name'] > b['Submitter']['Name'] ? 1 : -1
-                        );
-                    } else {
-                        props.tenantGroup.sort((a: any, b: any) =>
-                            a['Submitter']['Name'] < b['Submitter']['Name'] ? 1 : -1
-                        );
-                    }
-                } else {
-                    props.tenantGroup.sort((a: any, b: any) =>
-                        a['Submitter']['Name'] > b['Submitter']['Name'] ? 1 : -1
-                    );
-                }
-                if (isPaginationEnabled) {
-                    setTableRecords(
-                        props.tenantGroup.slice(rowsPerPage * selectedPage - rowsPerPage, rowsPerPage * selectedPage)
-                    );
-                } else {
-                    setTableRecords(props.tenantGroup);
-                }
-                break;
-            case 'UnitValue':
-                if (column.isSorted) {
-                    if (column.isSortedDescending) {
-                        props.tenantGroup.sort((a: any, b: any) =>
-                            a['UnitValue'].localeCompare(b['UnitValue'], 'en-US', {
-                                numeric: true,
-                                sensitivity: 'base',
-                            })
-                        );
-                    } else {
-                        props.tenantGroup.sort((a: any, b: any) =>
-                            b['UnitValue'].localeCompare(a['UnitValue'], 'en-US', {
-                                numeric: true,
-                                sensitivity: 'base',
-                            })
-                        );
-                    }
-                } else {
-                    props.tenantGroup.sort((a: any, b: any) =>
-                        a['UnitValue'].localeCompare(b['UnitValue'], 'en-US', {
-                            numeric: true,
-                            sensitivity: 'base',
-                        })
-                    );
-                }
+        // Sort items using shared helper
+        const sortedRecords = sortItems(summaryTableRecords, column.key, newDescending);
 
-                if (isPaginationEnabled) {
-                    setTableRecords(
-                        props.tenantGroup.slice(rowsPerPage * selectedPage - rowsPerPage, rowsPerPage * selectedPage)
-                    );
-                } else {
-                    setTableRecords(props.tenantGroup);
-                }
-                break;
-            case 'actionDetails':
-                if (column.isSorted) {
-                    if (column.isSortedDescending) {
-                        props.tenantGroup.sort((a: any, b: any) =>
-                            a['actionDetails']['actionType'] > b['actionDetails']['actionType'] ? 1 : -1
-                        );
-                    } else {
-                        props.tenantGroup.sort((a: any, b: any) =>
-                            a['actionDetails']['actionType'] < b['actionDetails']['actionType'] ? 1 : -1
-                        );
-                    }
-                } else {
-                    props.tenantGroup.sort((a: any, b: any) =>
-                        a['actionDetails']['actionType'] > b['actionDetails']['actionType'] ? 1 : -1
-                    );
-                }
-                if (isPaginationEnabled) {
-                    setTableRecords(
-                        props.tenantGroup.slice(rowsPerPage * selectedPage - rowsPerPage, rowsPerPage * selectedPage)
-                    );
-                } else {
-                    setTableRecords(props.tenantGroup);
-                }
-                break;
-            case 'assignmentName':
-                if (column.isSorted) {
-                    if (column.isSortedDescending) {
-                        props.tenantGroup.sort((a: any, b: any) =>
-                            a['assignmentDetails']['assignmentName'] > b['assignmentDetails']['assignmentName'] ? 1 : -1
-                        );
-                    } else {
-                        props.tenantGroup.sort((a: any, b: any) =>
-                            a['assignmentDetails']['assignmentName'] < b['assignmentDetails']['assignmentName'] ? 1 : -1
-                        );
-                    }
-                } else {
-                    props.tenantGroup.sort((a: any, b: any) =>
-                        a['assignmentDetails']['assignmentName'] > b['assignmentDetails']['assignmentName'] ? 1 : -1
-                    );
-                }
-                if (isPaginationEnabled) {
-                    setTableRecords(
-                        props.tenantGroup.slice(rowsPerPage * selectedPage - rowsPerPage, rowsPerPage * selectedPage)
-                    );
-                } else {
-                    setTableRecords(props.tenantGroup);
-                }
-                break;
-            case 'isBillable':
-                if (column.isSorted) {
-                    if (column.isSortedDescending) {
-                        props.tenantGroup.sort((a: any, b: any) =>
-                            a['assignmentDetails']['isBillable'] > b['assignmentDetails']['isBillable'] ? 1 : -1
-                        );
-                    } else {
-                        props.tenantGroup.sort((a: any, b: any) =>
-                            a['assignmentDetails']['isBillable'] < b['assignmentDetails']['isBillable'] ? 1 : -1
-                        );
-                    }
-                } else {
-                    props.tenantGroup.sort((a: any, b: any) =>
-                        a['assignmentDetails']['isBillable'] > b['assignmentDetails']['isBillable'] ? 1 : -1
-                    );
-                }
-                if (isPaginationEnabled) {
-                    setTableRecords(
-                        props.tenantGroup.slice(rowsPerPage * selectedPage - rowsPerPage, rowsPerPage * selectedPage)
-                    );
-                } else {
-                    setTableRecords(props.tenantGroup);
-                }
-                break;
-            default:
-                const isSortedDescendingNew = column.isSorted ? !column.isSortedDescending : false;
-                const key = column.key;
-                props.tenantGroup.sort((a: T, b: T) =>
-                    (isSortedDescendingNew ? a[key] < b[key] : a[key] > b[key]) ? 1 : -1
-                );
-                setTableRecords(props.tenantGroup);
-                break;
-        }
+        // Update selection state and table records
+        selectionState.setItems(sortedRecords, true);
+        setTableRecords(sortedRecords);
     }
 
     const dialogStyles = { main: { maxWidth: 450 } };
@@ -1321,25 +1357,26 @@ function SummaryTableColumns(props: any): React.ReactElement {
     };
 
     return (
-        <React.Fragment>
+        <Styled.TableGlobalStyles>
             <div
                 style={
                     isSingleGroupShown
                         ? {
-                            position: 'relative',
-                            height: `${dimensions.width <= 480
-                                ? dimensions.height * 0.65
-                                : dimensions.width < 1024
-                                    ? dimensions.height
-                                    : isBulkSelected
-                                        ? dimensions.height - SharedStyled.bulkTableViewBottomOffset
-                                        : dimensions.height - 300
-                                }px`,
-                            overflowY: 'scroll',
-                        }
+                              position: 'relative',
+                              height: `${
+                                  dimensions.width <= 480
+                                      ? dimensions.height * 0.65
+                                      : dimensions.width < 1024
+                                      ? dimensions.height
+                                      : isBulkSelected
+                                      ? dimensions.height - SharedStyled.bulkTableViewBottomOffset
+                                      : dimensions.height - 300
+                              }px`,
+                              overflowY: 'scroll',
+                          }
                         : isPaginationEnabled
-                            ? {}
-                            : { height: `${Math.min((props.tenantGroup.length + 1) * 50, 250)}px`, overflowY: 'scroll' }
+                        ? {}
+                        : { height: `${Math.min((props.tenantGroup.length + 1) * 50, 250)}px`, overflowY: 'scroll' }
                 }
             >
                 <DetailsList
@@ -1353,12 +1390,22 @@ function SummaryTableColumns(props: any): React.ReactElement {
                     ariaLabelForSelectionColumn={`Toggle selection column - ${props.tenantName}`}
                     ariaLabelForSelectAllCheckbox={`Toggle selection for all items - ${props.tenantName}`}
                     checkButtonAriaLabel={`Row checkbox - ${props.tenantName}`}
-                    selectionPreservedOnEmptyClick={false}
-                    selectionZoneProps={{ selection: selectionState, disableAutoSelectOnInputElements: true }}
+                    selectionPreservedOnEmptyClick={true}
+                    selectionZoneProps={{
+                        selection: selectionState,
+                        disableAutoSelectOnInputElements: true,
+                        isSelectedOnFocus: false,
+                        toggleWithoutModifierPressed: true,
+                    }}
+                    onItemInvoked={onItemInvoked}
                     setKey="multiple"
                     onRenderDetailsHeader={onRenderDetailsHeader as any}
                     onRenderRow={onRenderDetailsRow as any}
                     onColumnHeaderClick={isKeyboardColumnResizingOn ? onColumnClickAccessible : onSort}
+                    columnReorderOptions={{
+                        frozenColumnCountFromStart: isBulkSelected ? 1 : 0,
+                        handleColumnReorder: handleColumnReorder,
+                    }}
                     layoutMode={
                         isSingleGroupShown ? DetailsListLayoutMode.fixedColumns : DetailsListLayoutMode.justified
                     }
@@ -1386,7 +1433,7 @@ function SummaryTableColumns(props: any): React.ReactElement {
                     </Stack>
                 </Stack>
             )} */}
-        </React.Fragment>
+        </Styled.TableGlobalStyles>
     );
 }
 

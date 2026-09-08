@@ -20,6 +20,7 @@ import {
     requestTenantInfo,
     updateHistoryData,
     RequestUserPreferences,
+    requestInsights,
 } from '../Shared/SharedComponents.actions';
 import { IComponentsAppState } from '../Shared/SharedComponents.types';
 import { Text } from '@fluentui/react/lib/Text';
@@ -39,11 +40,29 @@ import { DetailsDockedView } from '../Shared/Details/DetailsDockedView';
 import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
 import { SpinnerContainer } from '../Shared/SharedLayout';
 import { Pagination } from '../Shared/Components/Pagination';
+import { HistoryInsights } from './HistoryInsights';
+import { breakpointMap } from '../Shared/Styles/Media';
+import { isMobileResolution, formatUnitValue } from '../../Helpers/sharedHelpers';
+import { getIsFeatureEnabledForUser } from '../Shared/SharedComponents.selectors';
+import FlightingHandler from '../Shared/Components/FlightingHandler';
 
 function HistoryTable(): React.ReactElement {
     //intializing both reducers without persistance
     useDynamicReducer(sharedComponentsReducerName, sharedComponentsReducer as Reducer, [sharedComponentsSagas], false);
     useDynamicReducer(detailsReducerName, detailsReducer as Reducer, [detailsSagas], false);
+
+    const refreshHistory = () => {
+        dispatch(
+            requestMyHistory(
+                historySelectedPage,
+                sortColumnField,
+                sortDirection,
+                '',
+                historyTimePeriod,
+                historyTenantIdFilter
+            )
+        );
+    };
 
     const reduxContext = React.useContext(Context as React.Context<IEmployeeExperienceContext>);
 
@@ -68,12 +87,16 @@ function HistoryTable(): React.ReactElement {
         isPanelOpen,
         historyDefaultView,
         filterValue,
+        insightsData,
     } = useSelector(
         (state: IComponentsAppState) => state.dynamic?.[sharedComponentsReducerName] || sharedComponentsInitialState
     );
 
     const { isPreviewOpen, isMicrofrontendOpen, isRequestFullyScrolled, isRequestFullyRendered } = useSelector(
         (state: IDetailsAppState) => state.dynamic?.[detailsReducerName] || detailsInitialState
+    );
+    const isInsightsFlightedForUser = useSelector((state: any) =>
+        getIsFeatureEnabledForUser(state, 'History Insights')
     );
     const [pageCount, setPageCount] = React.useState<number>(1);
     const [dynamicPageSize, setDynamicPageSize] = React.useState<number>(50);
@@ -84,6 +107,8 @@ function HistoryTable(): React.ReactElement {
     );
     const navWrapperRef = React.useRef<HTMLDivElement>(null);
     const [filterHistoryData, setFilterHistoryData] = React.useState([]);
+
+    const historyInsights = insightsData?.historyInsights;
 
     React.useEffect(() => {
         function handleResize() {
@@ -111,6 +136,7 @@ function HistoryTable(): React.ReactElement {
                 historyTenantIdFilter
             )
         );
+        dispatch(requestInsights('history', historyTimePeriod));
     }, []);
 
     React.useEffect(() => {
@@ -148,9 +174,7 @@ function HistoryTable(): React.ReactElement {
 
     function convertRecordsAmountToFloat(historyRecords: any) {
         for (var i = 0; i < historyRecords.length; i++) {
-            historyRecords[i]['UnitValue'] = isNaN(parseInt(historyRecords[i]['UnitValue']))
-                ? historyRecords[i]['UnitValue']
-                : parseFloat(historyRecords[i]['UnitValue']).toFixed(2);
+            historyRecords[i]['UnitValue'] = formatUnitValue(historyRecords[i]['UnitValue']);
             historyRecords[i]['TenantId'] = parseInt(historyRecords[i]['TenantId']);
         }
     }
@@ -172,7 +196,7 @@ function HistoryTable(): React.ReactElement {
             setDynamicPageSize(historyRecords.length);
         }
         convertRecordsAmountToFloat(historyRecords);
-        dispatch(updateHistoryData(historyRecords, history.TotalRecords));
+        dispatch(updateHistoryData(historyRecords, history.TotalRecords, history.TenantList));
         return;
     };
 
@@ -212,6 +236,7 @@ function HistoryTable(): React.ReactElement {
                 historyTenantIdFilter
             )
         );
+        dispatch(requestInsights('history', parseInt(item.key.toString())));
     };
 
     const [dimensions, setDimensions] = React.useState({
@@ -231,6 +256,16 @@ function HistoryTable(): React.ReactElement {
             setFilterHistoryData(historyRecord);
         }
     };
+
+    //adjust height of the table based on if insights are visble or not
+    const isMobile = isMobileResolution(dimensions.width);
+    const insightsVariableHeight =
+        dimensions.height < breakpointMap.xl ? dimensions.height * 0.2 : dimensions.height * 0.15;
+    const insightsHeight = insightsData && !isMobile && isInsightsFlightedForUser ? insightsVariableHeight : 0;
+    const insightsHeightWithBuffer = insightsHeight > 0 ? insightsHeight + 25 : 0;
+
+    const historyContainerElement = document.getElementById('historyContainer');
+    const historyContainerWidth = historyContainerElement?.clientWidth * 0.96; //account for padding
     return (
         <SummaryStyled.SummaryContainer
             isPanelOpen={isPanelOpen}
@@ -251,18 +286,34 @@ function HistoryTable(): React.ReactElement {
                                 : ' ms-sm12 ')
                         }
                     >
-                        <Styled.HistoryContainer windowHeight={dimensions.height}>
-                            <Styled.HistoryTitle>History</Styled.HistoryTitle>
+                        <Styled.HistoryContainer windowHeight={dimensions.height} id="historyContainer">
+                            <Stack
+                                horizontal
+                                horizontalAlign="space-between"
+                            >
+                                <Stack.Item>
+
+                                    <Styled.HistoryTitle>History</Styled.HistoryTitle>
+                                </Stack.Item>
+                                <Stack.Item>
+                                    <IconButton
+                                        iconProps={{ iconName: 'Refresh' }}
+                                        title="Refresh History"
+                                        ariaLabel="Click here to refresh the history"
+                                        onClick={refreshHistory}
+                                        disabled={isLoadingHistory}
+                                    />
+                                </Stack.Item>
+                            </Stack>
                             <Stack
                                 horizontal
                                 horizontalAlign="space-between"
                                 wrap
-                                styles={{ root: { paddingBottom: '2%', width: '100%' } }}
+                                styles={{ root: { paddingBottom: '1%', width: '100%' } }}
                             >
                                 <Stack
                                     horizontal
                                     tokens={Styled.HistoryNavStackTokens}
-                                    styles={{ root: { width: '100%' } }}
                                 >
                                     <Stack.Item align="baseline">
                                         <Dropdown
@@ -372,6 +423,17 @@ function HistoryTable(): React.ReactElement {
                                     </Stack.Item>
                                 </Stack>
                             </Stack>
+                            {historyInsights && !isMobile && isInsightsFlightedForUser && (
+                                <FlightingHandler featureName="History Insights">
+                                    <HistoryInsights
+                                        data={historyInsights}
+                                        windowWidth={dimensions.width}
+                                        windowHeight={dimensions.height}
+                                        parentHeight={insightsHeight}
+                                        parentWidth={historyContainerWidth}
+                                    />
+                                </FlightingHandler>
+                            )}
                             {!isLoadingHistory && (
                                 <Stack padding="0 0 8px 0">
                                     {historyTotalRecords > 0 && (
@@ -402,41 +464,49 @@ function HistoryTable(): React.ReactElement {
                             {historyDownloadHasError && historyDownloadErrorMessage && (
                                 <ErrorView errorMessage={historyDownloadErrorMessage} failureType={'Download'} />
                             )}
-                            {!isLoadingHistory && !historyHasError && !historyErrorMessage && historyData.length !== 0 && (
-                                <Stack grow>
-                                    <Styled.HistoryTableContainer
-                                        windowHeight={dimensions.height}
-                                        windowWidth={dimensions.width}
-                                        isPanelOpen={isPanelOpen}
-                                    >
-                                        <Stack
-                                            style={{
-                                                height:
-                                                    dimensions.width < 1024 ? '100%' : `${dimensions.height - 250}px`,
-                                            }}
+                            {!isLoadingHistory &&
+                                !historyHasError &&
+                                !historyErrorMessage &&
+                                historyData.length !== 0 && (
+                                    <Stack grow>
+                                        <Styled.HistoryTableContainer
+                                            windowHeight={dimensions.height}
+                                            windowWidth={dimensions.width}
+                                            isPanelOpen={isPanelOpen}
+                                            insightsHeight={insightsHeightWithBuffer}
                                         >
-                                            <div
+                                            <Stack
                                                 style={{
-                                                    position: 'relative',
                                                     height:
                                                         dimensions.width < 1024
-                                                            ? '90%'
-                                                            : `${dimensions.height - 350}px`,
-                                                    overflowY: 'hidden',
-                                                    marginBottom: '1%',
+                                                            ? '100%'
+                                                            : `${dimensions.height - 250}px`,
                                                 }}
                                             >
-                                                <ScrollablePane>
-                                                    <HistoryColumns />
-                                                </ScrollablePane>
-                                            </div>
-                                            <Stack horizontal horizontalAlign="center">
-                                                <Pagination {...paginationProps} />
+                                                <div
+                                                    style={{
+                                                        position: 'relative',
+                                                        height:
+                                                            dimensions.width < 1024
+                                                                ? '90%'
+                                                                : `${
+                                                                      dimensions.height - 350 - insightsHeightWithBuffer
+                                                                  }px`,
+                                                        overflowY: 'hidden',
+                                                        marginBottom: '1%',
+                                                    }}
+                                                >
+                                                    <ScrollablePane>
+                                                        <HistoryColumns />
+                                                    </ScrollablePane>
+                                                </div>
+                                                <Stack horizontal horizontalAlign="center">
+                                                    <Pagination {...paginationProps} />
+                                                </Stack>
                                             </Stack>
-                                        </Stack>
-                                    </Styled.HistoryTableContainer>
-                                </Stack>
-                            )}
+                                        </Styled.HistoryTableContainer>
+                                    </Stack>
+                                )}
                             {historyHasError && historyErrorMessage && (
                                 <Stack.Item>
                                     <Text> {historyErrorMessage} </Text>

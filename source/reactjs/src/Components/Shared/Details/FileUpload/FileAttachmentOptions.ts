@@ -6,6 +6,8 @@ export class FileAttachmentOptions {
     public allowedFileTypes: string;
     public maxFileSizeInBytes: number;
     public maxAttachments: number;
+    public isDescriptionRequired: boolean;
+    public descriptionLength: number;
 
     /**
      * Creates a FileAttachmentOptions.
@@ -16,5 +18,7 @@ export class FileAttachmentOptions {
         this.allowedFileTypes = json.allowedFileTypes || json.AllowedFileTypes;
         this.maxFileSizeInBytes = json.maxFileSizeInBytes || json.MaxFileSizeInBytes;
         this.maxAttachments = json.maxAttachments || json.MaxAttachments;
+        this.isDescriptionRequired = json.isDescriptionRequired || json.IsDescriptionRequired;
+        this.descriptionLength = json.descriptionLength || json.DescriptionLength;
     }
 }

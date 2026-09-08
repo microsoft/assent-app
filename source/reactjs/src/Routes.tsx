@@ -7,44 +7,58 @@ import { HistoryPage } from './Components/History/HistoryPage';
 import { MicrofrontendPageClass } from './Components/MicrofrontendPage/MicrofrontendPageClass';
 import { UrlWithQueryParams } from './Helpers/sharedHelpers';
 import { FAQPage } from './Components/FAQ/FAQPage';
+import { IBot } from './Components/SupportBot/IBot';
+import { IconButton } from '@fluentui/react';
+import { AdminPage } from './Components/Admin/AdminPage';
 
 export function Routes(): React.ReactElement {
     UrlWithQueryParams();
     return (
         <Switch>
             <Route path="/history" component={HistoryPage} exact={true} />
+            <Route
+                path="/dashboard/:tenantId/:documentNumber"
+                render={(props) => <PendingApprovalsPage {...props} isDashboardView={true} />}
+                exact={true}
+            />
+            <Route
+                path="/dashboard"
+                render={(props) => <PendingApprovalsPage {...props} isDashboardView={true} />}
+                exact={true}
+            />
             <Route path="/outofsync/:documentNumber" component={OutOfSyncPage} exact={true} />
-            <Route path="/outofsync" component={OutOfSyncPage} exact={true}/>
+            <Route path="/outofsync" component={OutOfSyncPage} exact={true} />
             <Route path="/:tenantId/:documentNumber" component={PendingApprovalsPage} exact={true} />
             <Route path="/" component={PendingApprovalsPage} exact={true} />
             <Route path="/microfrontend-inputs-class" component={MicrofrontendPageClass} exact={true} />
             <Route path="/faq" component={FAQPage} exact={true} />
+            <Route path="/admin" component={AdminPage} exact={true} />
             <RouteComponentProvider
                 path="/dynamic-redux-hooks"
                 config={{
                     script: '/bundles/dynamic-redux-hooks.js',
-                    name: 'DynamicReduxHooks'
+                    name: 'DynamicReduxHooks',
                 }}
             />
             <RouteComponentProvider
                 path="/dynamic-redux-class"
                 config={{
                     script: '/bundles/dynamic-redux-class.js',
-                    name: 'DynamicReduxClass'
+                    name: 'DynamicReduxClass',
                 }}
             />
             <RouteComponentProvider
                 path="/dynamic-sub-routes"
                 config={{
                     script: '/bundles/dynamic-sub-routes.js',
-                    name: 'DynamicSubRoutes'
+                    name: 'DynamicSubRoutes',
                 }}
             />
             <RouteComponentProvider
                 path="/dynamic-custom-props"
                 config={{
                     script: '/bundles/dynamic-custom-props.js',
-                    name: 'DynamicCustomProps'
+                    name: 'DynamicCustomProps',
                 }}
             />
         </Switch>

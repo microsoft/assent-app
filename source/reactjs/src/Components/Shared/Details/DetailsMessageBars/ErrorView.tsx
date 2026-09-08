@@ -1,9 +1,22 @@
 import * as React from 'react';
 import * as Styled from './DetailsMessageBarsStyling';
 import { Stack } from '@fluentui/react/lib/Stack';
-import { MessageBar, MessageBarType, Link, DefaultButton } from '@fluentui/react';
+import * as MarkdownIt from 'markdown-it';
+import { MessageBar, MessageBarType, Link, DefaultButton, SharedColors } from '@fluentui/react';
 import * as sanitizeHtml from 'sanitize-html';
 import { removeHTMLFromString } from '../../../../Helpers/sharedHelpers';
+
+// Applied AFTER markdown.render so markdown-generated tags are constrained to a minimal, safe allowlist.
+const BANNER_SANITIZE_CONFIG: sanitizeHtml.IOptions = {
+    allowedTags: ['a', 'strong', 'br', 'p', 'em'],
+    allowedAttributes: {
+        a: ['href', 'target', 'rel'],
+    },
+    allowedSchemes: ['http', 'https', 'mailto'],
+    transformTags: {
+        a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' }, true),
+    },
+};
 
 interface ErrorViewProps {
     errorMessage?: string;
@@ -15,6 +28,7 @@ interface ErrorViewProps {
     dismissHandler?: any;
     isContentCollapsable?: boolean;
 }
+
 
 const ErrorView = ({
     errorMessage = '',
@@ -29,6 +43,11 @@ const ErrorView = ({
     const [errorViewRef, setErrorViewRef] = React.useState(null);
     const [dismissed, setDismissed] = React.useState(false);
     const [showMore, setShowMore] = React.useState(true);
+    const markdown = MarkdownIt().set({ html: true });
+
+    // Render markdown FIRST, then sanitize the generated HTML against the banner allowlist.
+    const renderSafeMarkdown = (text: string): string =>
+        sanitizeHtml(markdown.render(text ?? ''), BANNER_SANITIZE_CONFIG);
 
     React.useEffect(() => {
         if (errorViewRef) {
@@ -36,18 +55,12 @@ const ErrorView = ({
         }
     }, [errorViewRef]);
 
-    const cleanErrorMessage = errorMessage
-        ? sanitizeHtml(errorMessage, {
-              allowedTags: ['a', 'strong', 'br'],
-              allowedAttributes: {
-                  a: ['href', 'target'],
-              },
-          })
-        : '';
+    const cleanErrorMessage = errorMessage ? renderSafeMarkdown(errorMessage) : '';
+
     const messageElements = errorMessages?.map((item: string, index: number) => (
         <Stack.Item styles={errorMessages.length > 1 && Styled.WarningViewStackStylesBottomBorder} key={index}>
             <li>
-                <div dangerouslySetInnerHTML={{ __html: item }} />
+                <div dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(item) }} />
             </li>
         </Stack.Item>
     ));
@@ -73,6 +86,7 @@ const ErrorView = ({
                 {(failureType || customTitle) && (
                     <Stack.Item>
                         <Styled.DetailsMessageBarTitle>{failureDescription}</Styled.DetailsMessageBarTitle>
+
                     </Stack.Item>
                 )}
                 {cleanErrorMessage && (
