@@ -9,6 +9,7 @@ import {
     sharedComponentsInitialState
 } from '../Shared/SharedComponents.reducer';
 import { IComponentsAppState } from '../Shared/SharedComponents.types';
+import { getCardViewSelected } from '../Shared/SharedComponents.selectors';
 import { sharedComponentsSagas } from '../Shared/SharedComponents.sagas';
 import { Reducer } from 'redux';
 import { requestMyProfile, requestMyOutOfSyncSummary, updateSelectedSummarytoOutOfSync, updateFilterValue } from '../Shared/SharedComponents.actions';
@@ -33,9 +34,10 @@ function OutOfSyncPage(props: IOutOfSyncProps): React.ReactElement {
     useDynamicReducer(sharedComponentsReducerName, sharedComponentsReducer as Reducer, [sharedComponentsSagas], false);
 
     const { useSelector, dispatch } = React.useContext(Context as React.Context<IEmployeeExperienceContext>);
-    const { isCardViewSelected, isBulkSelected, selectedApprovalRecords } = useSelector(
+    const { isBulkSelected, selectedApprovalRecords } = useSelector(
         (state: IComponentsAppState) => state.dynamic?.[sharedComponentsReducerName] || sharedComponentsInitialState
     );
+    const isCardViewSelected = useSelector(getCardViewSelected);
 
     const [dimensions, setDimensions] = React.useState({
         height: window.innerHeight,

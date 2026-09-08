@@ -7,6 +7,8 @@ export class FileAttachment {
     public id: string;
     public url: string;
     public isPreAttached: boolean;
+    public category : string;
+    public description : string;
 
     /**
      * Creates a FileAttachment.
@@ -18,5 +20,7 @@ export class FileAttachment {
         this.id = json.id || json.ID; // Current objects in Attachments use ID (both letters capitalized)
         this.url = json.url || json.Url;
         this.isPreAttached = json.isPreAttached || json.IsPreAttached;
+        this.category = json.category || json.Category;
+        this.description = json.description || json.Description;
     }
 }

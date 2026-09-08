@@ -33,6 +33,13 @@ export const QuickLinks = [
         target: "_blank"
     },
     {
+        text: "Open Approvals Assistant",
+        alternateText: "Open Approvals Assistant",
+        email: false,
+        link: "",
+        target: "_blank"
+    },
+    {
         text: "Open support ticket",
         email: true,
         emailAddress: "",
@@ -40,26 +47,12 @@ export const QuickLinks = [
         subject: "",
         getSupportEmail: true,
         target: "_blank"
-    }, 
+    },
     {
-        text: "Privacy Statement",
-        alternateText: "Privacy Statement",
+        text: "MS Data Privacy Notice",
+        alternateText: "MS Data Privacy Notice",
         email: false,
-        link: "http://aka.ms/MSA_CFIT_MA_Privacy",
+        link: "https://go.microsoft.com/fwlink/?LinkId=518021",
         target: "_blank"
-    }, 
-    {
-        text: "Legal Notice",
-        alternateText: "Legal Notice",
-        email: false,
-        link: "http://aka.ms/MSA_CFIT_MA_Legal",
-        target: "_blank"
-    }, 
-    {
-        text: "Data Privacy Notice",
-        alternateText: "Data Privacy Notice",
-        email: false,
-        link: "https://privacy.microsoft.com/en-US/data-privacy-notice",
-        target: "_blank"
-    }
+    },
 ];

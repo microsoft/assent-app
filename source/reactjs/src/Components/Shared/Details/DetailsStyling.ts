@@ -2,7 +2,8 @@ import { ITextFieldStyles } from '@fluentui/react/lib/TextField';
 import { Depths } from '@fluentui/theme';
 import { IStackTokens, IStackStyles, IStackItemStyles } from '@fluentui/react/lib/Stack';
 import { IDropdownStyles } from '@fluentui/react/lib/Dropdown';
-import { maxWidth } from '../Styles/Media';
+import { maxWidth, breakpointMap } from '../Styles/Media';
+import { makeStyles, shorthands, tokens } from "@fluentui/react-components";
 
 export const SmallSpace = styled.div`
     margin-bottom: 12px;
@@ -22,14 +23,21 @@ export const DetailsDocPreviewHeaderBarStyles = (viewType: string, selectedPage?
     root: {
         display: 'flex',
         justifyContent: 'space-between',
-        position: 'absolute',
+        position: viewType === 'FLY' ? 'relative' : 'sticky',
         width: 'calc(100% - 16px)',
         background: '#ffffff',
         top: '0px',
         paddingBottom: '5px',
+        zIndex: 10,
         selectors: {
             '@media (min-device-width: 1023px) and (min-width: 640px) and (max-width: 2048px)': {
-                marginTop: `${viewType == 'FLY' || selectedPage === 'history' ? '0px' : '-48px'}`,
+                marginTop: '0px',
+            },
+            '@media (max-width: 640px)': {
+                position: 'static',
+                top: 'auto',
+                width: '100%',
+                height: 'auto',
             },
         },
     },
@@ -37,11 +45,12 @@ export const DetailsDocPreviewHeaderBarStyles = (viewType: string, selectedPage?
 
 export const StickyDetailsHeder: IStackStyles = {
     root: {
-        position: 'absolute',
+        position: 'sticky',
         width: '100%',
         background: 'white',
         height: '35px',
         top: '0px',
+        zIndex: 10,
     },
 };
 
@@ -71,6 +80,16 @@ export const Footer: any = styled.footer`
     }
     @media only screen and (max-height: 700px) and (max-width: 680px) {
         height: 10%;
+    }
+    @media only screen and (max-width: 640px) {
+        position: static;
+        box-shadow: none;
+        border-left: none;
+        overflow: visible;
+        max-height: none !important;
+        height: auto !important;
+        width: 100%;
+        padding-bottom: 16px;
     }
 `;
 
@@ -259,10 +278,13 @@ export const buttonZoomStyle: IStackStyles = {
 export const StackAdditionDetails = (footerHeight: number): IStackStyles => ({
     root: {
         marginTop: '0!important',
-        marginBottom: `${footerHeight + 180}px`,
+        marginBottom: `10px`,
         selectors: {
-            '@media (min-device-width: 1023px) and (min-width: 320px) and (max-width: 2048px)': {
+            '@media (max-width: 319px)': {
                 marginBottom: `${footerHeight + 10}px`,
+            },
+            '@media (max-width: 640px)': {
+                marginBottom: '0px',
             },
         },
     },
@@ -279,6 +301,15 @@ export const getModalDimensions = (
     windowWidth: number,
     windowHeight: number
 ): { width: number; height: number } => {
+    if (windowWidth <= breakpointMap.l) {
+        // On mobile, size the modal to most of the viewport (not full-screen) so it reads as a
+        // popup overlaying the page while still leaving a visible margin around it. The maximize/
+        // restore button toggles the height so it stays functional on small devices.
+        return {
+            width: windowWidth * 0.95,
+            height: isExpanded ? windowHeight * 0.85 : windowHeight * 0.5,
+        };
+    }
     if (isExpanded) {
         return {
             width: windowWidth * 0.9,
@@ -291,3 +322,56 @@ export const getModalDimensions = (
         };
     }
 };
+
+makeStyles({
+    provider: {
+      maxWidth: "320px",
+      backgroundColor: tokens.colorNeutralBackground3,
+      ...shorthands.padding("16px"),
+      ...shorthands.borderRadius("12px"),
+      display: "flex",
+      columnGap: "24px",
+      flexDirection: "column",
+      height: "600px",
+    },
+    latencyWrapper: {
+      paddingTop: "16px",
+    },
+    chat: {
+      ...shorthands.padding(0, "16px", "16px"),
+      overflowY: "scroll",
+      height: "100%",
+      marginLeft: `calc(${tokens.spacingHorizontalL} * -1)`,
+      "&::-webkit-scrollbar-thumb": {
+        backgroundColor: tokens.colorNeutralForeground4,
+        ...shorthands.border("2px", "solid", tokens.colorNeutralBackground3),
+        ...shorthands.borderRadius(tokens.borderRadiusMedium),
+      },
+      "&::-webkit-scrollbar-track": {
+        backgroundColor: tokens.colorNeutralBackground3,
+      },
+      "&::-webkit-scrollbar": {
+        width: tokens.spacingHorizontalS,
+      },
+    },
+    chatMessage: {
+      display: "block",
+      marginLeft: 0,
+    },
+    chatMessageBody: {
+      backgroundColor: tokens.colorNeutralBackground1,
+      boxShadow: tokens.shadow4,
+      boxSizing: "content-box",
+      display: "block",
+    },
+    chatMyMessage: {
+      gridTemplateAreas: "unset",
+      marginLeft: 0,
+    },
+    chatMyMessageBody: {
+      backgroundColor: "#E0E7FF",
+    },
+    inputArea: {
+      paddingTop: "16px",
+    },
+  });

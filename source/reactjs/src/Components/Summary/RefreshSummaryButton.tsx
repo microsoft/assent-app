@@ -18,7 +18,8 @@ import {
     getIsPullTenantSelected,
     getPullTenantSearchCriteria,
     getPullTenantSearchSelection,
-    getTenantIdFromAppName
+    getTenantIdFromAppName,
+    getIsSubmitterView
 } from '../Shared/SharedComponents.selectors';
 
 export function RefreshSummaryButton(): React.ReactElement {
@@ -33,6 +34,7 @@ export function RefreshSummaryButton(): React.ReactElement {
     const isLoadingSummary = useSelector(getIsLoadingSummary);
     const isLoadingPullTenantData = useSelector(getIsLoadingPullTenantData);
     const isProcessingBulkApproval = useSelector(getIsProcessingBulkApproval);
+    const isSubmitterView = useSelector(getIsSubmitterView);
 
     const refreshSummary = () => {
         if (isPullTenantSelected) {
@@ -43,8 +45,10 @@ export function RefreshSummaryButton(): React.ReactElement {
             dispatch(requestPullTenantSummary(tenantIdforFilterValue, userAlias, filterCriteria));
             dispatch(updateFailedPullTenantRequests([]));
         } else {
-            dispatch(requestMySummary(userAlias));
-            dispatch(requestPullTenantSummaryCount(userAlias));
+            dispatch(requestMySummary(userAlias, isSubmitterView));
+            if (!isSubmitterView) {
+                dispatch(requestPullTenantSummaryCount(userAlias));
+            }
         }
         dispatch(refreshBulkState());
         dispatch(updatePanelState(false));

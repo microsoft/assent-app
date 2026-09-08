@@ -43,7 +43,9 @@ import {
     getPullTenantSummaryCount,
     getFilteredTenantInfo,
     getPullTenantSummaryData,
-    getToggleDetailsScreen
+    getToggleDetailsScreen,
+    getIsSearchResultsViewOpen,
+    getIsSubmitterView
 } from '../../SharedComponents.selectors';
 import { setBulkMessagebarHeight } from '../../Details/Details.actions';
 import { Stack } from '@fluentui/react/lib/Stack';
@@ -56,12 +58,14 @@ import { MessageBar } from '@fluentui/react';
 import { isMobile } from 'react-device-detect';
 import { trackFeatureUsageEvent, TrackingEventId } from '../../../../Helpers/telemetryHelpers';
 import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
+import { useHistory } from 'react-router-dom';
+import { NavigationUtils } from '../../../Shared/Utils/NavigationUtils';
 
 function PrimaryHeader(props: any): React.ReactElement {
     useDynamicReducer(sharedComponentsReducerName, sharedComponentsReducer as Reducer, [sharedComponentsSagas], false);
     usePersistentReducer(sharedComponentsPersistentReducerName, sharedComponentsPersistentReducer);
 
-    const { useSelector, dispatch,  authClient, telemetryClient } = React.useContext(Context as React.Context<IEmployeeExperienceContext>);
+    const { useSelector, dispatch, authClient, telemetryClient } = React.useContext(Context as React.Context<IEmployeeExperienceContext>);
     const summaryGroupedBy = useSelector(getSummaryGroupedBy);
     const isLoadingSummary = useSelector(getIsLoadingSummary);
     const tenantInfo = useSelector(getTenantInfo);
@@ -79,10 +83,15 @@ function PrimaryHeader(props: any): React.ReactElement {
     const filteredTenantInfo = useSelector(getFilteredTenantInfo);
     const pullTenantSummaryData = useSelector(getPullTenantSummaryData);
     const toggleDetailsScreen = useSelector(getToggleDetailsScreen);
+    const isSearchResultsViewOpen = useSelector(getIsSearchResultsViewOpen);
+    const isSubmitterView = useSelector(getIsSubmitterView);
 
     const { userAlias } = useSelector(
         (state: IComponentsAppState) => state.SharedComponentsPersistentReducer || SharedComponentsPersistentInitialState
     );
+
+    const history = useHistory();
+    const isDashboardView = NavigationUtils.isDashboardRoute(history);
 
     const [allHistory] = React.useState<any>(null);
     const [dropdownOptions, setDropdownOptions] = React.useState<IDropdownOption[]>([]);
@@ -92,9 +101,22 @@ function PrimaryHeader(props: any): React.ReactElement {
     const [preservedGrouping, setPreservedGrouping] = React.useState(summaryGroupedBy);
     const [largestOptionWidth, setLargestOptionWidth] = React.useState<string>('0px');
 
+    const [bulkCheckboxRenderKey, setBulkCheckboxRenderKey] = React.useState<number>(0);
+    const bulkCheckboxRef = React.useRef<any>(null);
+    const dropdownRef = React.useRef<any>(null);
+    const dropdownFocusTimeoutRef = React.useRef<number | undefined>(undefined);
+
     const controlsAndComplianceRequired = filteredTenantInfo?.isControlsAndComplianceRequired ?? true;
 
-    const bulkCheckboxLabel = 'Select multiple'
+    const bulkCheckboxLabel =  'Enable multiple selection';
+    const bulkCheckboxAriaLabel = isBulkSelected ? 'Select multiple items enabled' : 'Select multiple items disabled';
+    const selectedDropdownKey = selectedDataType === '' && filterValue !== 'All' ? filterValue : selectedDataType;
+    const selectedTenantName = dropdownOptions
+        .find((option) => option.key?.toString() === selectedDropdownKey?.toString())
+        ?.text?.toString();
+    const bulkDropdownAriaLabel = isBulkSelected
+        ? `${bulkCheckboxAriaLabel} checkbox checked for Application${selectedTenantName ? ` ${selectedTenantName}` : ''}`
+        : 'for Application';
 
     const isMaximized = isPanelOpen && toggleDetailsScreen;
 
@@ -117,6 +139,20 @@ function PrimaryHeader(props: any): React.ReactElement {
             setSelectedKey('');
         }
     }, [isBulkSelected]);
+
+    React.useEffect(() => {
+        let timeoutId: number | undefined;
+        if (bulkCheckboxRenderKey > 0) {
+            timeoutId = window.setTimeout(() => {
+                bulkCheckboxRef.current?.focus?.();
+            }, 0);
+        }
+        return () => {
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+        };
+    }, [bulkCheckboxRenderKey]);
 
     React.useEffect(() => {
         if (isBulkSelected) {
@@ -155,7 +191,13 @@ function PrimaryHeader(props: any): React.ReactElement {
         }
     }, [dropdownOptions]);
 
-    
+    React.useEffect(() => {
+        return () => {
+            if (dropdownFocusTimeoutRef.current) {
+                clearTimeout(dropdownFocusTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const clearBulkRecords = (): void => {
         for (let i = 0; i < selectedApprovalRecords.length; i++) {
@@ -194,14 +236,17 @@ function PrimaryHeader(props: any): React.ReactElement {
         return Math.ceil(width + offSetWidth) + "px";
     }
 
-    const onCheckboxChange = (ev: React.FormEvent<HTMLElement>, checked: boolean): void => {
+    const onCheckboxChange = (ev: React.FormEvent<HTMLElement>, isChecked?: boolean): void => {
+        const targetChecked = (ev?.target as HTMLInputElement | null)?.checked;
+        const checked = typeof isChecked === 'boolean' ? isChecked : !!targetChecked;
+        setBulkCheckboxRenderKey((prevValue) => prevValue + 1);
         dispatch(updateBulkSelected(checked));
         if (!checked) {
             clearBulkRecords();
             dispatch(updateFilterValue('All'));
             dispatch(updateGroupedSummary(preservedGrouping));
             setSelectedKey('');
-        } else if (checked) {           
+        } else if (checked) {
             setPreservedGrouping(summaryGroupedBy);
             dispatch(updateGroupedSummary(GroupingBy.Tenant));
             const options = getFilteredDropDownMenuItems();
@@ -217,6 +262,12 @@ function PrimaryHeader(props: any): React.ReactElement {
                         ? options.find(x => x.key === DefaultTenant) || firstOption
                         : firstOption;
                 displaySelectedTenantRecords(defaultDropDownItem);
+                // Set focus on dropdown after state updates
+                dropdownFocusTimeoutRef.current = window.setTimeout(() => {
+                    if (dropdownRef.current && dropdownRef.current.focus) {
+                        dropdownRef.current.focus();
+                    }
+                }, 100);
             } else {
                 setAvailableBulkRecords(false);
             }
@@ -255,8 +306,8 @@ function PrimaryHeader(props: any): React.ReactElement {
     const setBulkMessageBarRef = (element: any): void => {
         const bulkMessageElement = element;
         if (bulkMessageElement && bulkMessageElement.clientHeight) {
-            if (bulkMessageHeight != bulkMessageElement.clientHeight) {
-                bulkMessageHeight = bulkMessageElement.clientHeight;
+            if (bulkMessageHeightRef.current != bulkMessageElement.clientHeight) {
+                bulkMessageHeightRef.current = bulkMessageElement.clientHeight;
                 dispatch(setBulkMessagebarHeight(bulkMessageElement.clientHeight));
             }
         }
@@ -265,7 +316,10 @@ function PrimaryHeader(props: any): React.ReactElement {
 
     const renderBulkCheckBox = () => {
         return (<Checkbox
+            key={bulkCheckboxRenderKey}
+            componentRef={bulkCheckboxRef}
             label={bulkCheckboxLabel}
+            ariaLabel={bulkCheckboxAriaLabel}
             checked={isBulkSelected}
             disabled={isLoadingSummary && (!(tenantInfo?.length > 0) || (!availableBulkRecords))}
             onChange={onCheckboxChange}
@@ -274,14 +328,14 @@ function PrimaryHeader(props: any): React.ReactElement {
 
     const renderBulkDropDown = () => {
         return (<Dropdown
+            componentRef={dropdownRef}
             styles={HeaderStyled.DropDownStyle(largestOptionWidth, isMaximized, isPanelOpen)}
             placeholder="Select an application"
-            title="Bulk Filter"
-            label="for Application"
-            aria-label="for Application"
+            label= "to review for Application"
+            ariaLabel={bulkDropdownAriaLabel}
             options={dropdownOptions}
             onChange={getSelectedRecords}
-            selectedKey={(selectedDataType === '' && filterValue !== 'All') ? filterValue : selectedDataType}
+            selectedKey={selectedDropdownKey}
             disabled={!isBulkSelected || (!availableBulkRecords)}
         />
         );
@@ -291,54 +345,53 @@ function PrimaryHeader(props: any): React.ReactElement {
         return (<HeaderStyled.SecondaryHeaderContainer>
             <Stack horizontal styles={HeaderStyled.SecondaryHeaderStackStyles}>
 
-                <Stack.Item
+                {!isSearchResultsViewOpen && <Stack.Item
                     grow={0.05}
                     align="start"
                     styles={HeaderStyled.GroupAndFilterIconStackItemStyles}
                 >
-                    <Stack horizontalAlign="start" verticalAlign="center" horizontal wrap tokens={{childrenGap: 5}}>
-                        {availableBulkRecords && renderBulkCheckBox()}
-                        {availableBulkRecords && isBulkSelected && renderBulkDropDown()}
-                        {tenantInfo?.length > 0 && !availableBulkRecords && (<p>None of your pending requests are eligible for bulk approvals</p>)}
+                    <Stack horizontalAlign="start" verticalAlign="center" horizontal wrap tokens={{ childrenGap: 15 }}>
+                        {availableBulkRecords && !isDashboardView && !isSubmitterView && renderBulkCheckBox()}
+                        {availableBulkRecords && isBulkSelected && !isSubmitterView && renderBulkDropDown()}
+                        {tenantInfo?.length > 0 && !availableBulkRecords && !isDashboardView && !isSubmitterView && (<p>None of your pending requests are eligible for bulk approvals</p>)}
                     </Stack>
 
-                </Stack.Item>
+                </Stack.Item>}
             </Stack>
         </HeaderStyled.SecondaryHeaderContainer>)
     }
 
     const renderMobileViewComponents = () => {
-        return (<HeaderStyled.SecondaryHeaderContainer>
-            <Stack horizontal styles={HeaderStyled.SecondaryHeaderMobileStackStyles}>
+        return (<HeaderStyled.SecondaryHeaderMobileContainer>
+            <Stack styles={HeaderStyled.SecondaryHeaderMobileStackStyles}>
                 <Stack.Item
-                    grow={0.05}
-                    align="center"
+                    align="start"
                     styles={HeaderStyled.GroupAndFilterIconStackItemStyles}
                 >
                     <Stack verticalAlign="center" horizontal>
-                        {availableBulkRecords && renderBulkCheckBox()}
-                        {tenantInfo?.length > 0 && !availableBulkRecords && (<p>None of your pending requests are eligible for bulk approvals</p>)}
+                        {availableBulkRecords && !isDashboardView && !isSubmitterView && renderBulkCheckBox()}
+                        {tenantInfo?.length > 0 && !availableBulkRecords && !isDashboardView && !isSubmitterView && (<p>None of your pending requests are eligible for bulk approvals</p>)}
                     </Stack>
                     <Stack verticalAlign="center" horizontal>
-                        {availableBulkRecords && isBulkSelected && renderBulkDropDown()}
+                        {availableBulkRecords && isBulkSelected && !isSubmitterView && renderBulkDropDown()}
                     </Stack>
                 </Stack.Item>
             </Stack>
-        </HeaderStyled.SecondaryHeaderContainer>)
+        </HeaderStyled.SecondaryHeaderMobileContainer>)
     }
 
-    let bulkMessageHeight = 0;
+    const bulkMessageHeightRef = React.useRef(0);
 
     return (
-        <div style={(isBulkSelected && isPanelOpen) ? { marginBottom: '0.75%' } : isBulkSelected ? { marginBottom: '0.5%' } : null}>
+        <div style={(isBulkSelected && isPanelOpen) ? { marginBottom: '0.75%' } : (isBulkSelected ? (isMobile ? { marginTop: '5.5%', marginBottom: '0.5%' } : { marginBottom: '0.5%' }) : null)}>
             {isBulkSelected && tenantInfo?.length > 0 && availableBulkRecords
-                && controlsAndComplianceRequired && (
+                && controlsAndComplianceRequired && !isDashboardView && (
                     <HeaderStyled.BulkMessageHeight
                         ref={element => setBulkMessageBarRef(element)}
                     >
                         <MessageBar
                             styles={HeaderStyled.DelegationBarStyles}
-                            isMultiline={false}
+                            isMultiline={true}
                             aria-label={'Informational message'}
                         >
                             <Stack.Item>

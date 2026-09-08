@@ -5,6 +5,24 @@ export const getUserAlias = (state: IComponentsAppState): string => {
     return state.SharedComponentsPersistentReducer?.userAlias || SharedComponentsPersistentInitialState.userAlias;
 };
 
+export const getOnBehalfUserUpn = (state: IComponentsAppState): string => {
+    if (state.SharedComponentsPersistentReducer) {
+        return (
+            state.SharedComponentsPersistentReducer.onBehalfUserUpn ||
+            SharedComponentsPersistentInitialState.onBehalfUserUpn
+        );
+    }
+};
+
+export const getOnBehalfUserId = (state: IComponentsAppState): string => {
+    if (state.SharedComponentsPersistentReducer) {
+        return (
+            state.SharedComponentsPersistentReducer.onBehalfUserId ||
+            SharedComponentsPersistentInitialState.onBehalfUserId
+        );
+    }
+};
+
 export const getTeachingBubbleVisibility = (state: IComponentsAppState): boolean => {
     return (
         state.SharedComponentsPersistentReducer?.teachingBubbleVisibility ||
@@ -21,4 +39,24 @@ export const getTeachingBubbleStep = (state: IComponentsAppState): IFeaturesIntr
 
 export const getUserName = (state: IComponentsAppState): string => {
     return state.SharedComponentsPersistentReducer?.userName || SharedComponentsPersistentInitialState.userName;
+};
+
+export const getPersistedVisibleColumns = (state: IComponentsAppState, tenantType: string): string[] => {
+    if (tenantType === 'pullTenant') {
+        return (
+            state.SharedComponentsPersistentReducer?.visibleColumnsPullTenant ||
+            SharedComponentsPersistentInitialState.visibleColumnsPullTenant
+        );
+    }
+    return (
+        state.SharedComponentsPersistentReducer?.visibleColumnsDefault ||
+        SharedComponentsPersistentInitialState.visibleColumnsDefault
+    );
+};
+
+export const getPersistedCardViewSelected = (state: IComponentsAppState): boolean => {
+    return (
+        state.SharedComponentsPersistentReducer?.isCardViewSelected ??
+        SharedComponentsPersistentInitialState.isCardViewSelected
+    );
 };

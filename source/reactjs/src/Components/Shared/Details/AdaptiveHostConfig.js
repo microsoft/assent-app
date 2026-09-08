@@ -85,7 +85,7 @@ export const hostConfig = {
                     "subtle": "#767676"
                 },
                 "accent": {
-                    "default": "#2E89FC",
+                    "default": "#2268C1",
                     "subtle": "#882E89FC"
                 },
                 "attention": {
@@ -118,7 +118,7 @@ export const hostConfig = {
                     "subtle": "#33000000"
                 },
                 "accent": {
-                    "default": "#2E89FC",
+                    "default": "#2268C1",
                     "subtle": "#882E89FC"
                 },
                 "attention": {
@@ -151,7 +151,7 @@ export const hostConfig = {
                     "subtle": "#33000000"
                 },
                 "accent": {
-                    "default": "#2E89FC",
+                    "default": "#2268C1",
                     "subtle": "#882E89FC"
                 },
                 "attention": {
@@ -184,7 +184,7 @@ export const hostConfig = {
                     "subtle": "#33000000"
                 },
                 "accent": {
-                    "default": "#2E89FC",
+                    "default": "#2268C1",
                     "subtle": "#882E89FC"
                 },
                 "attention": {
@@ -217,7 +217,7 @@ export const hostConfig = {
                     "subtle": "#33000000"
                 },
                 "accent": {
-                    "default": "#2E89FC",
+                    "default": "#2268C1",
                     "subtle": "#882E89FC"
                 },
                 "attention": {

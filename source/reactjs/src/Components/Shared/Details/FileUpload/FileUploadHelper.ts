@@ -27,7 +27,8 @@ export const createFileAttachmentArray = (attachmentsArray: any[]): FileAttachme
  */
 export const propsForFileUpload = (
     fileAttachmentOptions: FileAttachmentOptions | undefined,
-    fileAttachments: FileAttachment[] | undefined
+    fileAttachments: FileAttachment[] | undefined,
+    category :string | undefined
 ): IFileUploadOptions => {
     // Init empty IFileUploadOptions.
     // If there are no fileAttachmentOptions then the adaptive card should not even display the upload button.
@@ -37,6 +38,10 @@ export const propsForFileUpload = (
         maxAttachments: 0,
         maxFilesToUploadAtOnce: 0,
         currentFileAttachments: [],
+        category: '',
+        description: '',
+        isDescriptionRequired: false,
+        descriptionLength:0
     };
 
     if (fileAttachmentOptions) {
@@ -44,7 +49,10 @@ export const propsForFileUpload = (
         fileUploadOptions.maxFileSizeInBytes = fileAttachmentOptions.maxFileSizeInBytes;
         fileUploadOptions.maxAttachments = fileAttachmentOptions.maxAttachments;
         fileUploadOptions.currentFileAttachments = fileAttachments;
-
+        fileUploadOptions.category = category;
+        fileUploadOptions.isDescriptionRequired = fileAttachmentOptions.isDescriptionRequired;
+        fileUploadOptions.descriptionLength = fileAttachmentOptions.descriptionLength;
+        
         if (fileAttachmentOptions.maxAttachments === undefined || fileAttachmentOptions.maxAttachments === null) {
             fileUploadOptions.maxFilesToUploadAtOnce = maxFilesToUploadAtOnceLimit; // See comments in IFileUploadOptions as to why maxFilesToUploadAtOnceLimit.
         } else {

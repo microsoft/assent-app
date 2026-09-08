@@ -27,4 +27,5 @@ export enum MessagingColors {
 export enum CoherenceColors {
     bluePrimary = '#0078d4',
     blueInteractive = '#0064BF',
+    InputBorder = '#8A8886'
 }

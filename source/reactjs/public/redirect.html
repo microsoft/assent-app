@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Authentication Redirect</title>
+</head>
+<body>
+  <script src="/msal-redirect-bridge.min.js"></script>
+  <script>
+    msalRedirectBridge.broadcastResponseToMainFrame().catch(console.error);
+  </script>
+</body>
+</html>

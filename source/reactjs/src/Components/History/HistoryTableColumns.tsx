@@ -372,7 +372,23 @@ function HistoryColumns(): React.ReactElement {
                             <span
                                 style={{ fontSize: '12px', color: TextColors.lightPrimary, textOverflow: 'ellipsis' }}
                             >
-                                {item['CustomAttribute']}
+                                {(() => {
+                                    try {
+                                        const customAttr = safeJSONParse(item['CustomAttribute']);
+                                        if (customAttr && customAttr.CustomAttributeValue) {
+                                            if (!customAttr.CustomAttributeName) {
+                                                return customAttr.CustomAttributeValue;
+                                            }
+                                            if (customAttr.CustomAttributeName.endsWith(':')) {
+                                                return `${customAttr.CustomAttributeName} ${customAttr.CustomAttributeValue}`;
+                                            }
+                                            return `${customAttr.CustomAttributeName}: ${customAttr.CustomAttributeValue}`;
+                                        }
+                                        return '';
+                                    } catch {
+                                        return item['CustomAttribute'];
+                                    }
+                                })()}
                             </span>
                         </div>
                     </TooltipHost>

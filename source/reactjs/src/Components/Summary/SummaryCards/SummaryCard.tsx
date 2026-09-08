@@ -9,7 +9,7 @@ import { Styles, failedIconStyle, emptyFailedIconStyle } from './SummaryCard.sty
 import { Context } from '@micro-frontend-react/employee-experience/lib/Context';
 
 import { updateApprovalRecords } from '../../Shared/SharedComponents.actions';
-import { imitateClickOnKeyPressForDiv } from '../../../Helpers/sharedHelpers';
+import { imitateClickOnKeyPressForDiv, formatUnitValue } from '../../../Helpers/sharedHelpers';
 import { PersonaSize } from '../../Shared/Components/Persona/Persona.types';
 import { getTenantIcon } from '../../Shared/Components/IconMapping';
 import { mapDate } from '../../Shared/Components/DateFormatting';
@@ -23,6 +23,7 @@ import {
     getSelectedSummaryTileRef,
     getPanelOpen,
     getSelectedApprovalRecords,
+    getIsSearchResultsViewOpen,
 } from '../../Shared/SharedComponents.selectors';
 import { trackBusinessProcessEvent, TrackingEventId } from '../../../Helpers/telemetryHelpers';
 import { GroupingBy } from '../../Shared/Components/GroupingBy';
@@ -38,9 +39,27 @@ import {
 } from '../../Shared/Details/Details.selectors';
 import { DATE_FORMAT_OPTION, DEFAULT_LOCALE } from '../../Shared/SharedConstants';
 import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
+import { useHistory, useLocation } from 'react-router-dom';
+import { NavigationUtils } from '../../Shared/Utils/NavigationUtils';
+import { MatchCitation } from './MatchCitation';
+import { hasFieldHighlights } from '../../../Helpers/searchHighlightUtils';
+
+// Returns the summary item's AdditionalData override bag when the tenant's MetadataExtractionMapping is Enabled, else null.
+function getMappedAdditionalData(tenantInfo: any, summary: any, tenantId: any, documentNumber: string) {
+    try {
+        const tenant = tenantInfo?.find?.((t: any) => t.tenantId === Number(tenantId));
+        if (tenant?.metadataExtractionMapping && JSON.parse(tenant.metadataExtractionMapping)?.Enabled === true) {
+            const raw = summary?.find?.((i: any) => i.ApprovalIdentifier?.DocumentNumber === documentNumber);
+            return raw?.AdditionalData ?? null;
+        }
+    } catch {
+        /* invalid mapping — fall back to original fields */
+    }
+    return null;
+}
 
 function SummaryCardBase(props: ISummaryCardProps): React.ReactElement {
-    const {
+    let {
         SubmittedDate,
         Title,
         CompanyCode,
@@ -59,29 +78,46 @@ function SummaryCardBase(props: ISummaryCardProps): React.ReactElement {
         CustomAttributeValue,
         IsControlsAndComplianceRequired,
     } = props.cardInfo;
-    const cardRef = props.cardRef;
+    let cardRef = props.cardRef;
     const formattedDate = new Date(SubmittedDate).toLocaleDateString(DEFAULT_LOCALE, DATE_FORMAT_OPTION); // MMM DD,YYYY
-    const formattedUnitValue = isNaN(Number(UnitValue))
-        ? UnitValue
-        : Number(UnitValue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const { useSelector, dispatch, telemetryClient, authClient } = React.useContext(
         Context as React.Context<IEmployeeExperienceContext>
     );
     const summaryGroupedBy = useSelector(getSummaryGroupedBy);
     const tenantInfo = useSelector(getTenantInfo);
     const summary = useSelector(getSummary);
+    // Prefer AdditionalData._* overrides when present, else the original fields (nav/state/telemetry still use originals).
+    const mappedAdditionalData = getMappedAdditionalData(tenantInfo, summary, TenantId, DocumentNumber);
+    const displayTitle = mappedAdditionalData?._title ?? Title;
+    const displayCustomAttributeValue = mappedAdditionalData?._customAttributeValue ?? CustomAttributeValue;
+    const effectiveUnitValue = mappedAdditionalData?._unitValue ?? UnitValue;
+    const effectiveUnitofMeasure = mappedAdditionalData?._unitOfMeasure ?? UnitofMeasure;
+    const displayDocumentNumberLabel = mappedAdditionalData?._displayDocumentNumber ?? DisplayDocumentNumber;
+    const formattedUnitValue = formatUnitValue(effectiveUnitValue);
     const selectedApprovalRecords = useSelector(getSelectedApprovalRecords);
     const isBulkSelected = useSelector(getIsBulkSelected);
     const failedRequests = useSelector(getFailedRequests);
     const disabled = useSelector(getIsDisabled);
     const summaryCommonProperties = useSelector(getSummaryCommonPropertiesSelector);
     const bulkActionConcurrentCall = useSelector(getBulkActionConcurrentCall);
+    const isSearchResultsViewOpen = useSelector(getIsSearchResultsViewOpen);
+    const attachmentMatches = props.cardInfo._matchMetadata?.attachmentMatches;
+    const hasFieldMatch = hasFieldHighlights(props.cardInfo._matchMetadata?.highlights);
+    const handleAttachmentPreview = (attachmentId: string | null, attachmentName: string) => {
+        if (attachmentId && props.onSearchPreviewClick) {
+            props.onSearchPreviewClick(
+                TenantId?.toString(),
+                DocumentNumber,
+                DisplayDocumentNumber,
+                attachmentId,
+                attachmentName
+            );
+        }
+    };
     const isReadInState = useSelector((state: any) => isRequestRead(state, DisplayDocumentNumber));
     const isSelectedInState = useSelector((state: any) => isRequestCurrentlySelected(state, DocumentNumber));
-
     const isReadLocal = isRead || isReadInState;
     const lastFailedLocal = lastFailed || failedRequests.includes(DisplayDocumentNumber);
-
     const selectRecords = (ev: React.FormEvent<HTMLElement>, checked: boolean): void => {
         handleBulkApprovalRecords(checked);
     };
@@ -140,7 +176,9 @@ function SummaryCardBase(props: ISummaryCardProps): React.ReactElement {
         let checked = IsCardSelectedForBulkApproval();
         const isMaxSelected = isBulkSelected && selectedApprovalRecords.length >= bulkActionConcurrentCall;
         const isCompliant = !IsControlsAndComplianceRequired || isReadLocal;
-        const isSelectionEnabled = isBulkSelected && isCompliant && (!isMaxSelected || checked);
+        const isSelectionEnabled = isBulkSelected && isCompliant && (!isMaxSelected || checked) && props.isCardAvailableForBulk && !isSearchResultsViewOpen;
+        let a11yTitle = DisplayDocumentNumber + " Checkbox for bulk approval";
+
         let icon;
         if (lastFailedLocal && !isBulkSelected) {
             icon = (
@@ -152,13 +190,19 @@ function SummaryCardBase(props: ISummaryCardProps): React.ReactElement {
         } else if (!isSelectionEnabled && isReadLocal) {
             icon = (
                 <>
-                    <div style={emptyFailedIconStyle} /> <Styled.MailReadIcon title="Read Request Icon" />{' '}
+                    <div style={emptyFailedIconStyle} />{' '}
+                    <span role="img" aria-hidden={true}>
+                        <Styled.MailReadIcon title="Read Request Icon" aria-hidden={true} />
+                    </span>{' '}
                 </>
             );
         } else if (!isSelectionEnabled && !isReadLocal) {
             icon = (
                 <>
-                    <div style={emptyFailedIconStyle} /> <Styled.MailUnreadIcon title="Unread Request Icon" />
+                    <div style={emptyFailedIconStyle} />{' '}
+                    <span role="img" aria-hidden={true}>
+                        <Styled.MailUnreadIcon title="Unread Request Icon" aria-hidden={true} />
+                    </span>{' '}
                 </>
             );
         } else if (isSelectionEnabled && !lastFailedLocal) {
@@ -167,8 +211,8 @@ function SummaryCardBase(props: ISummaryCardProps): React.ReactElement {
                     <div style={emptyFailedIconStyle} />{' '}
                     <Checkbox
                         checked={checked}
-                        title="Checkbox for bulk approval"
-                        ariaLabel="Checkbox for bulk approval"
+                        title={a11yTitle}
+                        ariaLabel={a11yTitle}
                         role="checkbox"
                         aria-checked={true}
                         id={checkBoxRef}
@@ -182,8 +226,8 @@ function SummaryCardBase(props: ISummaryCardProps): React.ReactElement {
                     <Icon iconName="ReportWarning" style={failedIconStyle} />{' '}
                     <Checkbox
                         checked={checked}
-                        title="Checkbox for bulk approval"
-                        ariaLabel="Checkbox for bulk approval"
+                        title={a11yTitle}
+                        ariaLabel={a11yTitle}
                         role="checkbox"
                         aria-checked={true}
                         id={checkBoxRef}
@@ -198,10 +242,22 @@ function SummaryCardBase(props: ISummaryCardProps): React.ReactElement {
     }
 
     var isCustomAttributeVisible = false;
-    if (CustomAttributeName || CustomAttributeValue) {
+    if (CustomAttributeName || displayCustomAttributeValue) {
         isCustomAttributeVisible = true;
     }
 
+    const isValidTenantIdAndDocumentNumber = (): boolean => {
+        let isTenantIdNotNull = TenantId !== null;
+        let isTenantIdNotUndefined = TenantId !== undefined;
+        let isDocumentNumberNotNull = DocumentNumber !== null;
+        let isDocumentNumberNotUndefined = DocumentNumber !== undefined;
+        let isTenantId = isTenantIdNotNull && isTenantIdNotUndefined;
+        let isDocumentNumber = isDocumentNumberNotNull && isDocumentNumberNotUndefined;
+
+        return isTenantId && isDocumentNumber;
+    };
+
+    const history = useHistory();
     function handleClickwithLogging(ev: any): void {
         const isCheckBoxClicked =
             ev.target.getAttribute('class')?.indexOf('Checkbox') > -1 ||
@@ -209,7 +265,10 @@ function SummaryCardBase(props: ISummaryCardProps): React.ReactElement {
             ev.target.getAttribute('data-icon-name') == 'CheckMark'
                 ? true
                 : false;
-        if (!isCheckBoxClicked) {
+        if (!isCheckBoxClicked && isValidTenantIdAndDocumentNumber()) {
+            // Navigate to details using NavigationUtils
+            NavigationUtils.navigateToDetails(history, TenantId, DisplayDocumentNumber, true, true);
+
             detailCallPerf(cardRef);
             //request specific properties added additionally since they're not stored in the state yet
             trackBusinessProcessEvent(
@@ -241,84 +300,108 @@ function SummaryCardBase(props: ISummaryCardProps): React.ReactElement {
             case GroupingBy.Date:
                 header = Submitter;
                 break;
+            case GroupingBy.Category:
+                header = AppName;
+                break;
             default:
                 header = Submitter;
         }
         return (
-            <TooltipHost content={header} aria-label="Header">
-                {header}
-            </TooltipHost>
+            <div tabIndex={0} role="heading" aria-level={4}>
+                <TooltipHost content={header}>{header}</TooltipHost>
+            </div>
         );
     }
 
+    const hasCitation =
+        isSearchResultsViewOpen && (hasFieldMatch || (attachmentMatches && attachmentMatches.length > 0));
+
+    const readStatus = lastFailedLocal ? 'Error' : isReadLocal ? 'Read' : 'Unread';
+
     return (
-        <Styled.Card
-            id={isBulkSelected ? 'summaryCard' + DisplayDocumentNumber : cardRef}
-            lastFailed={lastFailedLocal}
-            onClick={isBulkSelected ? null : handleClickwithLogging}
-            role={isBulkSelected ? null : 'button'}
-            className={getBulkClassName()}
-            tabIndex={disabled || isBulkSelected ? null : 0}
-            onKeyPress={disabled || isBulkSelected ? null : imitateClickOnKeyPressForDiv(() => detailCallPerf(cardRef))}
-            footer={summaryGroupedBy}
-            isRead={isReadLocal}
-            isSelected={isSelectedInState}
-        >
-            <Styled.CardHeader>
-                <Styled.Header>
-                    {(summaryGroupedBy == GroupingBy.Tenant || summaryGroupedBy == GroupingBy.Date) && (
-                        <SubmitterPersona emailAlias={SubmitterAlias} size={PersonaSize.size32} />
-                    )}
-                    {summaryGroupedBy == GroupingBy.Submitter && (
-                        <Styled.HeaderTenantIcon>{getTenantIcon(AppName, tenantInfo, '24px')}</Styled.HeaderTenantIcon>
-                    )}
-                    <Styled.HeaderTitleContainer className={Styles.text} isRead={isReadLocal}>
-                        <Styled.StrongHeaderTitle>{renderHeaderTitle()}</Styled.StrongHeaderTitle>
-                    </Styled.HeaderTitleContainer>
-                    <Styled.HeaderIcons>{renderIcon()}</Styled.HeaderIcons>
-                </Styled.Header>
-            </Styled.CardHeader>
-            <Styled.CardBody
-                id={isBulkSelected ? cardRef : 'summaryCardBody' + DisplayDocumentNumber}
-                onClick={isBulkSelected ? handleClickwithLogging : null}
-                role={isBulkSelected ? 'button' : null}
-                tabIndex={disabled || !isBulkSelected ? null : 0}
+        <Styled.CardWrapper>
+            <Styled.Card
+                id={isBulkSelected ? 'summaryCard' + DisplayDocumentNumber : cardRef}
+                lastFailed={lastFailedLocal}
+                onClick={isBulkSelected ? null : handleClickwithLogging}
+                role={isBulkSelected ? null : 'button'}
+                className={getBulkClassName()}
+                tabIndex={disabled || isBulkSelected ? null : 0}
                 onKeyPress={
-                    disabled || !isBulkSelected ? null : imitateClickOnKeyPressForDiv(() => detailCallPerf(cardRef))
+                    disabled || isBulkSelected ? null : imitateClickOnKeyPressForDiv(() => detailCallPerf(cardRef))
                 }
+                footer={summaryGroupedBy}
+                isRead={isReadLocal}
+                isSelected={isSelectedInState}
             >
-                <Styled.TextContainer>
-                    <Styled.Title>
-                        {' '}
-                        <Text tooltipMaxWidth={200}>{Title}</Text>{' '}
-                    </Styled.Title>
-                    <Styled.SecondaryTitleContainer>
-                        {isCustomAttributeVisible && <Text> {CustomAttributeValue} </Text>}
-                    </Styled.SecondaryTitleContainer>
-                    <Styled.UnitValueRow>
-                        {UnitValue && (
-                            <Styled.UnitValue isRead={isReadLocal}>
-                                <Text tooltipMaxWidth={200}>{formattedUnitValue}</Text>
-                            </Styled.UnitValue>
+                <Styled.CardHeader>
+                    <Styled.Header>
+                        {(summaryGroupedBy == GroupingBy.Tenant || summaryGroupedBy == GroupingBy.Date) && (
+                            <SubmitterPersona emailAlias={SubmitterAlias} size={PersonaSize.size32} />
                         )}
-                        {UnitofMeasure && (
-                            <Styled.UnitofMeasure isRead={isReadLocal}>
-                                <Text tooltipMaxWidth={200}>{UnitofMeasure}</Text>
-                            </Styled.UnitofMeasure>
+                        {(summaryGroupedBy == GroupingBy.Submitter || summaryGroupedBy == GroupingBy.Category) && (
+                            <Styled.HeaderTenantIcon>
+                                {getTenantIcon(AppName, tenantInfo, '24px')}
+                            </Styled.HeaderTenantIcon>
                         )}
-                    </Styled.UnitValueRow>
-                    {DisplayDocumentNumber && (
-                        <Styled.DisplayDocumentNumber isRead={isReadLocal}>
-                            <Text tooltipMaxWidth={200}>{DisplayDocumentNumber}</Text>
-                        </Styled.DisplayDocumentNumber>
-                    )}
-                    <Styled.DateRow>
-                        {formattedDate && <Styled.Date> {formattedDate}</Styled.Date>}
-                        {CompanyCode && <Styled.CompanyCode>{CompanyCode}</Styled.CompanyCode>}
-                    </Styled.DateRow>
-                </Styled.TextContainer>
-            </Styled.CardBody>
-        </Styled.Card>
+                        <Styled.HeaderTitleContainer className={Styles.text} isRead={isReadLocal}>
+                            <Styled.StrongHeaderTitle>{renderHeaderTitle()}</Styled.StrongHeaderTitle>
+                        </Styled.HeaderTitleContainer>
+                        <Styled.HeaderIcons>{renderIcon()}</Styled.HeaderIcons>
+                    </Styled.Header>
+                </Styled.CardHeader>
+                <Styled.CardBody
+                    id={isBulkSelected ? cardRef : 'summaryCardBody' + DisplayDocumentNumber}
+                    onClick={isBulkSelected ? handleClickwithLogging : null}
+                    role={isBulkSelected ? 'button' : null}
+                    tabIndex={disabled || !isBulkSelected ? null : 0}
+                    onKeyPress={
+                        disabled || !isBulkSelected ? null : imitateClickOnKeyPressForDiv(() => detailCallPerf(cardRef))
+                    }
+                >
+                    <Styled.TextContainer>
+                        <Styled.Title>
+                            {' '}
+                            <Text tooltipMaxWidth={200}>{displayTitle}</Text>{' '}
+                        </Styled.Title>
+                        <Styled.SecondaryTitleContainer>
+                            {isCustomAttributeVisible && <Text> {displayCustomAttributeValue} </Text>}
+                        </Styled.SecondaryTitleContainer>
+                        <Styled.UnitValueRow>
+                            {effectiveUnitValue && (
+                                <Styled.UnitValue isRead={isReadLocal}>
+                                    <Text tooltipMaxWidth={200}>{formattedUnitValue}</Text>
+                                </Styled.UnitValue>
+                            )}
+                            {effectiveUnitofMeasure && effectiveUnitofMeasure !== '-' && (
+                                <Styled.UnitofMeasure isRead={isReadLocal}>
+                                    <Text tooltipMaxWidth={200}>{effectiveUnitofMeasure}</Text>
+                                </Styled.UnitofMeasure>
+                            )}
+                        </Styled.UnitValueRow>
+                        {DisplayDocumentNumber && (
+                            <Styled.DisplayDocumentNumber isRead={isReadLocal}>
+                                <Text tooltipMaxWidth={200}>{displayDocumentNumberLabel}</Text>
+                            </Styled.DisplayDocumentNumber>
+                        )}
+                        <Styled.DateRow>
+                            {formattedDate && <Styled.Date> {formattedDate}</Styled.Date>}
+                            {CompanyCode && <Styled.CompanyCode>{CompanyCode}</Styled.CompanyCode>}
+                        </Styled.DateRow>
+                        <span className="sr-only">{readStatus}</span>
+                    </Styled.TextContainer>
+                </Styled.CardBody>
+            </Styled.Card>
+            {hasCitation && (
+                <MatchCitation
+                    attachmentMatches={attachmentMatches || []}
+                    hasFieldMatch={hasFieldMatch}
+                    onPreviewClick={handleAttachmentPreview}
+                    onOpenRequest={() => detailCallPerf(cardRef)}
+                    documentNumber={DocumentNumber}
+                />
+            )}
+        </Styled.CardWrapper>
     );
 }
 

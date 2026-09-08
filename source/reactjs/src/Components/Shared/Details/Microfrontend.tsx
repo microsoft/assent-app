@@ -8,9 +8,6 @@ const Microfrontend = (props: {
     cdnURL?: string;
     selectedPage: string;
 }): JSX.Element => {
-    const Tenants = {
-    };
-
     if (props.cdnURL && props.cdnURL !== '') {
         return (
             <ComponentProvider

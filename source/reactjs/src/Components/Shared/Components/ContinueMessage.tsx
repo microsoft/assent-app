@@ -25,7 +25,12 @@ export function ContinueMessage(props: { isBulkAction: boolean; isActionComplete
     function handleContinueClick(): void {
         if (history && location) {
             if (location.pathname.length > 1) {
-                history.push('/');
+                const urlSearch = new URLSearchParams(history.location.search);
+                const queryString = urlSearch.toString();
+                const queryPath = queryString ? `?${queryString}` : '';
+                // Preserve the pathname only if it contains 'dashboard'
+                const targetPath = location.pathname.includes('dashboard') ? location.pathname : '/';
+                history.push(`${targetPath}${queryPath}`);
             }
         }
         if (isBulkAction) {

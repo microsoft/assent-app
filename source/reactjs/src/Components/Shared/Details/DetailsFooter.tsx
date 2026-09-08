@@ -22,11 +22,13 @@ import {
 import { postAction } from '../Details/Details.actions';
 import { IStackTokens, Stack } from '@fluentui/react/lib/Stack';
 import { Checkbox, ICheckboxProps } from '@fluentui/react/lib/Checkbox';
+import { ChoiceGroup, IChoiceGroupOption, IChoiceGroupProps } from '@fluentui/react/lib/ChoiceGroup';
 import { TextField } from '@fluentui/react/lib/TextField';
+import { DatePicker } from '@fluentui/react/lib/DatePicker';
 import BasicDropdown from '../../../Controls/BasicDropdown';
 import MultilineTextField from '../../../Controls/MultilineTextField';
 import BasicButton from '../../../Controls/BasicButton';
-import { IContextualMenuItem, IDropdownOption } from '@fluentui/react';
+import { IContextualMenuItem, IDropdownOption, Label } from '@fluentui/react';
 import { PeoplePicker } from '../Components/PeoplePicker';
 import {
     flattenObject,
@@ -34,6 +36,8 @@ import {
     generateSummaryObjForPullTenant,
     isJustificationRequiredForBulk,
     lowerCaseFirstLetter,
+    shouldInitiateProofOfPresence,
+    getRememberForOptions,
     testRegexIgnoreCase,
     validateCondition,
     validateConditionClient,
@@ -50,21 +54,27 @@ import {
     updateFailedPullTenantRequests,
     updatePanelState,
     updateBulkStatus,
+    postFeedback,
 } from '../SharedComponents.actions';
 import { getAreDetailsEditable, getSummaryJSON } from './Details.selectors';
 import { postEditableDetails, updateAdditionalData } from './Details.actions';
+import { ConsentDialog } from './ConsentDialog';
 import { startCase } from 'lodash';
 import sanitizeHtml = require('sanitize-html');
 import { IEmployeeExperienceContext } from '@micro-frontend-react/employee-experience/lib/IEmployeeExperienceContext';
 
 const RECEIPTS_ERROR = 'Receipts must be reviewed before submission';
 const ANOMALY_ERROR = 'Anomalies must be reviewed before submission';
+const ATTESTPOE_ERROR = 'Documents must be attested before submission';
+const ATTEST_QUALIFICATION_REVIEW_ERROR = 'Qualification review must be acknowledged before submission';
 const COMPLIANCE_ERROR = 'Compliance with Anti-Corruption policies must be confirmed before submission';
 const NEXT_APPROVER_ERROR = 'Next approver is required';
 const PLACEMENT_ERROR = 'Approver placement is required';
 const SIGNATURE_ERROR = 'Signature does not match';
 
 const FIRST_RENDER_TIMEOUT = 1000;
+
+const POP_RESUME_KEY = 'MSApprovals_PoP_Resume';
 
 const inputValidationErrors: { [code: string]: string } = {
     addApproverPlacement: PLACEMENT_ERROR,
@@ -81,27 +91,47 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
     const [reasonCode, setReasonCode] = React.useState('');
     const [reasonText, setReasonText] = React.useState('');
     const [justificationsList, setJustificationsList] = React.useState(null);
+    const [unfilteredJustificationsList, setUnfilteredJustificationsList] = React.useState(null);
     const [charLimit, setCharLimit] = React.useState(null);
     const [displayNotesInput, setDisplayNotesInput] = React.useState(null);
     const [actionAdditionalInformation, setActionAdditionalInformation] = React.useState(null);
     const [remainingChars, setRemainingChars] = React.useState(null);
+    const [isConsentDialogOpen, setIsConsentDialogOpen] = React.useState(false);
+    const [consentRememberForOptions, setConsentRememberForOptions] = React.useState(undefined);
+    const [isPopForBulk, setIsPopForBulk] = React.useState(false);
 
     const [receiptsCheck, setReceiptsCheck] = React.useState(false);
     const [corruptionCheck, setCorruptionCheck] = React.useState(false);
     const [anomalyCheck, setAnomalyCheck] = React.useState(false);
+    const [attestPoeCheck, setAttestPoeCheck] = React.useState(false);
+    const [attestQualificationReviewCheck, setAttestQualificationReviewCheck] = React.useState(false);
 
     const [displayCorruptionError, setDisplayCorruptionError] = React.useState(false);
     const [displayReceiptError, setDisplayReceiptError] = React.useState(false);
     const [displayAnomalyError, setDisplayAnomalyError] = React.useState(false);
+    const [displayAttestPoeError, setDisplayAttestPoeError] = React.useState(false);
+    const [displayAttestQualificationReviewError, setDisplayAttestQualificationReviewError] = React.useState(false);
 
     const [displayReceiptCheckbox, setDisplayReceiptCheckbox] = React.useState(false);
     const [displayCorruptionCheckbox, setDisplayCorruptionCheckbox] = React.useState(false);
     const [displayAnomalyCheckbox, setDisplayAnomalyCheckbox] = React.useState(false);
+    const [displayAttestPoeCheckbox, setDisplayAttestPoeCheckbox] = React.useState(false);
+    const [displayAttestQualificationReviewCheckbox, setDisplayAttestQualificationReviewCheckbox] = React.useState(false);
+
+    const [enableExemptPoeAction, setEnableExemptPoeAction] = React.useState(false);
+    const [enableUploadPoeAction, setEnableUploadPoeAction] = React.useState(true);
+    const [exemptPoeOptionSelected, setExemptPoeOptionSelected] = React.useState('');
+    const [contractId, setContractId] = React.useState('');
+    const [ndaContractId, setNdaContractId] = React.useState('');
+    const [hasExpirationDateCheck, setHasExpirationDateCheck] = React.useState(false);
+    const [contractExpirationDate, setContractExpirationDate] = React.useState<Date | null>(null);
+    const formatExpirationDate = (d?: Date | null): string =>
+        d ? `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}` : '';
 
     const [actionName, setActionName] = React.useState('');
     const [isJustificationApplicableForAction, setIsJustificationApplicableForAction] = React.useState(true);
 
-    const { useSelector, dispatch } = React.useContext(Context as React.Context<IEmployeeExperienceContext>);
+    const { useSelector, dispatch, authClient } = React.useContext(Context as React.Context<IEmployeeExperienceContext>);
     const summary = useSelector(getSummary);
     const selectedApprovalRecords = useSelector(getSelectedApprovalRecords);
     const bulkActionConcurrentCall = useSelector(getBulkActionConcurrentCall);
@@ -130,10 +160,28 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
         isMicrofrontendOpen,
         isControlsAndComplianceRequired,
         isRequestFullyScrolled,
+        isUploadAttachment,
+        isExemptAttachment,
+        isSupplierMeetsReqSelected,
+        isSupplierDoesNotMeetReqSelected,
+        isSupplierDoesNotMeetRejectSelected,
         executeMicrofrontendActionRef,
         detailsComponentType,
         isBulkApproval,
     } = props;
+
+    // Memoized SLM derivations shared by useEffect, handleEnterNotesAndJustifications,
+    // renderPrimaryButtons, and renderSecondaryButtons; stable across renders that don't
+    // change the underlying inputs.
+    const isSlmTenant = false;
+    const supplierSelectionState = React.useMemo(
+        () => ({
+            isSupplierMeetsReqSelected,
+            isSupplierDoesNotMeetReqSelected,
+            isSupplierDoesNotMeetRejectSelected,
+        }),
+        [isSupplierMeetsReqSelected, isSupplierDoesNotMeetReqSelected, isSupplierDoesNotMeetRejectSelected]
+    );
 
     const { peoplePickerSelections, profile, peoplePickerHasError } = useSelector(
         (state: IComponentsAppState) => state.dynamic?.[sharedComponentsReducerName] || sharedComponentsInitialState
@@ -173,6 +221,71 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
             }, FIRST_RENDER_TIMEOUT);
         }
     }, [justificationRef, displayNotesInput, actionAdditionalInformation]);
+
+    // Focus the confirmation heading when notes panel opens (fallback when justificationRef doesn't exist)
+    React.useEffect(() => {
+        if (displayNotesInput && !isBulkApproval) {
+            requestAnimationFrame(() => {
+                const footer = document.getElementById('detailCardFooter');
+                if (footer && !footer.contains(document.activeElement)) {
+                    const heading = footer.querySelector('.h3-width') as HTMLElement;
+                    if (heading) {
+                        heading.focus({ preventScroll: true });
+                    }
+                }
+                if (footer) {
+                    footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        }
+    }, [displayNotesInput, isBulkApproval]);
+
+    React.useEffect(() => {
+        clearNotesPopupData();
+    }, [isUploadAttachment, isExemptAttachment]);
+
+    React.useEffect(() => {
+        if (unfilteredJustificationsList && unfilteredJustificationsList.length > 0) {
+            const conditionFiltered = filterJustificationsByCondition(unfilteredJustificationsList, isBulkApproval);
+            const filtered = conditionFiltered;
+            setJustificationsList(filtered);
+            let defaultOption = filtered.filter((item: object) => (item as any)._default)[0];
+            if (!defaultOption) {
+                defaultOption = filtered[0];
+            }
+            if (defaultOption) {
+                setReasonCode(getValueFromProperty(defaultOption, 'Code'));
+                setReasonText(getValueFromProperty(defaultOption, 'Name'));
+            }
+        }
+        // filterJustificationsByCondition is a per-render closure; including it would loop.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isSlmTenant, supplierSelectionState, unfilteredJustificationsList, isBulkApproval]);
+
+    // Auto-dispatch pending PoP submission after mobile step-up redirect. Single-request path only.
+    React.useEffect(() => {
+        let raw: string | null = null;
+        try { raw = sessionStorage.getItem(POP_RESUME_KEY); } catch { return; }
+        if (!raw) return;
+        const upn: string = profile?.userPrincipalName ?? '';
+        const currentAlias = upn.indexOf('@') > 0 ? upn.substring(0, upn.indexOf('@')) : upn;
+        if (!currentAlias) return;
+        try {
+            const p = JSON.parse(raw);
+            if (!p?.submission || p.userAlias == null) return;
+            if (typeof p.ts !== 'number' || Date.now() - p.ts > 5 * 60 * 1000) return;
+            if (p.submission.documentNumber !== props.documentNumber) return;
+            // Signed-in user at redirect time must match the current signed-in user.
+            if (String(p.signedInAlias ?? '').toLowerCase() !== currentAlias.toLowerCase()) {
+                sessionStorage.removeItem(POP_RESUME_KEY);
+                return;
+            }
+            sessionStorage.removeItem(POP_RESUME_KEY);
+            // Defer so sagas are registered by the time we dispatch.
+            setTimeout(() => dispatch(postAction(p.submission, p.userAlias, false, !!p.isPullTenant)), 0);
+        } catch { try { sessionStorage.removeItem(POP_RESUME_KEY); } catch { /* ignore */ } }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [profile?.userPrincipalName]);
 
     const isJustificationApplicableinSummary = (isBulk: boolean): boolean => {
         if (isBulk) {
@@ -220,9 +333,15 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
         resetValidation(parseInt((selection as any).id), newValue);
     };
 
-    const handleSignatureField = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, id: number): void => {
+    const handleSignatureField = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, id: number, controlCode?: string): void => {
         const { value } = (event as any).target;
-        setDigitalSignature(value);
+        if (controlCode === 'contractid') {
+            setContractId(value);
+        } else if (controlCode === 'ndacontractid') {
+            setNdaContractId(value);
+        } else {
+            setDigitalSignature(value);
+        }
         resetValidation(id, value);
     };
 
@@ -285,6 +404,9 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
     ): JSX.Element[] => {
         const controls = additionalInformation.map((control: any, controlIndex) => {
             let resultElement = null;
+            if ((control.Code || control.code) === 'contractExpirationDate' && !hasExpirationDateCheck) {
+                return null;
+            }
             if (control.Type == 'label') {
                 resultElement = (
                     <WarningView
@@ -342,18 +464,20 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                     );
                 }
                 return null; //if no values defined for dropdown
-            } else if (control.Type == 'peoplePicker') {
+            } else if (control.Type == 'peoplePicker' || control.type == 'peoplePicker') {
                 resultElement = <PeoplePicker />;
             } else if (control.Type == 'textfield') {
                 const expectedValue = additionalControlValidation[controlIndex].expectedValue;
                 const instructionsValue = control.Values.find((value: any) => {
                     return value.Code === 'instructions';
                 });
-                const errorMessage = additionalControlValidation[controlIndex].errorMessage;
+                const errorMessage = additionalControlValidation[controlIndex].errorMessage
+                    || (control.Text ? `${control.Text} is required` : 'This field is required');
+                const isMandatory = additionalControlValidation[controlIndex].isMandatory;
                 return (
                     <Stack>
                         <Stack.Item>
-                            <label className="ms-Label custom-label">{control.Text}</label>
+                            <Label required={isMandatory}>{control.Text}</Label>
                         </Stack.Item>
                         {instructionsValue && <Stack.Item>{instructionsValue.Text}</Stack.Item>}
                         {expectedValue && (
@@ -366,11 +490,28 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                         <Stack.Item>
                             <TextField
                                 id="txtPlacements"
+                                styles={{ root: { maxWidth: 500 } }}
+                                required={isMandatory}
                                 errorMessage={!additionalControlValidation[controlIndex].isValid && errorMessage}
-                                onChange={(e) => handleSignatureField(e, controlIndex)}
+                                onChange={(e) => handleSignatureField(e, controlIndex, control.Code)}
                             />
                         </Stack.Item>
                     </Stack>
+                );
+            } else if (control.Type == 'datepicker' || control.type == 'datepicker') {
+                return (
+                    <div>
+                        <label className="ms-Label custom-label">{control.Text || control.text}</label>
+                        <DatePicker
+                            styles={{ root: { maxWidth: 500 } }}
+                            isRequired={control.IsMandatory || control.isMandatory}
+                            placeholder="Select a date..."
+                            ariaLabel={control.Text || control.text}
+                            value={contractExpirationDate || undefined}
+                            formatDate={formatExpirationDate}
+                            onSelectDate={(d) => setContractExpirationDate(d || null)}
+                        />
+                    </div>
                 );
             } else if (control.Type == 'checkbox' || control.type == 'checkbox') {
                 const actionValues = control.Values || control.values;
@@ -384,6 +525,17 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                         !displayAnomalyCheckbox
                     ) {
                         setDisplayAnomalyCheckbox(true);
+                    } else if (
+                        (control.Code === 'attestPoeCheck' || control.code === 'attestPoeCheck') &&
+                        !displayAttestPoeCheckbox &&
+                        enableUploadPoeAction
+                    ) {
+                        setDisplayAttestPoeCheckbox(true);
+                    } else if (
+                        (control.Code === 'attestqualificationreview' || control.code === 'attestqualificationreview') &&
+                        !displayAttestQualificationReviewCheckbox
+                    ) {
+                        setDisplayAttestQualificationReviewCheckbox(true);
                     }
 
                     const inputProps: ICheckboxProps['inputProps'] = {
@@ -405,6 +557,21 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                             if (displayAnomalyError && checked) {
                                 setDisplayAnomalyError(false);
                             }
+                        } else if (control.Code === 'attestPoeCheck') {
+                            setAttestPoeCheck(checked);
+                            if (displayAttestPoeError && checked) {
+                                setDisplayAttestPoeError(false);
+                            }
+                        } else if (control.Code === 'attestqualificationreview' || control.code === 'attestqualificationreview') {
+                            setAttestQualificationReviewCheck(checked);
+                            if (displayAttestQualificationReviewError && checked) {
+                                setDisplayAttestQualificationReviewError(false);
+                            }
+                        } else if (control.Code === 'hasExpirationDate' || control.code === 'hasExpirationDate') {
+                            setHasExpirationDateCheck(checked);
+                            if (!checked) {
+                                setContractExpirationDate(null);
+                            }
                         }
                     };
                     const checkboxErrorMessage =
@@ -414,34 +581,96 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                             ? COMPLIANCE_ERROR
                             : control.code === 'anomalyCheck' || control.Code === 'anomalyCheck'
                             ? ANOMALY_ERROR
+                            : control.code === 'attestPoeCheck' || control.Code === 'attestPoeCheck'
+                            ? ATTESTPOE_ERROR
+                            : control.code === 'attestqualificationreview' || control.Code === 'attestqualificationreview'
+                            ? ATTEST_QUALIFICATION_REVIEW_ERROR
                             : '';
                     const showErrorMessage =
                         (displayReceiptError && control.Code === 'receiptCheck') ||
                         (displayCorruptionError && control.Code === 'corruptionCheck') ||
-                        (displayAnomalyError && (control.code === 'anomalyCheck' || control.Code === 'anomalyCheck'));
+                        (displayAnomalyError && (control.code === 'anomalyCheck' || control.Code === 'anomalyCheck')) ||
+                        (displayAttestPoeError &&
+                            (control.code === 'attestPoeCheck' || control.Code === 'attestPoeCheck')) ||
+                        (displayAttestQualificationReviewError &&
+                            (control.code === 'attestqualificationreview' || control.Code === 'attestqualificationreview'));
 
                     const checkboxStyles = showErrorMessage ? { checkbox: { borderColor: 'red' } } : null;
+                    //Don't load attestation check box if Exempt POE selected
+                    if (!(control.Code === 'attestPoeCheck' && !enableUploadPoeAction)) {
+                        return (
+                            <div style={{ maxWidth: isBulk ? '100%' : '60%' }}>
+                                <label className="ms-Label custom-label">
+                                    {control.Text || control.text}
+                                </label>
+                                <Checkbox
+                                    label={actionValues[0].Text || actionValues[0].text}
+                                    inputProps={inputProps}
+                                    onChange={onCheckboxChange}
+                                    styles={checkboxStyles}
+                                />
+                                {showErrorMessage && (
+                                    <p role="alert" className="custom-input-error">
+                                        {checkboxErrorMessage}
+                                    </p>
+                                )}
+                            </div>
+                        );
+                    }
+                }
+            } else if (control.Type == 'choiceset' || control.type == 'choiceset') {
+                const actionValues = control.Values || control.values;
+                if ((control.Code || control.code) === 'hasExpirationDate' && actionValues?.length > 0) {
                     return (
-                        <div style={{ maxWidth: isBulk ? '100%' : '60%' }}>
+                        <div style={{ maxWidth: isBulk ? '100%' : '50%' }}>
                             <label className="ms-Label custom-label">{control.Text || control.text}</label>
-                            <Checkbox
-                                label={actionValues[0].Text || actionValues[0].text}
-                                inputProps={inputProps}
-                                onChange={onCheckboxChange}
-                                styles={checkboxStyles}
+                            <ChoiceGroup
+                                options={actionValues.map((v: any) => ({ key: v.Code || v.code, text: v.Text || v.text }))}
+                                styles={{ flexContainer: { display: 'flex', flexDirection: 'row', columnGap: '16px' } }}
+                                onChange={(_e, o) => {
+                                    const isYes = typeof o?.key === 'string' && o.key.toLowerCase() === 'yes';
+                                    setHasExpirationDateCheck(isYes);
+                                    if (!isYes) setContractExpirationDate(null);
+                                }}
                             />
-                            {showErrorMessage && (
-                                <p role="alert" className="custom-input-error">
-                                    {checkboxErrorMessage}
-                                </p>
-                            )}
+                        </div>
+                    );
+                }
+                //Load choice set if Exempt POE selected
+                if (enableExemptPoeAction && actionValues?.length > 0) {
+                    const onChoiceGroupChange = (
+                        ev: React.FormEvent<HTMLElement>,
+                        option: IChoiceGroupOption
+                    ): void => {
+                        setExemptPoeOptionSelected(option.key);
+                    };
+                    const choiceSetOptions = actionValues.map((val) => ({
+                        key: val.Code,
+                        text: val.Text,
+                    }));
+                    if (!exemptPoeOptionSelected || exemptPoeOptionSelected === '') {
+                        setExemptPoeOptionSelected(choiceSetOptions[0]?.key);
+                    }
+                    return (
+                        <div style={{ maxWidth: isBulk ? '100%' : '50%' }}>
+                            <ChoiceGroup
+                                defaultSelectedKey={choiceSetOptions[0].key}
+                                options={choiceSetOptions}
+                                onChange={onChoiceGroupChange}
+                                label={control.Text}
+                                required={true}
+                            />
                         </div>
                     );
                 }
             }
             return resultElement;
         });
-        return controls.map((item: JSX.Element, index: number) => <Stack.Item key={index}>{item}</Stack.Item>);
+        return controls
+            .filter((item: JSX.Element) => item !== null)
+            .map((item: JSX.Element, index: number) => (
+                <Stack.Item key={index} styles={{ root: { marginTop: index > 0 ? 4 : 0 } }}>{item}</Stack.Item>
+            ));
     };
 
     const handleComments = (e: object) => {
@@ -571,7 +800,11 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
             if (control.Type == 'checkbox' || control.type == 'checkbox') {
                 const actionValues = control.Values || control.values;
                 const actionCondition =
-                    actionValues?.length > 0 ? actionValues?.[0].Condition || actionValues?.[0].condition : null;
+                    (actionValues?.length > 0 ? actionValues?.[0].Condition || actionValues?.[0].condition : null)
+                    || control.Condition || control.condition;
+                if (!actionCondition) {
+                    return true;
+                }
                 let isValid = false;
                 if (isBulk) {
                     isValid = selectedApprovalRecords.some((selection: any) =>
@@ -582,10 +815,34 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                 }
                 return isValid;
             } else {
+                const controlCondition = control.Condition || control.condition;
+                if (controlCondition) {
+                    if (isBulk) {
+                        return selectedApprovalRecords.some((selection: any) =>
+                            validateCondition(selection, controlCondition)
+                        );
+                    }
+                    return validateCondition(getConditionPropertyObject(), controlCondition);
+                }
                 return true;
             }
         }
         return additionalInfo?.filter(isCondValid);
+    };
+
+    const filterJustificationsByCondition = (justifications: any[], isBulk: boolean): any[] => {
+
+        if (!justifications || justifications.length === 0) return justifications;
+        return justifications.filter((item: any) => {
+            const condition = getValueFromProperty(item, 'Condition');
+            if (!condition) return true;
+            if (isBulk) {
+                return selectedApprovalRecords.some((selection: any) =>
+                    validateCondition(selection, condition)
+                );
+            }
+            return validateCondition(getConditionPropertyObject(), condition);
+        });
     };
 
     const handleEnterNotesAndJustifications = (actionItem: any, isBulk: boolean, isPrimaryAction?: boolean): void => {
@@ -601,7 +858,8 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                 : getValueFromProperty(actionItem, 'CommentLength');
 
         const code = getValueFromProperty(actionItem, 'Code');
-        const justifications = getValueFromProperty(actionItem, 'Justifications');
+        const rawJustifications = getValueFromProperty(actionItem, 'Justifications');
+        const justifications = rawJustifications ? filterJustificationsByCondition(rawJustifications, isBulk) : rawJustifications;
         const actionAdditionalInformation = getValueFromProperty(actionItem, 'AdditionalInformation');
         const filteredAdditionalInfo = filterByCondition(actionAdditionalInformation, isBulk);
         const actionConfirmationMessage = getValueFromProperty(actionItem, 'ActionConfirmationMessage');
@@ -631,13 +889,15 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
         let areCommentsByKeyRequired = false;
         setActionName(nameInItem);
         if (justifications) {
-            let defaultOption = justifications.filter((item: object) => (item as any)._default)[0];
+            const filteredJustifications = justifications;
+            let defaultOption = filteredJustifications.filter((item: object) => (item as any)._default)[0];
             if (!defaultOption) {
-                defaultOption = justifications[0];
+                defaultOption = filteredJustifications[0];
             }
             const _charLimit = commentLength || null;
             setCode(code);
-            setJustificationsList(justifications);
+            setUnfilteredJustificationsList(justifications);
+            setJustificationsList(filteredJustifications);
             setReasonCode(getValueFromProperty(defaultOption, 'Code'));
             setReasonText(getValueFromProperty(defaultOption, 'Name'));
             setDisplayNotesInput(true);
@@ -669,6 +929,7 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
             const _charLimit = commentLength || null;
 
             setCode(code);
+            setUnfilteredJustificationsList(null);
             setDisplayNotesInput(true);
             setIsCommentMandatory(isCommentMandatory);
             setActionDetailsComments(actionDetailComments);
@@ -705,6 +966,7 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
         setReasonCode('');
         setReasonText('');
         setJustificationsList(null);
+        setUnfilteredJustificationsList(null);
         setComments('');
         setIsCommentMandatory(false);
         setNotesErrorMessage('');
@@ -713,18 +975,33 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
         setReceiptsCheck(false);
         setCorruptionCheck(false);
         setAnomalyCheck(false);
+        setAttestPoeCheck(false);
+        setAttestQualificationReviewCheck(false);
         setDisplayReceiptError(false);
         setDisplayCorruptionError(false);
         setDisplayAnomalyError(false);
+        setDisplayAttestPoeError(false);
+        setDisplayAttestQualificationReviewError(false);
         setDisplayReceiptCheckbox(false);
         setDisplayCorruptionCheckbox(false);
         setDisplayAnomalyCheckbox(false);
+        setDisplayAttestPoeCheckbox(false);
+        setDisplayAttestQualificationReviewCheckbox(false);
+        setEnableExemptPoeAction(false);
+        setEnableUploadPoeAction(true);
+        setExemptPoeOptionSelected('');
+        setContractId('');
+        setNdaContractId('');
+        setHasExpirationDateCheck(false);
+        setContractExpirationDate(null);
         setSequenceID('');
         setNextApprover('');
         setSummaryObjectValues(null);
         setActionConfirmationMessage('');
         setAdditionalControlValidation([]);
         setDigitalSignature('');
+        setCommentsWithKeys([]);
+        setJustificationsWithKeys([]);
         const _remainingChars = typeof charLimit === 'number' ? charLimit - comments.length : null;
         setRemainingChars(_remainingChars);
     };
@@ -762,8 +1039,12 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                                 ? sequenceID
                                 : control.Code === 'addNextApprover'
                                 ? nextApprover
+                                : control.Code === 'contractid'
+                                ? contractId
+                                : control.Code === 'ndacontractid'
+                                ? ndaContractId
                                 : digitalSignature;
-                        const errorMessage = inputValidationErrors[control.Code];
+                        const errorMessage = inputValidationErrors[control.Code] || (control.Text ? `${control.Text} is required` : 'This field is required');
                         let IsInvalid = false;
                         if (
                             additionalControlValidation[i].expectedValue &&
@@ -862,6 +1143,14 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                 requiredFieldsProvided = false;
                 setDisplayAnomalyError(true);
             }
+            if (displayAttestPoeCheckbox && !attestPoeCheck) {
+                requiredFieldsProvided = false;
+                setDisplayAttestPoeError(true);
+            }
+            if (displayAttestQualificationReviewCheckbox && !attestQualificationReviewCheck) {
+                requiredFieldsProvided = false;
+                setDisplayAttestQualificationReviewError(true);
+            }
         }
         const areAdditionalControlsValid = validateAdditionalControls();
         if (!areAdditionalControlsValid) {
@@ -903,6 +1192,83 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
         return res;
     };
 
+    const performSubmission = (submissionCode: string, rememberFor?: number) => {
+        const additionalActionDetails = isPullTenantSelected ? handleAdditionalActionDetails() : null;
+
+        const {
+            tenantId,
+            documentNumber,
+            displayDocumentNumber,
+            fiscalYear,
+            dispatchPostAction,
+            documentTypeId,
+            businessProcessName,
+            userAlias,
+            setActionComplete,
+        } = props;
+
+        const submission = {
+            tenantId,
+            documentNumber,
+            displayDocumentNumber,
+            fiscalYear,
+            code: submissionCode,
+            reasonCode,
+            reasonText,
+            comments,
+            documentTypeId,
+            businessProcessName,
+            receiptsCheck,
+            corruptionCheck,
+            attestPoeCheck,
+            attestQualificationReviewCheck,
+            sequenceID,
+            nextApprover,
+            peoplePickerSelections,
+            additionalActionDetails,
+            digitalSignature,
+            exemptPoeOptionSelected,
+            contractId,
+            ndaContractId,
+            hasExpirationDateCheck,
+            contractExpirationDate: formatExpirationDate(contractExpirationDate),
+            rememberFor,
+        };
+        
+        if (isPullTenantSelected) {
+            const loggedInUpn = profile?.userPrincipalName ?? '';
+            const loggedInAlias = loggedInUpn.substring(0, loggedInUpn.indexOf('@'));
+            const originalApprover = selectedTenantDelegation
+                ? selectedTenantDelegation.alias
+                : userAlias
+                ? userAlias
+                : loggedInAlias;
+            const summaryObj = generatePullModelSummary(tenantDataModel, summaryJSON);
+            const summaryJSONObj = generateSummaryObjForPullTenant(summaryObj, originalApprover, summaryJSON);
+            const additionalData = {
+                etag: summaryJSON?.eTag,
+                submittedFor: summaryJSON?.submittedFor,
+                partner: summaryJSON?.partner,
+                isLateApproval: summaryJSON?.isLateApproval,
+                summaryJSON: summaryJSON ? JSON.stringify(summaryJSONObj) : '',
+            };
+            dispatch(updateAdditionalData(additionalData));
+        }
+
+        // TODO: move the storage config to a custom submit action handler inside ModernInvoice.tsx
+        const customStorageParameters = {
+            PartitionKeyPath: '/ApprovalIdentifier',
+            CollectionName: 'invoicerisk',
+        };
+        dispatch(postFeedback(customStorageParameters, documentNumber));
+
+        dispatchPostAction(submission, userAlias, false, isPullTenantSelected);
+        setActionComplete(false);
+        clearNotesPopupData();
+        dispatch(updatePeoplePickerSelection([]));
+        dispatch(updatePeoplePickerHasError(false));
+    };
+
     const handleSubmitButton = (oneClickSubmission?: { code: string }): void => {
         // microfrontend event call
         //checking if the tenant has a custom UI and needs additional submission validation
@@ -932,66 +1298,29 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                 );
             }
         }
-        const additionalActionDetails = isPullTenantSelected ? handleAdditionalActionDetails() : null;
+        
         if (isSubmissionValidated && validateRequiredFields()) {
-            const {
-                tenantId,
-                documentNumber,
-                displayDocumentNumber,
-                fiscalYear,
-                dispatchPostAction,
-                documentTypeId,
-                businessProcessName,
-                userAlias,
-                setActionComplete,
-            } = props;
+            const submissionCode = (oneClickSubmission && oneClickSubmission.code) ? oneClickSubmission.code : code;
+            const conditionData = getConditionPropertyObject();
+            // Check if proof of presence is required based on tenant configuration
+            if (shouldInitiateProofOfPresence(submissionCode, tenantInfo, conditionData, props.tenantId)) {
+                const storageKey = `MSApprovals_Consent${props.userAlias}`;
+                const savedConsent = localStorage.getItem(storageKey);
+                if (savedConsent && Number(savedConsent) > Date.now()) {
+                    // User recently confirmed presence; skip the dialog
+                    performSubmission(submissionCode);
+                    return;
+                }
+                // Show proof of presence popup to re-authenticate
+                const rememberOpts = getRememberForOptions(submissionCode, tenantInfo, props.tenantId);
+                setConsentRememberForOptions(rememberOpts);
+                setIsPopForBulk(false);
+                setIsConsentDialogOpen(true);
+                setCode(submissionCode);
+                return;
+            }
 
-            const submission = {
-                tenantId,
-                documentNumber,
-                displayDocumentNumber,
-                fiscalYear,
-                code,
-                reasonCode,
-                reasonText,
-                comments,
-                documentTypeId,
-                businessProcessName,
-                receiptsCheck,
-                corruptionCheck,
-                sequenceID,
-                nextApprover,
-                peoplePickerSelections,
-                additionalActionDetails,
-                digitalSignature,
-            };
-            if (oneClickSubmission && oneClickSubmission.code) {
-                submission.code = oneClickSubmission.code;
-            }
-            if (isPullTenantSelected) {
-                const loggedInUpn = profile?.userPrincipalName ?? '';
-                const loggedInAlias = loggedInUpn.substring(0, loggedInUpn.indexOf('@'));
-                const originalApprover = selectedTenantDelegation
-                    ? selectedTenantDelegation.alias
-                    : userAlias
-                    ? userAlias
-                    : loggedInAlias;
-                const summaryObj = generatePullModelSummary(tenantDataModel, summaryJSON);
-                const summaryJSONObj = generateSummaryObjForPullTenant(summaryObj, originalApprover, summaryJSON);
-                const additionalData = {
-                    etag: summaryJSON?.eTag,
-                    submittedFor: summaryJSON?.submittedFor,
-                    partner: summaryJSON?.partner,
-                    isLateApproval: summaryJSON?.isLateApproval,
-                    summaryJSON: summaryJSON ? JSON.stringify(summaryJSONObj) : '',
-                };
-                dispatch(updateAdditionalData(additionalData));
-            }
-            dispatchPostAction(submission, userAlias, false, isPullTenantSelected);
-            setActionComplete(false);
-            clearNotesPopupData();
-            dispatch(updatePeoplePickerSelection([]));
-            dispatch(updatePeoplePickerHasError(false));
+            performSubmission(submissionCode);
         }
     };
 
@@ -1029,6 +1358,50 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
 
     const renderPrimaryButtons = (primaryActionData: object[], isBulk: boolean) => {
         try {
+            let enableActionForPoeAttachment = true;
+            if (detailsJSON?.AdditionalData?.HasPOE === 'True') {
+                if (isUploadAttachment || isExemptAttachment) {
+                    if (isUploadAttachment) {
+                        if (!enableUploadPoeAction) {
+                            setEnableUploadPoeAction(true);
+                        }
+                        if (enableExemptPoeAction) {
+                            setEnableExemptPoeAction(false);
+                        }
+                    } else if (isExemptAttachment) {
+                        if (enableUploadPoeAction) {
+                            setEnableUploadPoeAction(false);
+                        }
+                        if (!enableExemptPoeAction) {
+                            setEnableExemptPoeAction(true);
+                        }
+                    }
+                } else {
+                    //On page load
+                    const uploadContainer = document.getElementById('uploadPOEContainer');
+                    if (uploadContainer && !uploadContainer.hidden) {
+                        if (!enableUploadPoeAction) {
+                            setEnableUploadPoeAction(true);
+                        }
+                    }
+                }
+
+                if (enableUploadPoeAction) {
+                    enableActionForPoeAttachment =
+                        Array.isArray(detailsJSON.Attachments) &&
+                        detailsJSON.Attachments.some(
+                            (attachment: any) => attachment?.Category?.toLowerCase() === 'poe'
+                        );
+                }
+            } else {
+                if (enableUploadPoeAction) {
+                    setEnableUploadPoeAction(false);
+                }
+                if (enableExemptPoeAction) {
+                    setEnableExemptPoeAction(false);
+                }
+            }
+
             const conditionPropertyObject = getConditionPropertyObject();
             //defining because 'this' property cannot be referenced inside of reduce
             const filteredButtonItems: object[] = primaryActionData.reduce(function (filtered: any, item, index) {
@@ -1052,8 +1425,11 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                 }
                 return filtered;
             }, []);
+
             const generateFilteredButtons: object[] = (filteredButtonItems as any).map(
                 (item: object, index: number) => {
+                    const itemKey = (item as any).key?.toLowerCase();
+                    const isAlwaysEnabledAction = itemKey === 'reject' || itemKey === 'sendback';
                     return (
                         <BasicButton
                             className="primarybuttonsClass"
@@ -1063,10 +1439,11 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                             primary={(item as any).primary}
                             aiEventName={(item as any).aiEventName}
                             disabled={
-                                !(item as any).enableActionButtons ||
-                                (isBulk
+                                !(item as any).enableActionButtons || 
+                                (!isAlwaysEnabledAction && !enableActionForPoeAttachment) ||
+                                (isBulk 
                                     ? selectedApprovalRecords.length > bulkActionConcurrentCall
-                                    : isControlsAndComplianceRequired && !isRequestFullyScrolled)
+                                    : isControlsAndComplianceRequired && !(isRequestFullyScrolled))
                             }
                             componentRef={(input: any) => {
                                 if (index === 0 && input) {
@@ -1138,22 +1515,28 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
 
     const renderSecondaryButtons = (secondaryActionData: object[], isBulk: boolean) => {
         try {
+            let enableActionForPoeAttachment = true;
+
             const conditionPropertyObject = getConditionPropertyObject();
             //defining because 'this' property cannot be referenced inside of reduce
             const filteredMenuItems: IContextualMenuItem[] = secondaryActionData.reduce(function (filtered: any, item) {
+                const itemCode = getValueFromProperty(item, 'Code');
                 if (
                     (getValueFromProperty(item, 'Condition') == null ||
                         getValueFromProperty(item, 'Condition') == '' ||
                         validateCondition(conditionPropertyObject, getValueFromProperty(item, 'Condition'))) &&
                     validateBulkActionButton(item, isBulk)
                 ) {
+                    const isMitigationDisabledDueToMissingAttachment = false;
                     const menuItem = {
                         key: getValueFromProperty(item, 'Code'),
                         text: getValueFromProperty(item, 'Name') + ' ' + getValueFromProperty(item, 'Text'),
                         title: getValueFromProperty(item, 'Name'),
                         disabled:
                             !getValueFromProperty(item, 'IsEnabled') ||
-                            (isControlsAndComplianceRequired && !isRequestFullyScrolled),
+                            (isControlsAndComplianceRequired &&
+                                !(isRequestFullyScrolled && enableActionForPoeAttachment)) ||
+                            isMitigationDisabledDueToMissingAttachment,
                         onClick: (): void => handleEnterNotesAndJustifications(item, isBulk, false),
                         aiEventName: getValueFromProperty(item, 'Name'),
                     };
@@ -1189,13 +1572,17 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
     };
 
     const renderNotes = (isBulk: boolean) => {
+        //Checking if the character limit is 1 character(singluar/plural)
+        const hasSingleCharacter = remainingChars === 1;
+        //Checking the character limit at intervals 80,20,10 and 0
+        const characterLimits =
+            remainingChars === 80 || remainingChars === 20 || remainingChars === 10 || remainingChars === 0;
         return (
             <Stack.Item>
                 <MultilineTextField
                     label="Notes"
                     ariaRequired={true}
-                    ariaLabelledby={`Notes edit multiline ${remainingChars} characters remaining`}
-                    ariaLabel={`Notes edit multiline ${remainingChars} characters remaining`}
+                    ariaLabelledby="divCharsRemaining"
                     value={comments}
                     onChange={handleComments}
                     rows={2}
@@ -1207,14 +1594,18 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                     inputStyle={{ fontSize: '2px' }}
                     styles={DetailsStyled.BulkSmallTextFieldStyles(isBulk)}
                 />
-                {(remainingChars || remainingChars === 0) && remainingChars === 1 ? (
+                {hasSingleCharacter ? (
                     <div
-                        aria-label={`${remainingChars} character remaining`}
+                        id="divCharsRemaining"
+                        aria-label={`Notes edit multiline ${remainingChars} character remaining`}
                     >{`${remainingChars} character remaining`}</div>
                 ) : (
-                    <div aria-label={`${remainingChars} characters remaining`}>
-                        {`${remainingChars} characters remaining`}
-                    </div>
+                    characterLimits && (
+                        <div
+                            id="divCharsRemaining"
+                            aria-label={`Notes edit multiline ${remainingChars} characters remaining`}
+                        >{`${remainingChars} characters remaining`}</div>
+                    )
                 )}
             </Stack.Item>
         );
@@ -1425,33 +1816,61 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
         );
     };
 
+    const performBulkSubmission = (submissionCode?: string, rememberFor?: number): void => {
+        const { userAlias } = props;
+        const tenantId = getTenantID();
+        const additionalActionDetails = isPullTenantSelected ? handleAdditionalActionDetails() : null;
+        const submission = {
+            tenantId,
+            code: submissionCode || code,
+            reasonCode,
+            reasonText,
+            comments,
+            receiptsCheck,
+            corruptionCheck,
+            attestPoeCheck,
+            sequenceID,
+            nextApprover,
+            peoplePickerSelections,
+            additionalActionDetails,
+            exemptPoeOptionSelected,
+            contractId,
+            ndaContractId,
+            hasExpirationDateCheck,
+            contractExpirationDate: formatExpirationDate(contractExpirationDate),
+            rememberFor,
+        };
+        dispatch(updateFailedPullTenantRequests([]));
+        dispatch(postAction(submission, userAlias, true, isPullTenantSelected));
+        dispatch(updateIsProcessingBulkApproval(true));
+        dispatch(updateBulkStatus(false));
+        dispatch(updatePanelState(false));
+        clearNotesPopupData();
+    };
+
     const handleApprovals = (oneClickSubmission?: { code: string }): void => {
         if (validateRequiredFields()) {
-            const { userAlias } = props;
+            const submissionCode = (oneClickSubmission && oneClickSubmission.code) ? oneClickSubmission.code : code;
             const tenantId = getTenantID();
-            const additionalActionDetails = isPullTenantSelected ? handleAdditionalActionDetails() : null;
-            const submission = {
-                tenantId,
-                code,
-                reasonCode,
-                reasonText,
-                comments,
-                receiptsCheck,
-                corruptionCheck,
-                sequenceID,
-                nextApprover,
-                peoplePickerSelections,
-                additionalActionDetails,
-            };
-            if (oneClickSubmission && oneClickSubmission.code) {
-                submission.code = oneClickSubmission.code;
+        
+            // Check if proof of presence is required for any selected request
+            if (shouldInitiateProofOfPresence(submissionCode, tenantInfo, null, tenantId, { selectedRecords: selectedApprovalRecords, summaryData: summary, isPullTenant: isPullTenantSelected })) {
+                const storageKey = `MSApprovals_Consent${props.userAlias}`;
+                const savedConsent = localStorage.getItem(storageKey);
+                if (savedConsent && Number(savedConsent) > Date.now()) {
+                    // User recently confirmed presence; skip the dialog
+                    performBulkSubmission(submissionCode);
+                    return;
+                }
+                // Show proof of presence popup to re-authenticate
+                const rememberOpts = getRememberForOptions(submissionCode, tenantInfo, tenantId);
+                setConsentRememberForOptions(rememberOpts);
+                setIsPopForBulk(true);
+                setIsConsentDialogOpen(true);
+                return;
             }
-            dispatch(updateFailedPullTenantRequests([]));
-            dispatch(postAction(submission, userAlias, true, isPullTenantSelected));
-            dispatch(updateIsProcessingBulkApproval(true));
-            dispatch(updateBulkStatus(false));
-            dispatch(updatePanelState(false));
-            clearNotesPopupData();
+
+            performBulkSubmission(submissionCode);
         }
     };
 
@@ -1485,6 +1904,73 @@ const DetailsFooter = React.forwardRef((props: any, ref): JSX.Element => {
                     {renderFooter(true)}
                 </DetailsStyled.primaryStyle>
             )}
+            <ConsentDialog
+                isOpen={isConsentDialogOpen}
+                onDismiss={() => {
+                    setIsConsentDialogOpen(false);
+                    setIsPopForBulk(false);
+                }}
+                onSuccess={(rememberFor) => {
+                    if (rememberFor && rememberFor > 0) {
+                        const storageKey = `MSApprovals_Consent${props.userAlias}`;
+                        localStorage.setItem(storageKey, (Date.now() + rememberFor * 1000).toString());
+                    }
+                    if (isPopForBulk) {
+                        performBulkSubmission(code, rememberFor);
+                    } else {
+                        performSubmission(code, rememberFor);
+                    }
+                    setIsPopForBulk(false);
+                }}
+                onPopupFailed={async (rememberFor) => {
+                    // Popup blocked (mobile). Persist the pending submission (single-action only), then redirect.
+                    const upn = profile?.userPrincipalName ?? '';
+                    const signedInAlias = upn.indexOf('@') > 0 ? upn.substring(0, upn.indexOf('@')) : upn;
+                    if (!isPopForBulk && !isPullTenantSelected) {
+                        const submission = {
+                            tenantId: props.tenantId,
+                            documentNumber: props.documentNumber,
+                            displayDocumentNumber: props.displayDocumentNumber,
+                            fiscalYear: props.fiscalYear,
+                            code,
+                            reasonCode, reasonText, comments,
+                            documentTypeId: props.documentTypeId,
+                            businessProcessName: props.businessProcessName,
+                            receiptsCheck, corruptionCheck, attestPoeCheck, attestQualificationReviewCheck,
+                            sequenceID, nextApprover, peoplePickerSelections,
+                            additionalActionDetails: isPullTenantSelected ? handleAdditionalActionDetails() : null,
+                            digitalSignature, exemptPoeOptionSelected, contractId, ndaContractId,
+                            hasExpirationDateCheck,
+                            contractExpirationDate: formatExpirationDate(contractExpirationDate),
+                            rememberFor,
+                        };
+                        try {
+                            sessionStorage.setItem(POP_RESUME_KEY, JSON.stringify({
+                                submission,
+                                userAlias: props.userAlias,
+                                signedInAlias,
+                                isPullTenant: isPullTenantSelected,
+                                ts: Date.now(),
+                            }));
+                        } catch { /* storage may be blocked; still attempt redirect */ }
+                    }
+                    try {
+                        await (authClient as any).authContext.acquireTokenRedirect({
+                            scopes: [`${__RESOURCE_URL__}/.default`],
+                            prompt: 'login',
+                            redirectStartPage: window.location.href,
+                        });
+                    } catch {
+                        try { sessionStorage.removeItem(POP_RESUME_KEY); } catch { /* ignore */ }
+                        setIsConsentDialogOpen(false);
+                        setIsPopForBulk(false);
+                    }
+                }}
+                actionId={code}
+                actionLabel={actionName}
+                authClient={authClient}
+                rememberForOptions={consentRememberForOptions}
+            />
         </div>
     ) : null;
 });

@@ -50,11 +50,21 @@ a.ac-anchor {
     line-height: 21px;
     outline-offset: 0px;
     margin-left: 1px;
+    color: #0075E3;
+    text-decoration: underline;
 }
 
+/* Global style for links in text blocks to meet accessibility requirements */
+a, #detailCardFooter a {
+    text-decoration: underline;
+}
 
 .horizontal-separator {
     border-right: 1px solid lightgray;
+}
+
+.ms-Grid-col {
+    padding-right: 0px;
 }
 
 @media only screen and (max-width: 768px) {
@@ -347,7 +357,7 @@ a.ac-anchor {
 .ms-CustomGrid-col {
     position: relative;
     min-height: 1px;
-    padding-left: 8px;
+    padding-left: 2px;
     box-sizing: border-box;
 }
 
@@ -384,7 +394,7 @@ a.ac-anchor {
 
 @media only screen and (min-device-width: 1023px) and (max-width: 1023px) {
     .loggedin-user-name .ms-Persona-primaryText {
-        width: 100px !important;
+        max-width: 100% !important;
     }
 }
 
@@ -578,6 +588,12 @@ a.ac-anchor {
     }
 }
 
+@media (min-width: 1024px) {
+    .hidden-XlUpCustom {
+        display: none !important;
+    }
+}
+
 @media only screen and (forced-colors: active) {
     .text-365 {
         forced-color-adjust: auto !important;
@@ -599,3 +615,66 @@ a.ac-anchor {
         forced-color-adjust: auto !important;
     }
 }
+
+.skip-to-main-content-link {
+    position: absolute; 
+    left: -9999px; 
+    z-index: 999; 
+    padding: 1em;
+    background-color: black;
+    color: white;
+    opacity: 0;
+}
+  
+.skip-to-main-content-link:focus {
+    left: 50%; 
+    transform: translateX(-50%);
+    opacity: 1;
+}
+
+/* Accessibility fix for text spacing truncation issue in the confirmation dialog */
+#detailCardFooter .h3-width {
+    width: 50%;
+}
+#detailCardFooter textarea {
+    width: 80%;
+}
+
+/* Mobile override: remove width constraints on non-bulk detailsfooter elements for small screens */
+@media (max-width: 640px) {
+    footer#detailCardFooter .h3-width,
+    footer#detailCardFooter textarea {
+        width: 90% !important;
+    }
+    footer#detailCardFooter div[style*="max-width"],
+    footer#detailCardFooter .ms-TextField,
+    footer#detailCardFooter .ms-MessageBar {
+        max-width: 90% !important;
+    }
+}
+
+@media (max-width: 640px){
+    textarea {
+        margin-top:21px;
+    }
+}
+
+#msaA11ySearchBoxReplacement{
+    resize: none;
+}
+
+.ac-textBlock p{
+    overflow-x: auto !important;
+    text-overflow: initial  !important;
+}
+
+/* Search term highlighting in details pane */
+mark {
+    background-color: #fff4ce;
+    color: inherit;
+    padding: 1px 2px;
+    border-radius: 2px;
+}
+
+
+

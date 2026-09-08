@@ -1,4 +1,4 @@
-import { ISharedComponentsState } from './SharedComponents.types';
+import { ISharedComponentsState, IFeedbackData } from './SharedComponents.types';
 import { SharedComponentsAction, SharedComponentsActionType } from './SharedComponents.action-types';
 import { GroupingBy } from './Components/GroupingBy';
 import {
@@ -41,12 +41,14 @@ export const sharedComponentsInitialState: ISharedComponentsState = {
     selectedPage: 'summary',
     isLoadingHistory: false,
     isDownloadingHistory: false,
+    isDownloadingSummary: false,
     historySelectedPage: 1,
     sortColumnField: 'ActionDate',
     sortDirection: 'DESC',
     historySearchCriteria: '',
     historyTimePeriod: 3,
     historyData: [],
+    tenantList: [],
     summaryGroupedBy: GroupingBy.Tenant,
     filterValue: 'All',
     bulkFailedMsg: [],
@@ -54,7 +56,6 @@ export const sharedComponentsInitialState: ISharedComponentsState = {
     bulkApproveFailed: false,
     bulkApproveStatus: false,
     isProcessingBulkApproval: false,
-    isCardViewSelected: true,
     selectedApprovalRecords: [],
     historyTenantIdFilter: '',
     userDelegations: [],
@@ -67,6 +68,8 @@ export const sharedComponentsInitialState: ISharedComponentsState = {
     filteredUsers: null,
     historyDownloadHasError: false,
     historyDownloadErrorMessage: null,
+    summaryDownloadHasError: false,
+    summaryDownloadErrorMessage: null,
     isSettingPanelOpen: false,
     userPreferences: [],
     userPreferencesSuccessMessage: null,
@@ -103,6 +106,34 @@ export const sharedComponentsInitialState: ISharedComponentsState = {
     successfulPullTenantCountDict: {},
     isProfilePanelOpen: false,
     isAccessibilityPanelOpen: false,
+    isLoadingSearchResults: false,
+    searchResults: null,
+    isSearchResultsViewOpen: false,
+    isQuickTourOpen: false,
+    quickTourData: [],
+    unreadQuickTours: [],
+    readQuickTours: [],
+    updatedQuickTourList: [],
+    myFlightingData: null,
+    allFlightingData: null,
+    isLoadingFlightingData: false,
+    flightingFeatureFeedback: {},
+    insightsData: { summaryInsights: null, historyInsights: null },
+    feedback: {
+        feedbackByFeature: {},
+        isLoading: false,
+        hasError: false,
+        errorMessage: null,
+    },
+    isSummaryCollapsed: false,
+    propertyFilters: {},
+    isSubmitterView: false,
+    digestPreference: null,
+    teamsNotificationsEnabled: null,
+    suggestTerms: [],
+    suggestRequests: [],
+    isLoadingSuggest: false,
+    suggestCache: null,
 };
 
 export function sharedComponentsReducer(
@@ -145,12 +176,16 @@ export function sharedComponentsReducer(
                 ...prev,
                 isLoadingSummary: true,
                 hasError: false,
+                summaryErrorMessage: null,
+                propertyFilters: {},
+                isSubmitterView: action.isSubmittedRequest ?? false,
             };
         case SharedComponentsActionType.RECEIVE_MY_SUMMARY:
             return {
                 ...prev,
                 isLoadingSummary: false,
                 hasError: false,
+                summaryErrorMessage: null,
                 summary: action.summary,
                 isLoadingSubmitterImages: true,
             };
@@ -205,7 +240,6 @@ export function sharedComponentsReducer(
             return {
                 ...prev,
                 isPanelOpen: action.isOpen,
-                toggleDetailsScreen: action.isOpen ? prev.toggleDetailsScreen : false,
             };
         case SharedComponentsActionType.UPDATE_SELECTED_SUMMARY_TO_PENDING:
             return {
@@ -241,6 +275,7 @@ export function sharedComponentsReducer(
                 externalTenantInfoHasError: false,
                 externalTenantInfo: null,
                 bulkApproveStatus: false,
+                propertyFilters: {},
             };
         case SharedComponentsActionType.UPDATE_BULK_UPLOAD_CONCURRENT_VALUE:
             return {
@@ -280,12 +315,6 @@ export function sharedComponentsReducer(
                 isProcessingBulkApproval: action.isProcessingBulkApproval,
                 bulkApproveFailed: action.isProcessingBulkApproval ? false : prev.bulkApproveFailed,
             };
-        case SharedComponentsActionType.UPDATE_CARD_VIEW_TYPE:
-            return {
-                ...prev,
-                isPanelOpen: false,
-                isCardViewSelected: action.isCardViewSelected,
-            };
         case SharedComponentsActionType.UPDATE_APPROVAL_RECORDS:
             switch (action.subAction) {
                 case 'Push':
@@ -306,6 +335,7 @@ export function sharedComponentsReducer(
                 isLoadingHistory: true,
                 historySelectedPage: action.page,
                 sortColumnField: action.sortColumn,
+                sortDirection: action.sortDirection,
                 historySearchCriteria: action.searchCriteria,
                 historyTimePeriod: action.timePeriod,
                 historyTenantIdFilter: action.tenantId,
@@ -351,11 +381,12 @@ export function sharedComponentsReducer(
                 ...prev,
                 historyData: action.historyData,
                 historyTotalRecords: action.totalRecords,
+                tenantList: action.tenantList,
             };
         case SharedComponentsActionType.TOGGLE_DETAIL_SCREEN:
             return {
                 ...prev,
-                toggleDetailsScreen: !prev.toggleDetailsScreen,
+                toggleDetailsScreen: action.isOpen != null ? action.isOpen : !prev.toggleDetailsScreen,
             };
         case SharedComponentsActionType.RECEIVE_FILTERED_USERS:
             return {
@@ -388,17 +419,50 @@ export function sharedComponentsReducer(
                 historyDownloadErrorMessage: action.downloadErrorMessage,
                 isDownloadingHistory: false,
             };
+        case SharedComponentsActionType.REQUEST_DOWNLOAD_SUMMARY:
+            return {
+                ...prev,
+                isDownloadingSummary: true,
+                summaryDownloadHasError: false,
+                summaryDownloadErrorMessage: null,
+            };
+        case SharedComponentsActionType.RECEIVE_DOWNLOAD_SUMMARY:
+            return {
+                ...prev,
+                isDownloadingSummary: false,
+                summaryDownloadHasError: false,
+                summaryDownloadErrorMessage: null,
+            };
+        case SharedComponentsActionType.FAILED_DOWNLOAD_SUMMARY:
+            return {
+                ...prev,
+                summaryDownloadHasError: true,
+                summaryDownloadErrorMessage: action.downloadErrorMessage,
+                isDownloadingSummary: false,
+            };
+        case SharedComponentsActionType.CLEAR_DOWNLOAD_SUMMARY_ERROR:
+            return {
+                ...prev,
+                summaryDownloadHasError: false,
+                summaryDownloadErrorMessage: null,
+            };
         case SharedComponentsActionType.TOGGLE_SETTINGS_PANEL:
             return {
                 ...prev,
                 isSettingPanelOpen: action.toggle,
             };
         case SharedComponentsActionType.RECEIVE_USER_PREFERENCES:
-            let summaryGroupedBy = GroupingBy.Tenant;
-            let detailsDefaultView = DOCKED_VIEW;
-            let historyDefaultView = FLYOUT_VIEW;
-            let defaultViewType = CARD_VIEW;
-            let DefaultTenant = '';
+            if (action.preserveSessionState) {
+                return {
+                    ...prev,
+                    userPreferences: action.data,
+                };
+            }
+            let summaryGroupedBy = prev.summaryGroupedBy || GroupingBy.Tenant;
+            let detailsDefaultView = prev.detailsDefaultView || DOCKED_VIEW;
+            let historyDefaultView = prev.historyDefaultView || FLYOUT_VIEW;
+            let defaultViewType = prev.defaultViewType || CARD_VIEW;
+            let DefaultTenant = prev.DefaultTenant || '';
             if (action.data && action.data.length > 0) {
                 const _groupByFilter = action.data.find((u: any) => u.UserPreferenceText === GROUP_BY_FILTER);
                 if (_groupByFilter) {
@@ -434,7 +498,8 @@ export function sharedComponentsReducer(
                 historyDefaultView: historyDefaultView,
                 DefaultTenant: DefaultTenant,
                 defaultViewType: defaultViewType,
-                isCardViewSelected: defaultViewType == CARD_VIEW ? true : false,
+                digestPreference: action.digestPreference || prev.digestPreference,
+                teamsNotificationsEnabled: action.teamsNotificationsEnabled ?? prev.teamsNotificationsEnabled,
             };
         case SharedComponentsActionType.SAVE_USER_PREFERENCES_REQUEST:
             return {
@@ -446,7 +511,6 @@ export function sharedComponentsReducer(
             return {
                 ...prev,
                 userPreferencesSuccessMessage: action.message,
-                isSettingPanelOpen: false,
             };
         case SharedComponentsActionType.SAVE_USER_PREFERENCES_FAILED:
             return {
@@ -601,6 +665,265 @@ export function sharedComponentsReducer(
             return {
                 ...prev,
                 isAccessibilityPanelOpen: action.isOpen,
+            };
+        case SharedComponentsActionType.INITIATE_SEARCH:
+            return {
+                ...prev,
+                isLoadingSearchResults: true,
+                isSearchResultsViewOpen: true,
+            };
+        case SharedComponentsActionType.SAVE_SEARCH_RESULTS:
+            return {
+                ...prev,
+                searchResults: action.searchResults,
+                isLoadingSearchResults: false,
+            };
+        case SharedComponentsActionType.TOGGLE_SEARCH_RESULTS_VIEW:
+            return {
+                ...prev,
+                isSearchResultsViewOpen: action.isOn,
+                searchResults: action.isOn ? prev.searchResults : null,
+            };
+        case SharedComponentsActionType.REQUEST_SUGGEST:
+            return {
+                ...prev,
+                isLoadingSuggest: true,
+            };
+        case SharedComponentsActionType.RECEIVE_SUGGEST:
+            return {
+                ...prev,
+                suggestTerms: action.suggestTerms,
+                suggestRequests: action.suggestRequests,
+                isLoadingSuggest: false,
+                suggestCache: {
+                    query: action.query,
+                    terms: action.suggestTerms,
+                    requests: action.suggestRequests,
+                },
+            };
+        case SharedComponentsActionType.CLEAR_SUGGEST:
+            return {
+                ...prev,
+                suggestTerms: [],
+                suggestRequests: [],
+                isLoadingSuggest: false,
+                suggestCache: null,
+            };
+        case SharedComponentsActionType.TOGGLE_QUICKTOUR:
+            return {
+                ...prev,
+                isQuickTourOpen: !prev.isQuickTourOpen,
+            };
+        case SharedComponentsActionType.SET_QUICKTOUR_DATA:
+            return {
+                ...prev,
+                quickTourData: action.quickTourData,
+            };
+        case SharedComponentsActionType.REQUEST_QUICKTOUR_INFO:
+            return {
+                ...prev,
+            };
+        case SharedComponentsActionType.RECEIVE_QUICKTOUR_INFO:
+            return {
+                ...prev,
+                unreadQuickTours: action?.unreadQuickTours,
+                readQuickTours: action?.readQuickTours,
+                updatedQuickTourList: action?.updatedQuickTourList,
+            };
+        case SharedComponentsActionType.POST_QUICKTOUR_INFO: {
+            // Server replaces QuickTourFeatureList wholesale with action.unReadQuickTours,
+            // so sync local read/unread lists optimistically; otherwise back-to-back dismisses
+            // (e.g. Submitter View then Approvals Labs) read a stale readQuickTours and drop IDs.
+            const postedIds = new Set((action.unReadQuickTours || []).map(String));
+            const allItems = [...(prev.unreadQuickTours || []), ...(prev.readQuickTours || [])];
+            const seen = new Set<string>();
+            const dedupedItems = allItems.filter(it => {
+                const k = it?.id?.toString();
+                if (!k || seen.has(k)) return false;
+                seen.add(k);
+                return true;
+            });
+            return {
+                ...prev,
+                readQuickTours: dedupedItems.filter(it => postedIds.has(it.id.toString())).map(it => ({ ...it, isViewed: true })),
+                unreadQuickTours: dedupedItems.filter(it => !postedIds.has(it.id.toString())).map(it => ({ ...it, isViewed: false })),
+                updatedQuickTourList: [],
+            };
+        }
+        case SharedComponentsActionType.SET_UNREAD_QUICKTOURS:
+            return {
+                ...prev,
+                updatedQuickTourList: [],
+            };
+        case SharedComponentsActionType.REQUEST_FLIGHTING_DATA:
+            return {
+                ...prev,
+                isLoadingFlightingData: true,
+            };
+        case SharedComponentsActionType.RECEIVE_FLIGHTING_DATA: {
+            const feedbackMap: Record<string, string> = {};
+            if (Array.isArray(action.myFlightingData)) {
+                action.myFlightingData.forEach((f: any) => {
+                    const name = f?.featureName ?? f?.FeatureName;
+                    const vote = f?.vote ?? f?.Vote;
+                    if (name && vote) {
+                        feedbackMap[name] = vote;
+                    }
+                });
+            }
+            return {
+                ...prev,
+                myFlightingData: action.myFlightingData,
+                allFlightingData: action.allFlightingData,
+                isLoadingFlightingData: false,
+                flightingFeatureFeedback: feedbackMap,
+            };
+        }
+        case SharedComponentsActionType.SUBSCRIBE_FLIGHTING_FEATURES:
+        case SharedComponentsActionType.UNSUBSCRIBE_FLIGHTING_FEATURES:
+            return {
+                ...prev,
+                isLoadingFlightingData: true,
+                userPreferencesSuccessMessage: null,
+                userPreferencesFailureMessage: null,
+            };
+        case SharedComponentsActionType.SUBSCRIBE_FLIGHTING_FEATURES_SUCCESS:
+            return {
+                ...prev,
+                userPreferencesSuccessMessage: action.message,
+                userPreferencesFailureMessage: null,
+                isLoadingFlightingData: false,
+            };
+        case SharedComponentsActionType.SUBSCRIBE_FLIGHTING_FEATURES_FAILED:
+            return {
+                ...prev,
+                userPreferencesSuccessMessage: null,
+                userPreferencesFailureMessage: action.message,
+                isLoadingFlightingData: false,
+            };
+        case SharedComponentsActionType.SUBMIT_FLIGHTING_FEATURE_FEEDBACK: {
+            const nextFeedback = { ...(prev.flightingFeatureFeedback || {}) };
+            if (!action.vote || action.vote === 'None') {
+                delete nextFeedback[action.featureName];
+            } else {
+                nextFeedback[action.featureName] = action.vote;
+            }
+            return {
+                ...prev,
+                flightingFeatureFeedback: nextFeedback,
+            };
+        }
+        case SharedComponentsActionType.RECEIVE_INSIGHTS:
+            return {
+                ...prev,
+                insightsData: {
+                    summaryInsights: action.summaryInsights ?? prev.insightsData.summaryInsights,
+                    historyInsights: action.historyInsights ?? prev.insightsData.historyInsights,
+                },
+            };
+        case SharedComponentsActionType.UPDATE_FEEDBACK_INPUT: {
+            const { id, featureName, inputType, inputValue, documentNumber, fiscalYear } = action.payload;
+            const existingFeedback = prev.feedback.feedbackByFeature[featureName];
+
+            if (!existingFeedback) {
+                // Initialize new feedback if it doesn't exist
+                const newFeedback: IFeedbackData = {
+                    FeatureName: featureName,
+                    DocumentNumber: documentNumber || '',
+                    FiscalYear: fiscalYear || '',
+                    Inputs: [
+                        {
+                            id: id,
+                            InputType: inputType,
+                            InputValue: inputValue,
+                        },
+                    ],
+                };
+
+                return {
+                    ...prev,
+                    feedback: {
+                        ...prev.feedback,
+                        feedbackByFeature: {
+                            ...prev.feedback.feedbackByFeature,
+                            [featureName]: newFeedback,
+                        },
+                    },
+                };
+            }
+
+            // Update existing feedback
+            const updatedInputs = existingFeedback.Inputs.map((input) =>
+                input.id === id ? { ...input, InputValue: inputValue } : input
+            );
+
+            // Add new input if it doesn't exist
+            if (!existingFeedback.Inputs.some((input) => input.id === id)) {
+                updatedInputs.push({
+                    id: id,
+                    InputType: inputType,
+                    InputValue: inputValue,
+                });
+            }
+
+            return {
+                ...prev,
+                feedback: {
+                    ...prev.feedback,
+                    feedbackByFeature: {
+                        ...prev.feedback.feedbackByFeature,
+                        [featureName]: {
+                            ...existingFeedback,
+                            Inputs: updatedInputs,
+                        },
+                    },
+                },
+            };
+        }
+        case SharedComponentsActionType.DELETE_FEEDBACK_INPUT: {
+            const { id, featureName } = action.payload;
+            const existingFeedback = prev.feedback.feedbackByFeature[featureName];
+
+            // If feedback doesn't exist, nothing to delete
+            if (!existingFeedback) {
+                return prev;
+            }
+
+            // Filter out the input with the matching id
+            const filteredInputs = existingFeedback.Inputs.filter((input) => input.id !== id);
+
+            // If no inputs remain, remove the entire feedback
+            if (filteredInputs.length === 0) {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { [featureName]: _, ...remainingFeedback } = prev.feedback.feedbackByFeature;
+                return {
+                    ...prev,
+                    feedback: {
+                        ...prev.feedback,
+                        feedbackByFeature: remainingFeedback,
+                    },
+                };
+            }
+
+            // Update feedback with filtered inputs
+            return {
+                ...prev,
+                feedback: {
+                    ...prev.feedback,
+                    feedbackByFeature: {
+                        ...prev.feedback.feedbackByFeature,
+                        [featureName]: {
+                            ...existingFeedback,
+                            Inputs: filteredInputs,
+                        },
+                    },
+                },
+            };
+        }
+        case SharedComponentsActionType.UPDATE_PROPERTY_FILTERS:
+            return {
+                ...prev,
+                propertyFilters: action.propertyFilters,
             };
         default:
             return prev;

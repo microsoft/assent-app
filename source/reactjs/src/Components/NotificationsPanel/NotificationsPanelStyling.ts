@@ -85,11 +85,21 @@ export const classNames = mergeStyleSets({
         // marginBottom: 10,
         fontWeight: 'bold',
         fontStyle: 'italic',
+        selectors: {
+            'a': { 
+                textDecoration: 'underline' 
+            }
+        }
     },
     itemMessage: {
         fontSize: fonts.small.fontSize,
         // marginBottom: 10,
         fontStyle: 'italic',
+        selectors: {
+            'a': { 
+                textDecoration: 'underline' 
+            }
+        }
     },
     chevron: {
         alignSelf: 'center',

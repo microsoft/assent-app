@@ -1,4 +1,5 @@
 import { IGrouping } from '../../Helpers/groupPendingApprovals';
+import { SummaryExportColumnFormat } from '../Summary/SummaryExport.constants';
 import {
     SharedComponentsActionType,
     IRequestProfileAction,
@@ -41,6 +42,10 @@ import {
     IReceiveFilteredUsersAction,
     ISetSelectedSummaryTileRef,
     IFailedDownloadHistory,
+    IRequestDownloadSummary,
+    IReceiveDownloadSummary,
+    IFailedDownloadSummary,
+    IClearDownloadSummaryError,
     IToggleSettingsPanel,
     ISaveUserPreferencesRequest,
     ISaveUserPreferencesResponse,
@@ -74,15 +79,48 @@ import {
     IReceiveDownloadHistory,
     IToggleProfilePanel,
     IToggleAccessibilityPanel,
+    IInitiateSearch,
+    ISaveSearchResults,
+    IToggleSearchResultsView,
+    IToggleQuickTour,
+    IRequestQuickTourInfo,
+    IRecieveQuickTourInfo,
+    IPostQuickTourInfo,
+    ISetQuickTourData,
+    IClearUnreadQuickTours,
+    IRequestFlightingData,
+    IReceiveFlightingData,
+    ISubscribeFlightingFeatures,
+    IUnsubscribeFlightingFeatures,
+    ISubscribeFlightingFeaturesSuccess,
+    ISubscribeFlightingFeaturesFailed,
+    ISubmitFlightingFeatureFeedback,
+    IFlightingFeatureFeedbackFailed,
+    IRequestInsights,
+    IReceiveInsights,
+    IPostFeedback,
+    IUpdateFeedbackInput,
+    IDeleteFeedbackInput,
+    IUpdatePropertyFilters,
+    IRequestSuggest,
+    IReceiveSuggest,
+    IClearSuggest,
+    ISuggestRequestItem,
 } from './SharedComponents.action-types';
 import {
     IActionResponseObject,
     IDelegationObj,
     IFeaturesIntroductionStep,
     IGraphPhoto,
+    IHistoryInsights,
+    IInsightsData,
     IProfile,
     IPullTenantSummaryCountObject,
+    IQuickTourListItem,
+    ISummaryInsights,
     ITenantDelegationObj,
+    IUserDelegationEntry,
+    ICustomStorageParameters,
 } from './SharedComponents.types';
 
 export function ClearUserPreferencesAPIMessages(): IClearUserPreferencesAPIMessages {
@@ -91,10 +129,11 @@ export function ClearUserPreferencesAPIMessages(): IClearUserPreferencesAPIMessa
     };
 }
 
-export function SaveUserPreferencesRequest(data: any): ISaveUserPreferencesRequest {
+export function SaveUserPreferencesRequest(data: any, preserveSessionState = false): ISaveUserPreferencesRequest {
     return {
         type: SharedComponentsActionType.SAVE_USER_PREFERENCES_REQUEST,
         data,
+        preserveSessionState,
     };
 }
 
@@ -112,22 +151,88 @@ export function SaveUserPreferencesFailed(message: string): ISaveUserPreferences
     };
 }
 
-export function RequestUserPreferences(): IRequestUserPreferences {
+export function RequestUserPreferences(preserveSessionState = false): IRequestUserPreferences {
     return {
         type: SharedComponentsActionType.REQUEST_USER_PREFERENCES,
+        preserveSessionState,
     };
 }
 
-export function ReceiveUserPreferences(data: any): IReceiveUserPreferences {
+export function ReceiveUserPreferences(
+    data: any,
+    preserveSessionState = false,
+    digestPreference: any = null,
+    teamsNotificationsEnabled: boolean | null = null
+): IReceiveUserPreferences {
     return {
         type: SharedComponentsActionType.RECEIVE_USER_PREFERENCES,
         data,
+        preserveSessionState,
+        digestPreference,
+        teamsNotificationsEnabled,
     };
 }
 
 export function FailedUserPreferences(message: string): IFailedUserPreferences {
     return {
         type: SharedComponentsActionType.FAILED_USER_PREFERENCES,
+        message,
+    };
+}
+
+export function requestFlightingData(): IRequestFlightingData {
+    return {
+        type: SharedComponentsActionType.REQUEST_FLIGHTING_DATA,
+    };
+}
+
+export function receiveFlightingData(myFlightingData: any, allFlightingData: any): IReceiveFlightingData {
+    return {
+        type: SharedComponentsActionType.RECEIVE_FLIGHTING_DATA,
+        myFlightingData,
+        allFlightingData,
+    };
+}
+
+export function subscribeFlightingFeatures(featureNames: string[]): ISubscribeFlightingFeatures {
+    return {
+        type: SharedComponentsActionType.SUBSCRIBE_FLIGHTING_FEATURES,
+        featureNames,
+    };
+}
+
+export function unsubscribeFlightingFeatures(featureNames: string[]): IUnsubscribeFlightingFeatures {
+    return {
+        type: SharedComponentsActionType.UNSUBSCRIBE_FLIGHTING_FEATURES,
+        featureNames,
+    };
+}
+
+export function subscribeFlightingFeaturesSuccess(message: string): ISubscribeFlightingFeaturesSuccess {
+    return {
+        type: SharedComponentsActionType.SUBSCRIBE_FLIGHTING_FEATURES_SUCCESS,
+        message,
+    };
+}
+
+export function subscribeFlightingFeaturesFailed(message: string): ISubscribeFlightingFeaturesFailed {
+    return {
+        type: SharedComponentsActionType.SUBSCRIBE_FLIGHTING_FEATURES_FAILED,
+        message,
+    };
+}
+
+export function submitFlightingFeatureFeedback(featureName: string, vote: string): ISubmitFlightingFeatureFeedback {
+    return {
+        type: SharedComponentsActionType.SUBMIT_FLIGHTING_FEATURE_FEEDBACK,
+        featureName,
+        vote,
+    };
+}
+
+export function flightingFeatureFeedbackFailed(message: string): IFlightingFeatureFeedbackFailed {
+    return {
+        type: SharedComponentsActionType.FLIGHTING_FEATURE_FEEDBACK_FAILED,
         message,
     };
 }
@@ -139,9 +244,10 @@ export function toggleSettingsPanel(toggle: boolean): IToggleSettingsPanel {
     };
 }
 
-export function toggleDetailsScreen(): IToggleDetailScreen {
+export function toggleDetailsScreen(isOpen?: boolean): IToggleDetailScreen {
     return {
         type: SharedComponentsActionType.TOGGLE_DETAIL_SCREEN,
+        isOpen,
     };
 }
 
@@ -165,11 +271,18 @@ export function receiveFriendByEmail(profile: IProfile): IReceiveProfileAction {
     };
 }
 
-export function updateUserAlias(userAlias: string, userName: string): IUpdateUserAlias {
+export function updateUserAlias(
+    userAlias: string,
+    userName: string,
+    onBehalfUserUpn: string,
+    onBehalfUserId: string
+): IUpdateUserAlias {
     return {
         type: SharedComponentsActionType.UPDATE_USER_ALIAS,
         userAlias,
         userName,
+        onBehalfUserUpn,
+        onBehalfUserId,
     };
 }
 
@@ -186,7 +299,7 @@ export function requestMyDelegations(
     };
 }
 
-export function receiveMyDelegations(userDelegations: Object[]): IReceiveDelegationsAction {
+export function receiveMyDelegations(userDelegations: IUserDelegationEntry[]): IReceiveDelegationsAction {
     return {
         type: SharedComponentsActionType.RECEIVE_MY_DELEGATIONS,
         userDelegations,
@@ -207,10 +320,11 @@ export function failedDelegations(delegationsErrorMessage: string): IFailedDeleg
     };
 }
 
-export function requestMySummary(userAlias: string): IRequestSummaryAction {
+export function requestMySummary(userAlias: string, isSubmittedRequest?: boolean): IRequestSummaryAction {
     return {
         type: SharedComponentsActionType.REQUEST_MY_SUMMARY,
         userAlias,
+        isSubmittedRequest,
     };
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -446,11 +560,12 @@ export function receiveDownloadHistory(): IReceiveDownloadHistory {
     };
 }
 
-export function updateHistoryData(historyData: any, totalRecords: number) {
+export function updateHistoryData(historyData: any, totalRecords: number, tenantList: any) {
     return {
         type: SharedComponentsActionType.UPDATE_HISTORY_DATA,
         historyData,
         totalRecords,
+        tenantList,
     };
 }
 
@@ -464,6 +579,14 @@ export function updateTeachingStep(newStep: IFeaturesIntroductionStep) {
     return {
         type: SharedComponentsActionType.UPDATE_TEACHING_STEP,
         newStep,
+    };
+}
+
+export function updateVisibleColumns(tenantType: string, columns: string[]) {
+    return {
+        type: SharedComponentsActionType.UPDATE_VISIBLE_COLUMNS,
+        tenantType,
+        columns,
     };
 }
 
@@ -485,6 +608,42 @@ export function failedDownloadHistory(downloadErrorMessage: string): IFailedDown
     return {
         type: SharedComponentsActionType.FAILED_DOWNLOAD_HISTORY,
         downloadErrorMessage,
+    };
+}
+
+export function requestDownloadSummary(
+    userAlias: string,
+    columns: string[],
+    columnHeaders: string[],
+    filters: Record<string, string[]>,
+    columnFormats: Record<string, SummaryExportColumnFormat>
+): IRequestDownloadSummary {
+    return {
+        type: SharedComponentsActionType.REQUEST_DOWNLOAD_SUMMARY,
+        userAlias,
+        columns,
+        columnHeaders,
+        filters,
+        columnFormats,
+    };
+}
+
+export function receiveDownloadSummary(): IReceiveDownloadSummary {
+    return {
+        type: SharedComponentsActionType.RECEIVE_DOWNLOAD_SUMMARY,
+    };
+}
+
+export function failedDownloadSummary(downloadErrorMessage: string): IFailedDownloadSummary {
+    return {
+        type: SharedComponentsActionType.FAILED_DOWNLOAD_SUMMARY,
+        downloadErrorMessage,
+    };
+}
+
+export function clearDownloadSummaryError(): IClearDownloadSummaryError {
+    return {
+        type: SharedComponentsActionType.CLEAR_DOWNLOAD_SUMMARY_ERROR,
     };
 }
 
@@ -659,5 +818,159 @@ export function toggleAccessibilityPanel(isOpen: boolean): IToggleAccessibilityP
     return {
         type: SharedComponentsActionType.TOGGLE_ACCESSIBILITY_PANEL,
         isOpen,
+    };
+}
+
+export function initiateSearch(userAlias: string, userInput: string): IInitiateSearch {
+    return {
+        type: SharedComponentsActionType.INITIATE_SEARCH,
+        userAlias,
+        userInput,
+    };
+}
+
+export function saveSearchResults(searchResults: any): ISaveSearchResults {
+    return {
+        type: SharedComponentsActionType.SAVE_SEARCH_RESULTS,
+        searchResults,
+    };
+}
+
+export function toggleSearchResultsView(isOn: boolean): IToggleSearchResultsView {
+    return {
+        type: SharedComponentsActionType.TOGGLE_SEARCH_RESULTS_VIEW,
+        isOn,
+    };
+}
+
+export function toggleQuickTour(): IToggleQuickTour {
+    return {
+        type: SharedComponentsActionType.TOGGLE_QUICKTOUR,
+    };
+}
+
+export function setQuickTourData(quickTourData: IQuickTourListItem[]): ISetQuickTourData {
+    return {
+        type: SharedComponentsActionType.SET_QUICKTOUR_DATA,
+        quickTourData,
+    };
+}
+
+export function requestQuickTourInfo(): IRequestQuickTourInfo {
+    return {
+        type: SharedComponentsActionType.REQUEST_QUICKTOUR_INFO,
+    };
+}
+
+export function receiveQuickTourInfo(
+    unreadQuickTourList: IQuickTourListItem[],
+    readQuickTourList: IQuickTourListItem[],
+    newQuickTourList: Array<string>
+): IRecieveQuickTourInfo {
+    return {
+        type: SharedComponentsActionType.RECEIVE_QUICKTOUR_INFO,
+        unreadQuickTours: unreadQuickTourList,
+        readQuickTours: readQuickTourList,
+        updatedQuickTourList: newQuickTourList,
+    };
+}
+
+export function postQuickTourInfo(unReadQuickTours: Array<string>): IPostQuickTourInfo {
+    return {
+        type: SharedComponentsActionType.POST_QUICKTOUR_INFO,
+        unReadQuickTours,
+    };
+}
+
+export function clearUnreadQuickTours(): IClearUnreadQuickTours {
+    return {
+        type: SharedComponentsActionType.SET_UNREAD_QUICKTOURS,
+    };
+}
+
+export function postFeedback(customStorageParameters: ICustomStorageParameters, documentNumber: string): IPostFeedback {
+    return {
+        type: SharedComponentsActionType.POST_FEEDBACK,
+        customStorageParameters,
+        documentNumber,
+    };
+}
+
+export function requestInsights(pageType?: string, timePeriod?: number): IRequestInsights {
+    return {
+        type: SharedComponentsActionType.REQUEST_INSIGHTS,
+        pageType,
+        timePeriod,
+    };
+}
+
+export function receiveInsights(
+    summaryInsights?: ISummaryInsights,
+    historyInsights?: IHistoryInsights
+): IReceiveInsights {
+    return {
+        type: SharedComponentsActionType.RECEIVE_INSIGHTS,
+        summaryInsights,
+        historyInsights,
+    };
+}
+
+export function updateFeedbackInput(
+    id: string,
+    featureName: string,
+    inputType: string,
+    inputValue: string,
+    documentNumber?: string,
+    fiscalYear?: string
+): IUpdateFeedbackInput {
+    return {
+        type: SharedComponentsActionType.UPDATE_FEEDBACK_INPUT,
+        payload: {
+            id,
+            featureName,
+            inputType,
+            inputValue,
+            documentNumber,
+            fiscalYear,
+        },
+    };
+}
+
+export function deleteFeedbackInput(id: string, featureName: string): IDeleteFeedbackInput {
+    return {
+        type: SharedComponentsActionType.DELETE_FEEDBACK_INPUT,
+        payload: {
+            id,
+            featureName,
+        },
+    };
+}
+
+export function updatePropertyFilters(propertyFilters: Record<string, string[]>): IUpdatePropertyFilters {
+    return {
+        type: SharedComponentsActionType.UPDATE_PROPERTY_FILTERS,
+        propertyFilters,
+    };
+}
+
+export function requestSuggest(query: string): IRequestSuggest {
+    return {
+        type: SharedComponentsActionType.REQUEST_SUGGEST,
+        query,
+    };
+}
+
+export function receiveSuggest(query: string, suggestTerms: string[], suggestRequests: ISuggestRequestItem[]): IReceiveSuggest {
+    return {
+        type: SharedComponentsActionType.RECEIVE_SUGGEST,
+        query,
+        suggestTerms,
+        suggestRequests,
+    };
+}
+
+export function clearSuggest(): IClearSuggest {
+    return {
+        type: SharedComponentsActionType.CLEAR_SUGGEST,
     };
 }

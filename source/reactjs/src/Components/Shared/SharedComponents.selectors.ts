@@ -9,12 +9,17 @@ import {
     IProfile,
     IPullTenantSuccessfulCountDict,
     IPullTenantSummaryCountObject,
-    ITenantDelegationObj
+    IQuickTourListItem,
+    ITenantDelegationObj,
+    IUserDelegationEntry,
+    IFeedbackData,
 } from './SharedComponents.types';
-import { groupByTenant, groupByDate, groupBySubmitter, IGrouping } from '../../Helpers/groupPendingApprovals';
+import { groupByTenant, groupByDate, groupBySubmitter, groupByCategory, IGrouping } from '../../Helpers/groupPendingApprovals';
 import { GroupingBy } from './Components/GroupingBy';
 import { createSelector } from 'reselect';
 import { IDropdownOption } from '@fluentui/react';
+import { SETTINGS_COACHMARK_ID, TABLE_COLUMNS_DEFAULT, TABLE_COLUMNS_PULLTENANT, DEFAULT_VISIBLE_COLUMNS, parseColumnPreference } from './SharedConstants';
+import { ISuggestRequestItem } from './SharedComponents.action-types';
 
 export const getSelectedSummary = (state: IComponentsAppState) => {
     let selectedSummaryData;
@@ -42,7 +47,7 @@ export const getStateCommonTelemetryProperties = (state: any): any => {
         if (profile) {
             Object.assign(logData, {
                 UserAlias: profile.userPrincipalName,
-                LoggedInUserAlias: profile.userPrincipalName
+                LoggedInUserAlias: profile.userPrincipalName,
             });
         }
     }
@@ -53,7 +58,7 @@ export const getStateCommonTelemetryProperties = (state: any): any => {
             Xcv: displayDocumentNumber,
             DocumentNumber: documentNumber,
             DisplayDocumentNumber: displayDocumentNumber,
-            TenantId: tenantId
+            TenantId: tenantId,
         });
     }
     return logData;
@@ -111,6 +116,11 @@ export const getSelectedApprovalRecords = (state: IComponentsAppState): any => {
     );
 };
 
+export const getSelectedDisplayDocumentNumbers = (state: IComponentsAppState): string[] => {
+    const selectedRecords = getSelectedApprovalRecords(state);
+    return selectedRecords.map((record: any) => record.DisplayDocumentNumber).filter(Boolean);
+};
+
 export const getBulkActionConcurrentCall = (state: IComponentsAppState): number => {
     return (
         state.dynamic?.[sharedComponentsReducerName]?.bulkActionConcurrentCall ||
@@ -158,7 +168,7 @@ export const getIsSettingPanelOpen = (state: IComponentsAppState): boolean => {
     );
 };
 
-export const getGroupedBySummaryMemo = (summary: any, groupedBy: string) => {
+export const getGroupedBySummaryMemo = (summary: any, groupedBy: string, tenantInfo?: any) => {
     let groupedSummaryData = {};
     if (summary && groupedBy && groupedBy != '') {
         switch (groupedBy) {
@@ -170,6 +180,9 @@ export const getGroupedBySummaryMemo = (summary: any, groupedBy: string) => {
                 break;
             case GroupingBy.Date:
                 groupedSummaryData = groupByDate(summary);
+                break;
+            case GroupingBy.Category:
+                groupedSummaryData = groupByCategory(summary, tenantInfo);
                 break;
             // default group by tenant
             default:
@@ -222,7 +235,7 @@ const getAlias = (_: any, alias: string): string => alias;
 
 export const getImageURLForAlias = createSelector(getSubmitterImages, getAlias, (submitterImages, alias) => {
     if (submitterImages.length > 0 && alias) {
-        const matchingElement = submitterImages.find(el => el.alias === alias);
+        const matchingElement = submitterImages.find((el) => el.alias === alias);
         return matchingElement?.image || null;
     }
     return null;
@@ -230,7 +243,7 @@ export const getImageURLForAlias = createSelector(getSubmitterImages, getAlias, 
 
 export const isAliasInSubmitters = createSelector(getSubmitterImages, getAlias, (submitterImages, alias) => {
     if (submitterImages.length > 0 && alias) {
-        const matchingElement = submitterImages.find(el => el.alias === alias);
+        const matchingElement = submitterImages.find((el) => el.alias === alias);
         return !!matchingElement;
     }
     return null;
@@ -277,7 +290,7 @@ export const getBulkFilteredDropDownMenuItems = (summary: any, tenantInfo: any):
 
 export const getAllBulkTenantOptions = (tenantInfo: any): IDropdownOption[] => {
     let filterMenuItems: string[] = ['All'];
-    tenantInfo?.map(function(item: any) {
+    tenantInfo?.map(function (item: any) {
         if (validateTenantForBulkAction(item)) {
             if (!filterMenuItems.includes(item.appName)) {
                 if (validateTenantTypeIsProd(item)) filterMenuItems.push(item.appName);
@@ -323,15 +336,22 @@ const getDropdownOptions = (filterMenuItems: string[]): IDropdownOption[] => {
         filterMenuItems.splice(allIndex, 1);
     }
     filterMenuItems.sort();
-    const filterMenuProps = filterMenuItems.map(x => ({
+    const filterMenuProps = filterMenuItems.map((x) => ({
         ['key']: x,
-        ['text']: x
+        ['text']: x,
     }));
     return filterMenuProps;
 };
 
 export const getHasError = (state: IComponentsAppState): boolean => {
     return state.dynamic?.[sharedComponentsReducerName]?.hasError || sharedComponentsInitialState.hasError;
+};
+
+export const getSummaryErrorMessage = (state: IComponentsAppState): string | null => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.summaryErrorMessage ||
+        sharedComponentsInitialState.summaryErrorMessage
+    );
 };
 
 export const getHistoryGroupedBy = (state: IComponentsAppState): string => {
@@ -346,6 +366,10 @@ export const getSelectedPage = (state: IComponentsAppState): string => {
 
 export const getHistoryData = (state: IComponentsAppState): any => {
     return state.dynamic?.[sharedComponentsReducerName]?.historyData || sharedComponentsInitialState.historyData;
+};
+
+export const getTenantList = (state: IComponentsAppState): any => {
+    return state.dynamic?.[sharedComponentsReducerName]?.tenantList || sharedComponentsInitialState.tenantList;
 };
 
 export const getSortColumnField = (state: IComponentsAppState): string => {
@@ -372,10 +396,30 @@ export const getHistoryTimePeriod = (state: IComponentsAppState): number => {
     );
 };
 
-export const getUserDelegations = (state: IComponentsAppState): object[] => {
+export const getUserDelegations = (state: IComponentsAppState): IUserDelegationEntry[] => {
     return (
-        state.dynamic?.[sharedComponentsReducerName]?.userDelegations || sharedComponentsInitialState.userDelegations
+        (state.dynamic?.[sharedComponentsReducerName]?.userDelegations as IUserDelegationEntry[]) ||
+        (sharedComponentsInitialState.userDelegations as IUserDelegationEntry[])
     );
+};
+
+// Returns the user-delegation entry that matches the currently selected delegator
+// (identified by the persistent `userAlias`). Case-insensitive UPN-prefix match
+// because alias casing can drift between URL query params and the backend UPN.
+// Returns null when no delegator is selected ("Me" view) or when the selected
+// alias is not present in the delegations list.
+export const getSelectedDelegationDetails = (state: IComponentsAppState): IUserDelegationEntry | null => {
+    const userAlias = state.SharedComponentsPersistentReducer?.userAlias;
+    if (!userAlias) return null;
+    const normalized = userAlias.toLowerCase();
+    const delegations = getUserDelegations(state);
+    for (const entry of delegations) {
+        const upn = entry?.delegator?.UserPrincipalName;
+        if (!upn) continue;
+        const alias = upn.split('@')[0]?.toLowerCase();
+        if (alias === normalized) return entry;
+    }
+    return null;
 };
 
 export const getIsLoading = (state: IComponentsAppState): boolean => {
@@ -422,12 +466,37 @@ export const getUserPreferences = (state: IComponentsAppState): any => {
     );
 };
 
-export const getCardViewSelected = (state: IComponentsAppState): boolean => {
-    if (state.dynamic) {
-        return state.dynamic?.[sharedComponentsReducerName]?.isCardViewSelected;
-    } else {
-        return sharedComponentsInitialState.isCardViewSelected;
+export const getDigestPreference = (state: IComponentsAppState): any => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.digestPreference ?? sharedComponentsInitialState.digestPreference
+    );
+};
+
+export const getTeamsNotificationsEnabled = (state: IComponentsAppState): boolean | null => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.teamsNotificationsEnabled ??
+        sharedComponentsInitialState.teamsNotificationsEnabled
+    );
+};
+
+export const getVisibleColumns = (state: IComponentsAppState, tenantType: string): string[] => {
+    const prefs = getUserPreferences(state);
+    const prefKey = tenantType === 'pullTenant' ? TABLE_COLUMNS_PULLTENANT : TABLE_COLUMNS_DEFAULT;
+    const defaultKey = tenantType === 'pullTenant' ? 'PullTenant' : 'Default';
+    if (prefs && Array.isArray(prefs)) {
+        const columnPref = prefs.find((a: any) => a.UserPreferenceText === prefKey);
+        if (columnPref?.UserPreferenceStatus) {
+            const parsed = parseColumnPreference(columnPref.UserPreferenceStatus);
+            if (parsed) {
+                return parsed;
+            }
+        }
     }
+    return DEFAULT_VISIBLE_COLUMNS[defaultKey];
+};
+
+export const getCardViewSelected = (state: IComponentsAppState): boolean => {
+    return state.SharedComponentsPersistentReducer?.isCardViewSelected ?? false;
 };
 
 export const getIsProcessingBulkApproval = (state: IComponentsAppState): boolean => {
@@ -709,7 +778,7 @@ export const getPullTenantSummaryMemoized = createSelector(
 );
 
 export const groupedSummaryDataSelector = createSelector(
-    [getSelectedSummary, getSummaryGroupedBy],
+    [getSelectedSummary, getSummaryGroupedBy, getTenantInfo],
     getGroupedBySummaryMemo
 );
 
@@ -726,7 +795,7 @@ export const getDerivedValueFromSummaryCount = createSelector(
     getSuccessfulPullTenantCountDict,
     getTenantId,
     (summaryCountObj, successfulCountObj, tenantId) => {
-        const summaryObj = summaryCountObj?.find(item => item.TenantId === tenantId);
+        const summaryObj = summaryCountObj?.find((item) => item.TenantId === tenantId);
         const summaryValue = summaryObj?.Count ?? 0;
         const removedCount = successfulCountObj?.[tenantId] ?? 0;
         const derivedCount = summaryValue - removedCount;
@@ -766,5 +835,346 @@ export const getIsAccessibilityPanelOpen = (state: IComponentsAppState): boolean
     return (
         state.dynamic?.[sharedComponentsReducerName]?.isAccessibilityPanelOpen ||
         sharedComponentsInitialState.isAccessibilityPanelOpen
-    )
+    );
+};
+
+export const getSearchResults = (state: IComponentsAppState): any => {
+    return state.dynamic?.[sharedComponentsReducerName]?.searchResults || sharedComponentsInitialState.searchResults;
+};
+
+export const getIsSearchResultsViewOpen = (state: IComponentsAppState): boolean => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.isSearchResultsViewOpen ||
+        sharedComponentsInitialState.isSearchResultsViewOpen
+    );
+};
+
+export const getIsLoadingSearchResults = (state: IComponentsAppState): boolean => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.isLoadingSearchResults ||
+        sharedComponentsInitialState.isLoadingSearchResults
+    );
+};
+
+export const getIsQuickTourOpen = (state: IComponentsAppState): boolean => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.isQuickTourOpen || sharedComponentsInitialState.isQuickTourOpen
+    );
+};
+
+export const getQuickTourData = (state: IComponentsAppState): IQuickTourListItem[] => {
+    return state.dynamic?.[sharedComponentsReducerName]?.quickTourData || sharedComponentsInitialState.quickTourData;
+};
+
+export const getItemsUnread = (state: IComponentsAppState): IQuickTourListItem[] => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.unreadQuickTours || sharedComponentsInitialState.unreadQuickTours
+    );
+};
+
+export const getHasUnreadLabsCoachmark = (state: IComponentsAppState): boolean => {
+    const unread =
+        state.dynamic?.[sharedComponentsReducerName]?.unreadQuickTours ||
+        sharedComponentsInitialState.unreadQuickTours;
+    return (unread || []).some((t: IQuickTourListItem) => String(t.id) === SETTINGS_COACHMARK_ID);
+};
+
+export const getItemsRead = (state: IComponentsAppState): IQuickTourListItem[] => {
+    return state.dynamic?.[sharedComponentsReducerName]?.readQuickTours || sharedComponentsInitialState.readQuickTours;
+};
+
+export const getUpdatedQuickToursList = (state: IComponentsAppState): Array<string> => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.updatedQuickTourList ||
+        sharedComponentsInitialState.updatedQuickTourList
+    );
+};
+
+export const getMyFlightingData = (state: IComponentsAppState): any => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.myFlightingData || sharedComponentsInitialState.myFlightingData
+    );
+};
+
+export const getAllFlightingData = (state: IComponentsAppState): any => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.allFlightingData || sharedComponentsInitialState.allFlightingData
+    );
+};
+
+const getFeatureName = (_: any, featureName: string): string => featureName;
+
+// Single source of truth for feature enablement, consumed by both the useFlighting
+// hook and the sagas: enabled when the tenant status is "Enable All" (everyone), or
+// "Flighting" and the user is in their personal list.
+export const getIsFeatureEnabledForUser = createSelector(
+    getAllFlightingData,
+    getMyFlightingData,
+    getFeatureName,
+    (allFlightingData, myFlightingData, featureName) => {
+        if (!Array.isArray(allFlightingData)) {
+            return false;
+        }
+        const feature = allFlightingData.find((element: any) => element?.['featureName'] === featureName);
+        const status = feature?.flightingStatus || 'Enable All';
+        if (status === 'Enable All') {
+            return true;
+        }
+        if (status === 'Flighting') {
+            return (
+                Array.isArray(myFlightingData) &&
+                myFlightingData.some((element: any) => element?.['featureName'] === featureName)
+            );
+        }
+        return false;
+    }
+);
+
+// Whether the given feature carries a one-time TeachingCoach coachmark, per the
+// flighting data. TeachingCoach is a per-feature boolean projected into
+// allFlightingData (FlightingDataProvider) alongside FlightingStatus, so the
+// flighting feed is the authoritative owner of the "does this feature want a
+// coachmark" decision. This deliberately distinguishes coachmark features from
+// slide-based quick-tour features (which have QuickTourSlidesJson but
+// TeachingCoach=false). The one thing the flighting feed lacks — the per-user
+// "already seen" state — comes from the quick-tour feed (getQuickTourData).
+export const getIsTeachingCoachEnabledForFeature = createSelector(
+    getAllFlightingData,
+    getFeatureName,
+    (allFlightingData, featureName): boolean => {
+        if (!Array.isArray(allFlightingData)) {
+            return false;
+        }
+        const feature = allFlightingData.find((element: any) => element?.['featureName'] === featureName);
+        // Client payload is camelCase; tolerate PascalCase defensively.
+        return feature?.teachingCoach === true || feature?.TeachingCoach === true;
+    }
+);
+
+// Feedback selectors
+export const getFeedbackByFeature = (state: IComponentsAppState, featureName: string): IFeedbackData | null => {
+    return state.dynamic?.[sharedComponentsReducerName]?.feedback?.feedbackByFeature?.[featureName] || null;
+};
+export const getAllFeedback = (state: IComponentsAppState): { [featureName: string]: IFeedbackData } => {
+    return state.dynamic?.[sharedComponentsReducerName]?.feedback?.feedbackByFeature || {};
+};
+
+export const getFeedbackByDocumentNumber = (
+    state: IComponentsAppState,
+    documentNumber: string
+): IFeedbackData | undefined => {
+    const allFeedback = getAllFeedback(state);
+    return Object.values(allFeedback).find((feedback: IFeedbackData) => feedback.DocumentNumber === documentNumber);
+};
+
+export const getFeedbackInput = (state: IComponentsAppState, featureName: string, inputType: string): string => {
+    const feedback = getFeedbackByFeature(state, featureName);
+    const input = feedback?.Inputs.find((i) => i.InputType === inputType);
+    return input?.InputValue || '';
+};
+
+export const getFeedbackState = (state: IComponentsAppState) => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.feedback || {
+            feedbackByFeature: {},
+            isLoading: false,
+            hasError: false,
+            errorMessage: null,
+        }
+    );
+};
+export const getIsSummaryCollapsed = (state: IComponentsAppState): boolean => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.isSummaryCollapsed ??
+        sharedComponentsInitialState.isSummaryCollapsed
+    );
+};
+
+export const getPropertyFilters = (state: IComponentsAppState): Record<string, string[]> => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.propertyFilters ?? sharedComponentsInitialState.propertyFilters
+    );
+};
+
+export const getIsSubmitterView = (state: IComponentsAppState): boolean => {
+    return state.dynamic?.[sharedComponentsReducerName]?.isSubmitterView ?? sharedComponentsInitialState.isSubmitterView;
+};
+
+export const getIsDownloadingSummary = (state: IComponentsAppState): boolean => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.isDownloadingSummary ??
+        sharedComponentsInitialState.isDownloadingSummary
+    );
+};
+
+export const getSummaryDownloadHasError = (state: IComponentsAppState): boolean => {
+    return (
+        state.dynamic?.[sharedComponentsReducerName]?.summaryDownloadHasError ??
+        sharedComponentsInitialState.summaryDownloadHasError
+    );
+};
+
+// Shared utility function for applying property filters to data
+export function applyPropertyFilters(
+    data: any[],
+    propertyFilters: Record<string, string[]>,
+    tableColumns?: any[]
+): any[] {
+    // If no filters are applied, return original data
+    if (!propertyFilters || Object.keys(propertyFilters).length === 0) {
+        return data;
+    }
+
+    // Filter the data based on property filters
+    return data.filter((item: any) => {
+        // Check each property filter with short-circuit evaluation
+        for (const [key, values] of Object.entries(propertyFilters)) {
+            if (values && values.length > 0) {
+                // Get the value from the item (supports nested properties with dot notation)
+                let itemValue = key.includes('.')
+                    ? key.split('.').reduce((obj: any, prop: string) => obj?.[prop], item)
+                    : item[key];
+
+                // Handle boolean values
+                if (typeof itemValue === 'boolean') {
+                    itemValue = itemValue ? 'Yes' : 'No';
+                }
+
+                // Handle default values if table columns are provided
+                if (tableColumns) {
+                    const columnInfo = tableColumns.find((col: any) => col.field === key);
+                    if (columnInfo?.defaultValue && !itemValue) {
+                        itemValue = columnInfo.defaultValue;
+                    }
+                }
+
+                // Check if the item's value is in the filter values
+                if (!values.includes(itemValue)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    });
+}
+
+// Selector for property filtered data that works with both filterTable and DashboardFilterUtils
+export const getPropertyFilteredData = createSelector(
+    [
+        (state: IComponentsAppState) => state,
+        (_: IComponentsAppState, data: any[]) => data,
+        (_: IComponentsAppState, __: any[], tableColumns?: any[]) => tableColumns,
+    ],
+    (state, data, tableColumns) => {
+        const propertyFilters = getPropertyFilters(state);
+        return applyPropertyFilters(data, propertyFilters, tableColumns);
+    }
+);
+
+export const getSuggestTerms = (state: IComponentsAppState): string[] => {
+    return state.dynamic?.[sharedComponentsReducerName]?.suggestTerms || sharedComponentsInitialState.suggestTerms;
+};
+
+export const getSuggestRequests = (state: IComponentsAppState): any[] => {
+    return state.dynamic?.[sharedComponentsReducerName]?.suggestRequests || sharedComponentsInitialState.suggestRequests;
+};
+
+export const getIsLoadingSuggest = (state: IComponentsAppState): boolean => {
+    return state.dynamic?.[sharedComponentsReducerName]?.isLoadingSuggest || sharedComponentsInitialState.isLoadingSuggest;
+};
+
+type ISuggestCache = { query: string; terms: string[]; requests: ISuggestRequestItem[] };
+
+export const getSuggestCache = (state: IComponentsAppState): ISuggestCache | null => {
+    return state.dynamic?.[sharedComponentsReducerName]?.suggestCache || null;
+};
+
+// Minimum query length before local summary matching kicks in (mirrors the API suggest gate).
+const SUGGEST_MIN_QUERY_LENGTH = 3;
+
+const mapSummaryToSuggestRequest = (item: any): ISuggestRequestItem => ({
+    tenantId: String(item?.TenantId ?? ''),
+    documentNumber: String(item?.ApprovalIdentifier?.DocumentNumber ?? ''),
+    displayDocumentNumber: String(item?.ApprovalIdentifier?.DisplayDocumentNumber ?? ''),
+    title: item?.Title ?? '',
+    appName: item?.AppName ?? '',
+    unitValueText: item?.UnitValue != null ? String(item.UnitValue) : '',
+    submitterName: item?.Submitter?.Name ?? '',
+    businessProcessName: item?.BusinessProcessName ?? null,
+});
+
+// Build request suggestions from the locally loaded summary so a slow or failed
+// search index still surfaces requests the user already has in view.
+const getLocalSuggestRequests = (summary: any[], lowerQuery: string): ISuggestRequestItem[] => {
+    if (!Array.isArray(summary) || lowerQuery.length < SUGGEST_MIN_QUERY_LENGTH) {
+        return [];
+    }
+    const matches = (value: unknown): boolean => String(value ?? '').toLowerCase().includes(lowerQuery);
+    return summary
+        .filter(
+            (item) =>
+                matches(item?.ApprovalIdentifier?.DocumentNumber) ||
+                matches(item?.ApprovalIdentifier?.DisplayDocumentNumber) ||
+                matches(item?.Title) ||
+                matches(item?.Submitter?.Name) ||
+                matches(item?.AppName)
+        )
+        .map(mapSummaryToSuggestRequest);
+};
+
+// Union API/cache requests with local summary matches. API results win on
+// duplicate documentNumber (they carry ranking/metadata); local-only matches
+// are appended after them.
+const mergeSuggestRequests = (
+    apiRequests: ISuggestRequestItem[],
+    localRequests: ISuggestRequestItem[]
+): ISuggestRequestItem[] => {
+    if (localRequests.length === 0) {
+        return apiRequests;
+    }
+    const seen = new Set(apiRequests.map((r) => r.documentNumber));
+    const localOnly = localRequests.filter((r) => r.documentNumber && !seen.has(r.documentNumber));
+    return localOnly.length === 0 ? apiRequests : [...apiRequests, ...localOnly];
+};
+
+export const getFilteredSuggest = (
+    state: IComponentsAppState,
+    query: string
+): { terms: string[]; requests: ISuggestRequestItem[] } => {
+    const cache = getSuggestCache(state);
+    const lowerQuery = query.toLowerCase();
+    // Hold local matches until the API settles so the list doesn't flash local
+    // results and then jump when the response lands. On failure/empty the flag
+    // is cleared too, so local still surfaces as the resilience fallback.
+    const localRequests = getIsLoadingSuggest(state)
+        ? []
+        : getLocalSuggestRequests(getSummary(state), lowerQuery);
+
+    if (cache && query.length >= 3 && lowerQuery.startsWith(cache.query.toLowerCase())) {
+        // Exact match — fresh results from API, show everything unfiltered
+        if (lowerQuery === cache.query.toLowerCase()) {
+            return { terms: cache.terms, requests: mergeSuggestRequests(cache.requests, localRequests) };
+        }
+
+        // Query extends cached query — filter client-side for instant results.
+        const filteredRequests = cache.requests.filter(
+            (r) =>
+                r.documentNumber?.toLowerCase().includes(lowerQuery) ||
+                r.displayDocumentNumber?.toLowerCase().includes(lowerQuery) ||
+                r.title?.toLowerCase().includes(lowerQuery) ||
+                r.submitterName?.toLowerCase().includes(lowerQuery) ||
+                r.appName?.toLowerCase().includes(lowerQuery)
+        );
+        return {
+            terms: cache.terms.filter((t) => t.toLowerCase().includes(lowerQuery)),
+            requests: mergeSuggestRequests(filteredRequests, localRequests),
+        };
+    }
+
+    // No cache hit — surface local summary matches while the API responds (or if it fails)
+    return {
+        terms: getSuggestTerms(state),
+        requests: mergeSuggestRequests(getSuggestRequests(state), localRequests),
+    };
 };

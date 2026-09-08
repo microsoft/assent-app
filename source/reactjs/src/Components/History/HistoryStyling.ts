@@ -14,6 +14,12 @@ export const HistoryContainer: any = styled.div`
     }
 `;
 
+export const HistoryInsightsContainer = styled.div<any>`
+    padding: 0px 0px 10px 0px;
+    width: ${(props: any) => props.width}px;
+    height: ${(props: any) => props.height}px;
+`;
+
 export const HistoryTitle = styled.h1`
     padding-bottom: 4px;
 `;
@@ -21,26 +27,26 @@ export const HistoryTitle = styled.h1`
 export const HistoryNavStackStyles: IStackStyles = {
     root: {
         marginBottom: '1%',
-        marginTop: '1%'
-    }
+        marginTop: '1%',
+    },
 };
 
 export const HistoryNavStackTokens: IStackTokens = {
-    childrenGap: 15
+    childrenGap: 15,
 };
 
 export const HistoryTableContainer = styled.div<any>`
     position: relative;
     padding-right: 1%;
-    padding-bottom: 5%;
+    padding-bottom: 2%;
     overflow-y: hidden;
     background-color: white;
-    height: ${props =>
+    height: ${(props) =>
         props.windowWidth < 1024
             ? props.windowWidth >= 640 && props.isPanelOpen
-                ? props.windowHeight * 0.65
-                : props.windowHeight - 10
-            : props.windowHeight - 250}px;
+                ? props.windowHeight * 0.65 - props.insightsHeight
+                : props.windowHeight - 10 - props.insightsHeight
+            : props.windowHeight - 250 - props.insightsHeight}px;
 
     @media only screen and (max-width: 320px) {
         overflow-y: initial;
@@ -54,5 +60,5 @@ export const HistoryColumnTenantImage = styled.div`
 `;
 
 export const HistoryIconStyling = {
-    height: '100%'
+    height: '100%',
 };

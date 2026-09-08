@@ -1,3 +1,4 @@
+import { IApprovalIdentifier } from '../SharedComponents.types';
 import {
     DetailsActionType,
     IRequestUserImageAction,
@@ -47,6 +48,8 @@ import {
     IUploadFileAction,
     IFailedUploadFilesAction,
     ISuccessUploadFilesAction,
+    IActionEnabled,
+    IOpenSecondaryPreviewAction,
 } from './Details.action-types';
 import { IFileUpload } from './FileUpload/FileUpload';
 
@@ -310,18 +313,16 @@ export function closeFileUpload(): ICloseFileUploadAction {
 
 export function uploadFiles(
     tenantId: string,
-    documentNumber: string,
-    displayDocumentNumber: string,
+    approvalIdentifier: IApprovalIdentifier,
     userAlias: string,
     requiresTemplate: boolean,
     isPullModelEnabled: boolean,
-    files: IFileUpload[]
+    files: IFileUpload[],
 ): IUploadFileAction {
     return {
         type: DetailsActionType.UPLOAD_FILE,
         tenantId,
-        documentNumber,
-        displayDocumentNumber,
+        approvalIdentifier,
         userAlias,
         requiresTemplate,
         isPullModelEnabled,
@@ -369,7 +370,15 @@ export function postAction(
         nextApprover,
         peoplePickerSelections,
         additionalActionDetails,
-        digitalSignature
+        digitalSignature,
+        attestPoeCheck,
+        attestQualificationReviewCheck,
+        exemptPoeOptionSelected,
+        contractId,
+        hasExpirationDateCheck,
+        contractExpirationDate,
+        ndaContractId,
+        rememberFor
     } = submission as any;
     return {
         type: DetailsActionType.POST_ACTION,
@@ -392,7 +401,15 @@ export function postAction(
         digitalSignature,
         additionalActionDetails,
         isBulkAction,
-        isPullModelEnabled
+        isPullModelEnabled,
+        attestPoeCheck,
+        attestQualificationReviewCheck,
+        exemptPoeOptionSelected,
+        contractId,
+        hasExpirationDateCheck,
+        contractExpirationDate,
+        ndaContractId,
+        rememberFor
     };
 }
 
@@ -496,6 +513,26 @@ export function requestFullyRendered(isRequestFullyRendered: boolean): IRequestF
     };
 }
 
+export function actionEnabled(
+    isUploadAttachment: boolean,
+    isExemptAttachment: boolean,
+    isSupplierMeetsReqSelected?: boolean,
+    isSupplierDoesNotMeetReqSelected?: boolean,
+    isSupplierDoesNotMeetRejectSelected?: boolean,
+    selectedFhrOptionId?: string
+): IActionEnabled {
+    // SLM fields left undefined so the reducer preserves prior state; see POE_ACTION_ENABLED.
+    return {
+        type: DetailsActionType.POE_ACTION_ENABLED,
+        isUploadAttachment,
+        isExemptAttachment,
+        isSupplierMeetsReqSelected,
+        isSupplierDoesNotMeetReqSelected,
+        isSupplierDoesNotMeetRejectSelected,
+        selectedFhrOptionId,
+    };
+}
+
 export function receiveAreDetailsEditable(areDetailsEditable: boolean): IReceiveAreDetailsEditable {
     return {
         type: DetailsActionType.RECEIVE_ARE_DETAILS_EDITABLE,
@@ -515,5 +552,11 @@ export function failedEditDetails(errorMessage: string): IFailedEditDetailsActio
     return {
         type: DetailsActionType.FAILED_EDIT_DETAILS,
         errorMessage
+    };
+}
+
+export function openSecondaryPreview(): IOpenSecondaryPreviewAction {
+    return {
+        type: DetailsActionType.OPEN_SECONDARY_PREVIEW,
     };
 }

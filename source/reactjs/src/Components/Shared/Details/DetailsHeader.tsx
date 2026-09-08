@@ -8,6 +8,7 @@ interface IDetailsHeaderProps {
     headerJSON: any;
     onOpenURLActionExecuted: any;
     onSubmitActionExecuted: any;
+    onToggleVisibilityActionExecuted: any;
     userAlias: string;
     shouldDetailReRender: boolean;
     summaryDataMapping: string | null;
@@ -19,6 +20,7 @@ export function DetailsWrapper(props: IDetailsHeaderProps): React.ReactElement {
         headerJSON,
         onOpenURLActionExecuted,
         onSubmitActionExecuted,
+        onToggleVisibilityActionExecuted,
         userAlias,
         shouldDetailReRender,
         isPullModelEnabled,
@@ -33,6 +35,7 @@ export function DetailsWrapper(props: IDetailsHeaderProps): React.ReactElement {
             dataPayload={headerDataJSON}
             onOpenURLActionExecuted={onOpenURLActionExecuted}
             onSubmitActionExecuted={onSubmitActionExecuted}
+            onToggleVisibilityActionExecuted={onToggleVisibilityActionExecuted}
             userAlias={userAlias}
             shouldDetailReRender={shouldDetailReRender}
         />

@@ -1,12 +1,20 @@
 import { IGrouping } from '../../Helpers/groupPendingApprovals';
+import { SummaryExportColumnFormat } from '../Summary/SummaryExport.constants';
 import {
     IActionResponseObject,
     IDelegationObj,
     IFeaturesIntroductionStep,
     IGraphPhoto,
+    IHistoryInsights,
     IProfile,
     IPullTenantSummaryCountObject,
-    ITenantDelegationObj
+    IQuickTourListItem,
+    ISummaryInsights,
+    ITenantDelegationObj,
+    IUserDelegationEntry,
+    ICustomStorageParameters,
+    IFeedbackInputUpdate,
+    IFeedbackInputDelete,
 } from './SharedComponents.types';
 
 export enum SharedComponentsActionType {
@@ -48,12 +56,17 @@ export enum SharedComponentsActionType {
     UPDATE_USER_ALIAS = 'UPDATE_USER_ALIAS',
     TOGGLE_TEACHING_BUBBLE_VISIBILITY = 'TOGGLE_TEACHING_BUBBLE_VISIBILITY',
     UPDATE_TEACHING_STEP = 'UPDATE_TEACHING_STEP',
+    UPDATE_VISIBLE_COLUMNS = 'UPDATE_VISIBLE_COLUMNS',
     UPDATE_HISTORY_DATA = 'UPDATE_HISTORY_DATA',
     TOGGLE_DETAIL_SCREEN = 'TOGGLE_DETAIL_SCREEN',
     REQUEST_FILTERED_USERS = 'REQUEST_FILTERED_USERS',
     RECEIVE_FILTERED_USERS = 'RECEIVE_FILTERED_USERS',
     SET_SELECTED_SUMMARY_TILE_REF = 'SET_SELECTED_SUMMARY_TILE_REF',
     FAILED_DOWNLOAD_HISTORY = 'FAILED_DOWNLOAD_HISTORY',
+    REQUEST_DOWNLOAD_SUMMARY = 'REQUEST_DOWNLOAD_SUMMARY',
+    RECEIVE_DOWNLOAD_SUMMARY = 'RECEIVE_DOWNLOAD_SUMMARY',
+    FAILED_DOWNLOAD_SUMMARY = 'FAILED_DOWNLOAD_SUMMARY',
+    CLEAR_DOWNLOAD_SUMMARY_ERROR = 'CLEAR_DOWNLOAD_SUMMARY_ERROR',
     TOGGLE_SETTINGS_PANEL = 'TOGGLE_SETTINGS_PANEL',
 
     SAVE_USER_PREFERENCES_REQUEST = 'SAVE_USER_PREFERENCES_REQUEST',
@@ -63,6 +76,14 @@ export enum SharedComponentsActionType {
     REQUEST_USER_PREFERENCES = 'REQUEST_USER_PREFERENCES',
     RECEIVE_USER_PREFERENCES = 'RECEIVE_USER_PREFERENCES',
     FAILED_USER_PREFERENCES = 'FAILED_USER_PREFERENCES',
+    REQUEST_FLIGHTING_DATA = 'REQUEST_FLIGHTING_DATA',
+    RECEIVE_FLIGHTING_DATA = 'RECEIVE_FLIGHTING_DATA',
+    SUBSCRIBE_FLIGHTING_FEATURES = 'SUBSCRIBE_FLIGHTING_FEATURES',
+    UNSUBSCRIBE_FLIGHTING_FEATURES = 'UNSUBSCRIBE_FLIGHTING_FEATURES',
+    SUBSCRIBE_FLIGHTING_FEATURES_SUCCESS = 'SUBSCRIBE_FLIGHTING_FEATURES_SUCCESS',
+    SUBSCRIBE_FLIGHTING_FEATURES_FAILED = 'SUBSCRIBE_FLIGHTING_FEATURES_FAILED',
+    SUBMIT_FLIGHTING_FEATURE_FEEDBACK = 'SUBMIT_FLIGHTING_FEATURE_FEEDBACK',
+    FLIGHTING_FEATURE_FEEDBACK_FAILED = 'FLIGHTING_FEATURE_FEEDBACK_FAILED',
 
     CLEAR_USER_PREFERENCES_API_MESSAGES = 'CLEAR_USER_PREFERENCES_API_MESSAGES',
     SAVE_USER_APPROVAL_REQUEST = 'SAVE_USER_APPROVAL_REQUEST',
@@ -90,6 +111,24 @@ export enum SharedComponentsActionType {
     UPDATE_SUCCESSFUL_PULLTENANT_REQUESTS = 'UPDATE_SUCCESSFUL_PULLTENANT_REQUESTS',
     TOGGLE_PROFILE_PANEL = 'TOGGLE_PROFILE_PANEL',
     TOGGLE_ACCESSIBILITY_PANEL = 'TOGGLE_ACCESSIBILITY_PANEL',
+    INITIATE_SEARCH = 'INITIATE_SEARCH',
+    SAVE_SEARCH_RESULTS = 'SAVE_SEARCH_RESULTS',
+    TOGGLE_SEARCH_RESULTS_VIEW = 'TOGGLE_SEARCH_RESULTS_VIEW',
+    TOGGLE_QUICKTOUR = 'TOGGLE_QUICKTOUR',
+    SET_QUICKTOUR_DATA = 'SET_QUICKTOUR_DATA',
+    REQUEST_QUICKTOUR_INFO = 'REQUEST_QUICKTOUR_INFO',
+    RECEIVE_QUICKTOUR_INFO = 'RECEIVE_QUICKTOUR_INFO',
+    POST_QUICKTOUR_INFO = 'POST_QUICKTOUR_INFO',
+    SET_UNREAD_QUICKTOURS = 'SET_UNREAD_QUICKTOURS',
+    REQUEST_INSIGHTS = 'REQUEST_INSIGHTS',
+    RECEIVE_INSIGHTS = 'RECEIVE_INSIGHTS',
+    POST_FEEDBACK = 'POST_FEEDBACK',
+    UPDATE_FEEDBACK_INPUT = 'UPDATE_FEEDBACK_INPUT',
+    DELETE_FEEDBACK_INPUT = 'DELETE_FEEDBACK_INPUT',
+    UPDATE_PROPERTY_FILTERS = 'UPDATE_PROPERTY_FILTERS',
+    REQUEST_SUGGEST = 'REQUEST_SUGGEST',
+    RECEIVE_SUGGEST = 'RECEIVE_SUGGEST',
+    CLEAR_SUGGEST = 'CLEAR_SUGGEST',
 }
 
 export type SharedComponentsAction =
@@ -138,6 +177,10 @@ export type SharedComponentsAction =
     | IReceiveFilteredUsersAction
     | ISetSelectedSummaryTileRef
     | IFailedDownloadHistory
+    | IRequestDownloadSummary
+    | IReceiveDownloadSummary
+    | IFailedDownloadSummary
+    | IClearDownloadSummaryError
     | IToggleSettingsPanel
     | ISaveUserPreferencesRequest
     | ISelectedApprovalRequest
@@ -146,6 +189,14 @@ export type SharedComponentsAction =
     | ISaveUserPreferencesFailed
     | IRequestUserPreferences
     | IReceiveUserPreferences
+    | IRequestFlightingData
+    | IReceiveFlightingData
+    | ISubscribeFlightingFeatures
+    | IUnsubscribeFlightingFeatures
+    | ISubscribeFlightingFeaturesSuccess
+    | ISubscribeFlightingFeaturesFailed
+    | ISubmitFlightingFeatureFeedback
+    | IFlightingFeatureFeedbackFailed
     | IFailedUserPreferences
     | IClearUserPreferencesAPIMessages
     | IUpdatePeoplePickerSelection
@@ -170,7 +221,27 @@ export type SharedComponentsAction =
     | IUpdateSelectedTenantDelegation
     | IUpdateSuccessfulPullTenantRequests
     | IToggleProfilePanel
-    | IToggleAccessibilityPanel;
+    | IToggleAccessibilityPanel
+    | IInitiateSearch
+    | ISaveSearchResults
+    | IToggleSearchResultsView
+    | IToggleAccessibilityPanel
+    | IToggleQuickTour
+    | ISetQuickTourData
+    | IRequestQuickTourInfo
+    | IRecieveQuickTourInfo
+    | IPostQuickTourInfo
+    | IClearUnreadQuickTours
+    | IRequestInsights
+    | IReceiveInsights
+    | IPostFeedback
+    | IUpdateFeedbackInput
+    | IDeleteFeedbackInput
+    | IUpdatePropertyFilters
+    | IUpdateVisibleColumns
+    | IRequestSuggest
+    | IReceiveSuggest
+    | IClearSuggest;
 
 export interface IClearUserPreferencesAPIMessages {
     type: SharedComponentsActionType.CLEAR_USER_PREFERENCES_API_MESSAGES;
@@ -189,6 +260,7 @@ export interface IUpdateBulkApprovalRequest {
 export interface ISaveUserPreferencesRequest {
     type: SharedComponentsActionType.SAVE_USER_PREFERENCES_REQUEST;
     data: any;
+    preserveSessionState?: boolean;
 }
 export interface ISaveUserPreferencesResponse {
     type: SharedComponentsActionType.SAVE_USER_PREFERENCES_RESPONSE;
@@ -201,13 +273,57 @@ export interface ISaveUserPreferencesFailed {
 
 export interface IRequestUserPreferences {
     type: SharedComponentsActionType.REQUEST_USER_PREFERENCES;
+    preserveSessionState?: boolean;
 }
 export interface IReceiveUserPreferences {
     type: SharedComponentsActionType.RECEIVE_USER_PREFERENCES;
     data: any;
+    preserveSessionState?: boolean;
+    digestPreference?: any;
+    teamsNotificationsEnabled?: boolean | null;
 }
 export interface IFailedUserPreferences {
     type: SharedComponentsActionType.FAILED_USER_PREFERENCES;
+    message: string;
+}
+
+export interface IRequestFlightingData {
+    type: SharedComponentsActionType.REQUEST_FLIGHTING_DATA;
+}
+export interface IReceiveFlightingData {
+    type: SharedComponentsActionType.RECEIVE_FLIGHTING_DATA;
+    myFlightingData: any;
+    allFlightingData: any;
+}
+
+export interface ISubscribeFlightingFeatures {
+    type: SharedComponentsActionType.SUBSCRIBE_FLIGHTING_FEATURES;
+    featureNames: string[];
+}
+
+export interface IUnsubscribeFlightingFeatures {
+    type: SharedComponentsActionType.UNSUBSCRIBE_FLIGHTING_FEATURES;
+    featureNames: string[];
+}
+
+export interface ISubscribeFlightingFeaturesSuccess {
+    type: SharedComponentsActionType.SUBSCRIBE_FLIGHTING_FEATURES_SUCCESS;
+    message: string;
+}
+
+export interface ISubscribeFlightingFeaturesFailed {
+    type: SharedComponentsActionType.SUBSCRIBE_FLIGHTING_FEATURES_FAILED;
+    message: string;
+}
+
+export interface ISubmitFlightingFeatureFeedback {
+    type: SharedComponentsActionType.SUBMIT_FLIGHTING_FEATURE_FEEDBACK;
+    featureName: string;
+    vote: string;
+}
+
+export interface IFlightingFeatureFeedbackFailed {
+    type: SharedComponentsActionType.FLIGHTING_FEATURE_FEEDBACK_FAILED;
     message: string;
 }
 
@@ -234,7 +350,7 @@ export interface IRequestDelegationsAction {
 
 export interface IReceiveDelegationsAction {
     type: SharedComponentsActionType.RECEIVE_MY_DELEGATIONS;
-    userDelegations: Record<string, any>[];
+    userDelegations: IUserDelegationEntry[];
 }
 
 export interface IReceiveTenantDelegations {
@@ -251,6 +367,8 @@ export interface IUpdateUserAlias {
     type: SharedComponentsActionType.UPDATE_USER_ALIAS;
     userAlias: string;
     userName: string;
+    onBehalfUserUpn: string;
+    onBehalfUserId: string;
 }
 
 export interface IFailedDelegationsAction {
@@ -261,6 +379,7 @@ export interface IFailedDelegationsAction {
 export interface IRequestSummaryAction {
     type: SharedComponentsActionType.REQUEST_MY_SUMMARY;
     userAlias: string;
+    isSubmittedRequest?: boolean;
 }
 
 export interface IReceiveSummaryAction {
@@ -413,6 +532,7 @@ export interface IUpdateHistoryData {
     type: SharedComponentsActionType.UPDATE_HISTORY_DATA;
     historyData: any;
     totalRecords: number;
+    tenantList: any;
 }
 
 export interface IToggleTeachingBubbleVisibility {
@@ -426,6 +546,7 @@ export interface IUpdateTeachingStep {
 
 export interface IToggleDetailScreen {
     type: SharedComponentsActionType.TOGGLE_DETAIL_SCREEN;
+    isOpen: boolean;
 }
 
 export interface IRequestFilteredUsersAction {
@@ -446,6 +567,28 @@ export interface ISetSelectedSummaryTileRef {
 export interface IFailedDownloadHistory {
     type: SharedComponentsActionType.FAILED_DOWNLOAD_HISTORY;
     downloadErrorMessage: string;
+}
+
+export interface IRequestDownloadSummary {
+    type: SharedComponentsActionType.REQUEST_DOWNLOAD_SUMMARY;
+    userAlias: string;
+    columns: string[];
+    columnHeaders: string[];
+    filters: Record<string, string[]>;
+    columnFormats: Record<string, SummaryExportColumnFormat>;
+}
+
+export interface IReceiveDownloadSummary {
+    type: SharedComponentsActionType.RECEIVE_DOWNLOAD_SUMMARY;
+}
+
+export interface IFailedDownloadSummary {
+    type: SharedComponentsActionType.FAILED_DOWNLOAD_SUMMARY;
+    downloadErrorMessage: string;
+}
+
+export interface IClearDownloadSummaryError {
+    type: SharedComponentsActionType.CLEAR_DOWNLOAD_SUMMARY_ERROR;
 }
 
 export interface IUpdatePeoplePickerSelection {
@@ -561,4 +704,114 @@ export interface IToggleProfilePanel {
 export interface IToggleAccessibilityPanel {
     type: SharedComponentsActionType.TOGGLE_ACCESSIBILITY_PANEL;
     isOpen: boolean;
+}
+
+export interface IInitiateSearch {
+    type: SharedComponentsActionType.INITIATE_SEARCH;
+    userAlias: string;
+    userInput: string;
+}
+
+export interface ISaveSearchResults {
+    type: SharedComponentsActionType.SAVE_SEARCH_RESULTS;
+    searchResults: any;
+}
+
+export interface IToggleSearchResultsView {
+    type: SharedComponentsActionType.TOGGLE_SEARCH_RESULTS_VIEW;
+    isOn: boolean;
+}
+
+export interface IToggleQuickTour {
+    type: SharedComponentsActionType.TOGGLE_QUICKTOUR;
+}
+
+export interface ISetQuickTourData {
+    type: SharedComponentsActionType.SET_QUICKTOUR_DATA;
+    quickTourData: IQuickTourListItem[];
+}
+
+export interface IRequestQuickTourInfo {
+    type: SharedComponentsActionType.REQUEST_QUICKTOUR_INFO;
+}
+
+export interface IRecieveQuickTourInfo {
+    type: SharedComponentsActionType.RECEIVE_QUICKTOUR_INFO;
+    unreadQuickTours: IQuickTourListItem[];
+    readQuickTours: IQuickTourListItem[];
+    updatedQuickTourList: Array<string>;
+}
+
+export interface IPostQuickTourInfo {
+    type: SharedComponentsActionType.POST_QUICKTOUR_INFO;
+    unReadQuickTours: Array<string>;
+}
+
+export interface IClearUnreadQuickTours {
+    type: SharedComponentsActionType.SET_UNREAD_QUICKTOURS;
+}
+
+export interface IRequestInsights {
+    type: SharedComponentsActionType.REQUEST_INSIGHTS;
+    pageType?: string;
+    timePeriod?: number;
+}
+export interface IReceiveInsights {
+    type: SharedComponentsActionType.RECEIVE_INSIGHTS;
+    summaryInsights?: ISummaryInsights;
+    historyInsights?: IHistoryInsights;
+}
+
+export interface IPostFeedback {
+    type: SharedComponentsActionType.POST_FEEDBACK;
+    customStorageParameters: ICustomStorageParameters;
+    documentNumber: string;
+}
+
+export interface IUpdateFeedbackInput {
+    type: SharedComponentsActionType.UPDATE_FEEDBACK_INPUT;
+    payload: IFeedbackInputUpdate;
+}
+
+export interface IDeleteFeedbackInput {
+    type: SharedComponentsActionType.DELETE_FEEDBACK_INPUT;
+    payload: IFeedbackInputDelete;
+}
+
+export interface IUpdatePropertyFilters {
+    type: SharedComponentsActionType.UPDATE_PROPERTY_FILTERS;
+    propertyFilters: Record<string, string[]>;
+}
+
+export interface IUpdateVisibleColumns {
+    type: SharedComponentsActionType.UPDATE_VISIBLE_COLUMNS;
+    tenantType: string;
+    columns: string[];
+}
+
+export interface IRequestSuggest {
+    type: SharedComponentsActionType.REQUEST_SUGGEST;
+    query: string;
+}
+
+export interface IReceiveSuggest {
+    type: SharedComponentsActionType.RECEIVE_SUGGEST;
+    query: string;
+    suggestTerms: string[];
+    suggestRequests: ISuggestRequestItem[];
+}
+
+export interface IClearSuggest {
+    type: SharedComponentsActionType.CLEAR_SUGGEST;
+}
+
+export interface ISuggestRequestItem {
+    tenantId: string;
+    documentNumber: string;
+    displayDocumentNumber: string;
+    title: string;
+    appName: string;
+    unitValueText: string;
+    submitterName: string;
+    businessProcessName: string | null;
 }

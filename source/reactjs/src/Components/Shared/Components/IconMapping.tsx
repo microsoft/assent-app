@@ -2,7 +2,7 @@ import React = require("react");
 const defaultTenantIconPath = "/icons/Tenant Default.png";
 
 export function getTenantIcon(appName: string, tenantInfo: any, width: string){
-    let img = <img src={defaultTenantIconPath} width={width} height="auto" alt="Default Tenant Icon"/>
+    let img = <img src={defaultTenantIconPath} width={width} height="auto" alt="Microsoft logo"/>
     if (!tenantInfo){
         return img;
     }

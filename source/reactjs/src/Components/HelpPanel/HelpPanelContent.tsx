@@ -7,7 +7,7 @@ import { helpPanelReducerName, helpPanelReducer, helpPanelInitialState } from '.
 import { helpPanelSagas } from './HelpPanel.sagas';
 import { Reducer } from 'redux';
 import { IHelpPanelState } from './HelpPanel.types';
-import { requestAboutInfo } from './HelpPanel.actions';
+import { requestAboutInfo, updateHelpPanelState } from './HelpPanel.actions';
 import { useDispatch, useSelector } from 'react-redux';
 import { usePersistentReducer } from '../Shared/Components/PersistentReducer';
 import { useDynamicReducer } from '@micro-frontend-react/employee-experience/lib/useDynamicReducer';
@@ -15,7 +15,7 @@ import {
     sharedComponentsPersistentReducerName,
     sharedComponentsPersistentReducer
 } from '../Shared/SharedComponents.persistent-reducer';
-import { getSupportEmailId } from './HelpPanel.selectors';
+import { getIsHelpPanelOpen, getSupportEmailId } from './HelpPanel.selectors';
 
 function HelpPanelContent(): React.ReactElement {
     usePersistentReducer(sharedComponentsPersistentReducerName, sharedComponentsPersistentReducer);
@@ -23,7 +23,9 @@ function HelpPanelContent(): React.ReactElement {
     const [onMainPage, setOnMainPage] = React.useState(true);
     const [showSearch, setShowSearch] = React.useState(false);
 
+
     const supportEmailId = useSelector(getSupportEmailId);
+    const isHelpPanelOpen = useSelector(getIsHelpPanelOpen);
 
     const dispatch = useDispatch();
 
@@ -86,15 +88,30 @@ function HelpPanelContent(): React.ReactElement {
                                 </Mailto>
                             </li>
                         ) : (
-                            <li>
-                                <Link
-                                    title={link.alternateText ? link.alternateText : null}
-                                    href={link.link}
-                                    target={link.target ? link.target: null}
-                                >
-                                    <Styled.QuickLink>{link.text}</Styled.QuickLink>
-                                </Link>
-                            </li>
+                            link.link !== "" ? (
+                                <li>
+                                    <Link
+                                        title={link.alternateText ? link.alternateText : null}
+                                        href={link.link}
+                                        target={link.target ? link.target: null}
+                                    >
+                                        <Styled.QuickLink>{link.text}</Styled.QuickLink>
+                                    </Link>
+                                </li>
+                            ) : (
+                                <li>
+                                    <Link
+                                        title={link.alternateText || link.text}
+                                        onClick={handleClick}
+                                        target={link.target || '_blank'}
+                                        role="button"
+                                        aria-label={link.alternateText || link.text}
+                                        href="#"
+                                    >
+                                        <Styled.QuickLink>{link.text}</Styled.QuickLink>
+                                    </Link>
+                                </li>
+                            )                            
                         )
                     )}
                 </ul>
@@ -106,6 +123,11 @@ function HelpPanelContent(): React.ReactElement {
             </div>
         );
     }
+
+    const handleClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        dispatch(updateHelpPanelState(!isHelpPanelOpen));
+    };
 
     return (
         <div>

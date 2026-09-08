@@ -40,7 +40,6 @@ import * as notificationStyled from './Components/NotificationsPanel/Notificatio
 import { getIsPanelOpen, getIsSettingPanelOpen } from './Components/Shared/SharedComponents.selectors';
 import { getTeachingBubbleVisibility } from './Components/Shared/SharedComponents.persistent-selectors';
 import { TopHeader } from './Components/Shared/Components/SecondaryHeader/TopHeader';
-import CoherenceTheme from './Helpers/Theme';
 import { SideNav } from './Components/Shared/Components/SideNav';
 import { initializeIcons } from '@fluentui/font-icons-mdl2';
 import { initializeFileTypeIcons } from '@fluentui/react-file-type-icons';
@@ -54,16 +53,21 @@ import { accessibilityReducer, accessibilityReducerName } from './Components/Acc
 import { FeedbackRegistry, IFeedback } from './Components/Feedback/IFeedback';
 import CacheBuster from 'react-cache-buster';
 import { version } from '../package.json';
+import { requestFlightingData, requestQuickTourInfo } from './Components/Shared/SharedComponents.actions';
+import { SessionExpiryDialog } from './Components/Shared/Components/SessionExpiryDialog';
+import useAuthClient from './Helpers/AuthClientV2/useAuthClient';
 
 export function App(): React.ReactElement {
+    useAuthClient();
     useLoginOnStartup(true, { scopes: ['https://graph.microsoft.com/.default'] });
-    initializeIcons();
+    initializeIcons('https://res-1.cdn.office.net/files/fabric-cdn-prod_20210407.001/assets/icons/');
     // See: https://developer.microsoft.com/en-us/fluentui#/styles/web/file-type-icons
     initializeFileTypeIcons();
     //registering icon for reference in fluent components
     registerIcons({
         icons: {
             Accessibility: <SharedStyled.AccessibilityIcon />,
+            AdminIcon: <SharedStyled.AdminIcon />,
         },
     });
     useDynamicReducer(sharedComponentsReducerName, sharedComponentsReducer as Reducer, [sharedComponentsSagas], false);
@@ -71,17 +75,18 @@ export function App(): React.ReactElement {
     usePersistentReducer(sharedComponentsPersistentReducerName, sharedComponentsPersistentReducer);
     usePersistentReducer(accessibilityReducerName, accessibilityReducer);
     getNotifications(); // to get notification on initial load
-    const { useSelector, dispatch, authClient, telemetryClient } = React.useContext(
+    const { useSelector, dispatch, authClient, httpClient, telemetryClient } = React.useContext(
         Context as React.Context<IEmployeeExperienceContext>
     );
+
     const teachingBubbleVisibility = useSelector(getTeachingBubbleVisibility);
     const isPanelOpen = useSelector(getIsPanelOpen);
     const isSettingPanelOpen = useSelector(getIsSettingPanelOpen);
-
     const { isNotificationPanelOpen, unReadNotificationsCount } = useSelector(
         (state: INotificationsPanelState) =>
             state.dynamic?.[notificationsPanelReducerName] || notificationsPanelInitialState
     );
+
     const [headerConfig, setHeaderConfig] = React.useState<any>(null);
     const [showLoading, setShowLoading] = React.useState(true);
 
@@ -89,18 +94,52 @@ export function App(): React.ReactElement {
 
     React.useEffect(() => {
         const registry = new FeedbackRegistry();
-                if (__FEEDBACK_CONFIGURATION_URL__) {
+        if (__FEEDBACK_CONFIGURATION_URL__) {
             setFeedback(registry.getImplementation() as IFeedback);
         }
+
         const timer = setTimeout(() => setShowLoading(false), 12000);
         return () => {
             clearTimeout(timer);
         };
     }, []);
 
+    React.useEffect(() => {
+        dispatch(requestQuickTourInfo());
+        dispatch(requestFlightingData());
+    }, [dispatch]);
+
     const user = useUser();
     const userPhoto = useGraphPhoto();
     const isValidUser = !!user;
+
+    const [userRoles, setUserRoles] = React.useState<string[]>([]);
+
+    React.useEffect(() => {
+        const checkAdminRoles = async () => {
+            try {
+                const token = await authClient.acquireToken([__RESOURCE_URL__ + '/.default']);
+                if (!token) {
+                    setUserRoles([]);
+                    return;
+                }
+                const payloadBase64 = token.split('.')[1];
+                const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+                const claims = JSON.parse(payloadJson);
+                const roles: string[] = Array.isArray(claims.roles) ? claims.roles : [];
+
+                // Show admin nav icon if user has GlobalAdmin or TenantAdmin JWT claim.
+                // The actual /me/roles call happens when AdminPage mounts.
+                const isAdmin = roles.includes('GlobalAdmin') || roles.includes('TenantAdmin');
+                setUserRoles(isAdmin ? ['Admin'] : []);
+            } catch {
+                setUserRoles([]);
+            }
+        };
+        if (user) {
+            checkAdminRoles();
+        }
+    }, [user, authClient]);
 
     React.useEffect(() => {
         setHeaderConfig({
@@ -192,21 +231,25 @@ export function App(): React.ReactElement {
             } //If not passed, nothing appears at the time of new version check.
         >
             <div>
+                <SessionExpiryDialog />
                 <AccessibilityPanel />
                 <HelpPanel />
                 <UserSettingsPanel />
                 <NotificationPanelCustom />
                 <ProfilePanel />
                 <BrowserRouter>
+                    <a href="#main-content" className="skip-to-main-content-link">
+                        Skip to main content
+                    </a>
                     <TopHeader upn={user?.email} displayName={user?.name} feedback={feedback} />
-                    <SideNav links={navConfig} />
+                    <SideNav links={navConfig} userRoles={userRoles} />
                     <div>
                         <Stack horizontal className={isPanelOpen ? 'ms-hiddenSm' : ''}>
                             <Stack.Item grow>
                                 <SecondaryHeader />
                             </Stack.Item>
                         </Stack>
-                        <Main id="main" tabIndex={-1} role="main">
+                        <Main id="main-content" tabIndex={-1} role="main">
                             {isValidUser ? <Routes /> : loginMessage}
                         </Main>
                     </div>

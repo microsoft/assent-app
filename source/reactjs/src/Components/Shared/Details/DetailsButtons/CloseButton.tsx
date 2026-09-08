@@ -17,8 +17,13 @@ import { detailsInitialState, detailsReducerName } from '../../Details/Details.r
 import { IDetailsAppState } from '../../Details/Details.types';
 import { TooltipHost } from '@fluentui/react/lib/Tooltip';
 import { useHistory, useLocation } from 'react-router-dom';
+import { NavigationUtils } from '../../Utils/NavigationUtils';
 
-function CloseButton(props: { action?(): void }): React.ReactElement {
+interface ICloseButtonProps {
+    action?(): void;
+}
+
+function CloseButton(props: ICloseButtonProps): React.ReactElement {
     const history = useHistory();
     const location = useLocation();
     useDynamicReducer(sharedComponentsReducerName, sharedComponentsReducer as Reducer, [sharedComponentsSagas], false);
@@ -59,7 +64,26 @@ function CloseButton(props: { action?(): void }): React.ReactElement {
                                 location.pathname.length > 1 &&
                                 !location.pathname?.toLowerCase()?.includes('history')
                             ) {
-                                history.push('/');
+                                // Use NavigationUtils to preserve dashboard route and other parameters
+                                const currentParams = NavigationUtils.getCurrentUrlParams(history);
+                                const basePath = NavigationUtils.getBasePath(history);
+                                const alias = currentParams.get('alias');
+                                const filterParam = currentParams.get('filter');
+                                
+                                const queryParams = new URLSearchParams();
+                                
+                                if (alias) {
+                                    queryParams.set('alias', alias);
+                                }
+                                
+                                if (filterParam) {
+                                    queryParams.set('filter', filterParam);
+                                }
+                                
+                                const queryString = queryParams.toString();
+                                const queryPath = queryString ? `?${queryString}` : '';
+                                
+                                history.push(`${basePath}${queryPath}`);
                             }
                         }
                         dispatch(updatePanelState(false));
@@ -71,5 +95,5 @@ function CloseButton(props: { action?(): void }): React.ReactElement {
     );
 }
 
-const connected = withContext(CloseButton);
+const connected = withContext(CloseButton as any);
 export { connected as CloseButton };

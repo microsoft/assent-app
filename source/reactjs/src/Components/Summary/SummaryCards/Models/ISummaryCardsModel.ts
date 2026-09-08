@@ -1,3 +1,5 @@
+import { IMatchMetadata } from '../../../Shared/SharedComponents.types';
+
 export interface ISummaryCardsModel {
     AppName: string;
     Title: string;
@@ -18,4 +20,7 @@ export interface ISummaryCardsModel {
     selectForBulkApproval: boolean;
     allBulkCheckSelected: boolean;
     IsControlsAndComplianceRequired: boolean;
+    AllowBulkApprovalCondition: string;
+    FlattenedSummary: string;
+    _matchMetadata?: IMatchMetadata;
 }

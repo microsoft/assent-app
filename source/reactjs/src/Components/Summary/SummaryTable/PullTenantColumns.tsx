@@ -1,43 +1,49 @@
-export const tableColumns = [
+export const pullTenantTableColumns = [
     {
         field: 'status',
         title: 'Approval Status',
-        isFilterable: true
+        isFilterable: true,
     },
     {
         field: 'submittedForFullName',
         title: 'Submitted For',
-        isFilterable: true
+        isFilterable: true,
     },
     {
         field: 'assignmentDetails.assignmentName',
         title: 'Assignment Name',
-        isFilterable: true
+        isFilterable: true,
     },
     {
         field: 'submittedByFullName',
         title: 'Submitted By',
-        isFilterable: true
+        isFilterable: true,
     },
     {
         field: 'assignmentDetails.isBillable',
         title: 'Is Billable',
-        isFilterable: true
+        isFilterable: true,
     },
     {
         field: 'laborNotes',
         title: 'Notes',
-        isFilterable: true
+        isFilterable: true,
     },
     {
         field: 'laborCategoryName',
         title: 'Labor Category',
-        isFilterable: true
+        isFilterable: true,
+    },
+    {
+        field: 'actionDetails.0.actionType',
+        title: 'Anomaly',
+        isFilterable: true,
+        defaultValue: 'Standard',
     },
     {
         field: 'laborDate',
         title: 'Labor Date',
         isFilterable: false,
-        isDefaultSortColumn: true
-    }
+        isDefaultSortColumn: true,
+    },
 ];

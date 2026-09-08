@@ -10,4 +10,11 @@ export const Main = styled.main`
         width: calc(100% - 48px);
         margin-left: 48px;
     }
+
+    /* At 200% zoom, headers stack taller — make Main fill remaining viewport and scroll */
+    @media (max-width: 640px) {
+        height: calc(100vh - 100px);
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
 `;
